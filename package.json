@@ -1,0 +1,16 @@
+{
+  "name": "nget",
+  "version": "0.0.0",
+  "description": "pipe request to disk",
+  "main": "index.js",
+  "scripts": {
+    "test": "node index.js -u google.com"
+  },
+  "author": "bingeboy",
+  "license": "MIT",
+  "dependencies": {
+    "minimist": "0.0.8",
+    "request": "^2.34.0",
+    "colors": "^0.6.2"
+  }
+}
