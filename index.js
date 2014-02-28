@@ -22,7 +22,6 @@ var load = "."
 if(!writePath || writePath === null) writePath = "./";
 var x  = chdir(writePath)
 writeFileTo = filename;
-console.log("writeFileTO POST resolve", writeFileTo);
 console.log("writePath".bold, writePath);
 
 
