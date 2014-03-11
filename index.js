@@ -1,8 +1,5 @@
 #! /usr/bin/env node
 
-console.time("formatUri");
-console.time("totaltime");
-
 //modules
 var colors = require("colors")
     , request = require("request")
@@ -17,14 +14,20 @@ var writePath
     , destination
     , argvs
     , startPath
+    , fileNameLocal
     , reqUrls = [ ]
     , startPath;
 
-// print process.argv
+//regex
+var regexUrl = /([\w\d_-]*)\.?[^\\\/]*$/i;
+
+
+// print process.argv TODO make this a module in utils
 process.argv.forEach(function(val, index, array) {
     //grab next index value for destination to write
     if (val === "-d") {
-        destination = array[index+1];
+        array.slice(index, index+1);
+        return destination = array[index+1];
     }
     //push values to array for processing
     else if ( index > 1 && index !== array.indexOf(destination + 1) && index !== array.indexOf(destination)){
@@ -32,20 +35,31 @@ process.argv.forEach(function(val, index, array) {
     }
 });
 
-//Check for destination
-if(!writePath || writePath === null) writePath = "./";
-//TODO add chdir support var x  = chdir(writePath);
-writePath = destination;
-writeFileTo = chdir(writePath)
-console.log("writePath".bold, writePath);
-console.log("filename: ", uriManager.file);
+
+//get destination for streams
+function getDestination(destination) {
+    if(!destination || destination === null || destination === "./" || destination === " "){
+        return destination = process.cwd();
+    }
+    else {
+      chdir(destination)
+      return x = process.cwd();
+    }
+}
+
 
 //process urls
-if(reqUrls) recersivePipe(reqUrls.map(uriManager));
-//download
+var sendDownPipe = reqUrls.map(uriManager);
+
+recersivePipe(sendDownPipe)
+//Start downloads TODO move this to a utility
 function recersivePipe(urls){
-    var popped = urls.pop();
-    var r = request(popped).on("end", function(){
+    var popped = urls.pop().toString();
+    poppedReg = popped.match(regexUrl)[1];
+    writePath = getDestination(destination) + "/" + poppedReg;
+
+    var r = request(popped)
+    .on("end", function(){
         console.log("Stream End")
     })
     .on("data", function(chunk){
@@ -54,10 +68,11 @@ function recersivePipe(urls){
     .on("error", function(err){
         console.log("Error in Stream".red, err.code)
     })
-    .pipe(fs.createWriteStream(writeFileTo))
+    .pipe(fs.createWriteStream(writePath))
     .on("finish", function () {
         console.log("Pipe Closed".rainbow)
-    })
+    });
+
     if(urls.length === 0){
         return
     } else {
