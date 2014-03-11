@@ -1,6 +1,8 @@
 #n-get
 
-Goal to create wget in nodejs.
+Goal to create a node flavored Wget.
+Git version now allows for multiple file downloads. 
+
 
 ### How To Install
 ```
@@ -8,10 +10,8 @@ $npm install n-get -g
 ```
 ### How To Use
 ```
-$nget [protocal]filePath [WritePath]
+$nget [protocal]filePath [protocal]filePath2 [protocal]filePath3 ... -d [WritePath]
 ```
-
-Git Repo has streaming error. Please use NPM while this message is up.
 
 * If no protocal is used in the file path http will be used by default
 * If no writePath is provided http will be used by default
