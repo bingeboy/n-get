@@ -28,12 +28,6 @@ $nget [protocal]filePath [protocal]filePath2 [protocal]filePath3 ... -d [WritePa
 
 ```
 
-### Example 
-```
-
-
-
-
 * If no protocal is used in the file path http will be used by default
 * If no writePath is provided http will be used by default
 
