@@ -7,8 +7,9 @@ Git version now allows for multiple file downloads ***WARNING ALPHA BUILD WITH K
 ### How To Install
 ```
 $npm install n-get -g 
-
-or from the git repo:
+```
+Or from the git repo:
+```
 $git clone https://github.com/bingeboy/n-get
 $cd ./n-get 
 $npm . install -g
@@ -29,7 +30,7 @@ $nget [protocal]filePath [protocal]filePath2 [protocal]filePath3 ... -d [WritePa
 ```
 
 * If no protocal is used in the file path http will be used by default
-* If no writePath is provided http will be used by default
+* If no writePath is provided current location will be used by default
 
 
 Pull requests welcome. Use at your own risk.
