@@ -1,5 +1,7 @@
 #n-get
 
+[nget demo](https://github.com/bingeboy/n-get/assets/nget.gif)
+
 Goal to create a node flavored Wget.
 Repo version features improved support for:
 
