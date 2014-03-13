@@ -3,8 +3,8 @@
 //modules
 var path = require("path")
 , argv = require("minimist")(process.argv)
-, chdir = require("./utils/chdir")
-, uriManager = require("./utils/uriManager");
+, chdir = require("./lib/chdir")
+, uriManager = require("./lib/uriManager")
 
 //argv
 var  destination
@@ -13,6 +13,7 @@ var  destination
 , fileNameLocal
 , reqUrls = [ ]
 , startPath;
+
 
 // print process.argv TODO make this a module in utils
 process.argv.forEach(function(val, index, array) {
@@ -27,11 +28,9 @@ process.argv.forEach(function(val, index, array) {
     }
 });
 
+
 //process urls
 var sendDownPipe = reqUrls.map(uriManager);
+var recersivePipe = require("./lib/recersivePipe")
 
-var recersivePipe = require("./utils/recersivePipe")
-recersivePipe(sendDownPipe);
-
-
-
+recersivePipe(sendDownPipe)
