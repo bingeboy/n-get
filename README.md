@@ -9,7 +9,7 @@ Repo version features improved support for:
 * Mutiple async pipe requests
 
 
-***WARNING ALPHA BUILD***
+[![build status](https://secure.travis-ci.org/bingeboy/n-get.png)](http://travis-ci.org/bingeboy/n-get)
 
 
 ### How To Install
