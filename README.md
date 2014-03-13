@@ -8,7 +8,7 @@ Repo version features improved support for:
 * Files with query strings
 * Mutiple async pipe requests
 
-
+[![NPM version](https://badge.fury.io/js/n-get.png)](http://badge.fury.io/js/n-get)
 [![build status](https://secure.travis-ci.org/bingeboy/n-get.png)](http://travis-ci.org/bingeboy/n-get)
 [![dev dependancy](https://david-dm.org/bingeboy/n-get.png)](http://david-dm.org/bingeboy/n-get.png)
 
