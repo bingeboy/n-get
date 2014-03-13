@@ -45,3 +45,7 @@ Pull requests welcome. Use at your own risk.
 
 
 Licence: MIT
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/bingeboy/n-get/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
