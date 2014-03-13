@@ -11,6 +11,7 @@ module.exports = function requestUri(reqUrl) {
     //Test the URI
     if(uriCheck.test(reqUrl)){
         //regex positions:
+        /*
         console.log("URL: ", RegExp['$&']);
         console.log("protocol: ", RegExp.$2);
         console.log("host:", RegExp.$3);
@@ -18,7 +19,7 @@ module.exports = function requestUri(reqUrl) {
         console.log("file:", RegExp.$6);
         console.log("query:", RegExp.$7);
         console.log("hash:", RegExp.$8);
-
+        */
         url =  RegExp['$&']
         , host = RegExp.$3
         , rpath = RegExp.$4
@@ -35,11 +36,7 @@ module.exports = function requestUri(reqUrl) {
 
         //Rebuild the uri based on rules from aboe
         reqUrl = host + "/"+ rpath + "/" + file+ "/" + query + "/" + hash; //TODO map this hackolishishnessesmess
-        //path.basename(p, [ext])
-
         reqUrl = protocol + path.normalize(reqUrl);
-
-        console.log("THIS IS THE END OR URI", reqUrl);
     }
     return reqUrl;
 }

@@ -2,11 +2,16 @@
 var request = require("request")
     , fs = require("fs")
     , colors = require("colors")
-    , path = require("path");
+    , path = require("path")
+    , progress = require('request-progress')
+    , emoji = require('emoji');
+
+
 
 //regex
 var regexUrl = /([\w\d_-]*)\.?[^\\\/]*$/i; //TODO remove this var. node path api replaces.
 
+var fileCounter = 0;
 //get destination for streams
 function getDestination(destination) {
     if(!destination || destination === null || destination === "./" || destination === " "){
@@ -22,7 +27,6 @@ function getDestination(destination) {
 function recersivePipe(urls, distination){
     //location to fs.write
     var writePath = process.cwd().toString();
-
     var popped = urls.pop().toString();
     poppedReg = path.basename(popped); //TODO rename this var
     //get the specific destination if user enters
@@ -31,27 +35,36 @@ function recersivePipe(urls, distination){
     }else {
         writePath = writePath + "/" + poppedReg;
     }
-
-
-    var r = request(popped)
+    var r = progress(request(popped))
+    .on("response", function(res){
+        console.log("File Request: ", fileCounter++);
+    })
+    .on("progress", function (state) {
+        //console.log('getting size in bytes', state.received);
+        // The properties bellow can be null if response does not contain
+        // the content-length header
+        //console.log('got all these bytes', state.total);
+        console.log(" ", JSON.stringify(state));
+    })
     .on("end", function(){
         console.log("Stream End")
     })
     .on("data", function(chunk){
-        console.log('got %d bytes of data', chunk.length);
+        //console.log('got %d bytes of data', chunk.length);
     })
     .on("error", function(err){
         console.log("Error in Stream".red, err.code)
     })
     .pipe(fs.createWriteStream(writePath))
     .on("finish", function () {
-        console.log("Pipe Closed".rainbow)
+        console.log("Pipe Closed".rainbow.bold + ' 😜');
     });
 
     if(urls.length === 0){
         console.log("All Requests Made".cyan);
         return
     } else {
+        console.log("Requests: ", ++fileCounter);
         recersivePipe(urls)
     }
 }
