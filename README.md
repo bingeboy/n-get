@@ -1,7 +1,13 @@
 #n-get
 
 Goal to create a node flavored Wget.
-Git version now allows for multiple file downloads ***WARNING ALPHA BUILD WITH KNOWN ISSUES***
+Repo version features improved support for:
+
+* Files with query strings
+* Mutiple async pipe requests
+
+
+***WARNING ALPHA BUILD***
 
 
 ### How To Install
