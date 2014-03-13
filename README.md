@@ -9,8 +9,8 @@ Repo version features improved support for:
 * Mutiple async pipe requests
 
 
-[![build status](https://secure.travis-ci.org/bingeboy/n-get.png)(http://travis-ci.org/bingeboy/n-get)
-[![dev dependancy](https://david-dm.org/bingeboy/n-get.png)(http://david-dm.org/bingeboy/n-get.png)
+[![build status](https://secure.travis-ci.org/bingeboy/n-get.png)](http://travis-ci.org/bingeboy/n-get)
+[![dev dependancy](https://david-dm.org/bingeboy/n-get.png)](http://david-dm.org/bingeboy/n-get.png)
 
 ### How To Install
 ```
