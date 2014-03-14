@@ -8,15 +8,15 @@ Repo version features improved support for:
 * Files with query strings
 * Mutiple async pipe requests
 
-
-***WARNING ALPHA BUILD***
-
+[![NPM version](https://badge.fury.io/js/n-get.png)](http://badge.fury.io/js/n-get)
+[![build status](https://secure.travis-ci.org/bingeboy/n-get.png)](http://travis-ci.org/bingeboy/n-get)
+[![dev dependancy](https://david-dm.org/bingeboy/n-get.png)](http://david-dm.org/bingeboy/n-get.png)
 
 ### How To Install
 ```
 $npm install n-get -g 
 ```
-Or from the git repo:
+Or from the repo if you are a dev or want to test latest features:
 ```
 $git clone https://github.com/bingeboy/n-get
 $cd ./n-get 
@@ -45,3 +45,7 @@ Pull requests welcome. Use at your own risk.
 
 
 Licence: MIT
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/bingeboy/n-get/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
