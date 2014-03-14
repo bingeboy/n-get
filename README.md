@@ -16,7 +16,7 @@ Repo version features improved support for:
 ```
 $npm install n-get -g 
 ```
-Or from the git repo:
+Or from the repo if you are a dev or want to test latest features:
 ```
 $git clone https://github.com/bingeboy/n-get
 $cd ./n-get 
