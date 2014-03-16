@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>N-get by bingeboy</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>N-get</h1>
+        <p>CLI Wget Tool In Nodejs</p>
+
+        <p class="view"><a href="https://github.com/bingeboy/n-get">View the Project on GitHub <small>bingeboy/n-get</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/bingeboy/n-get/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/bingeboy/n-get/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/bingeboy/n-get">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h1>
+<a name="n-get" class="anchor" href="#n-get"><span class="octicon octicon-link"></span></a>n-get</h1>
+
+<p><img src="https://raw.github.com/bingeboy/n-get/master/assets/nget.gif" alt="nget demo"></p>
+
+<p>Goal to create a node flavored Wget.
+Repo version features improved support for:</p>
+
+<ul>
+<li>Files with query strings</li>
+<li>Mutiple async pipe requests</li>
+</ul><p><a href="http://badge.fury.io/js/n-get"><img src="https://badge.fury.io/js/n-get.png" alt="NPM version"></a>
+<a href="http://travis-ci.org/bingeboy/n-get"><img src="https://secure.travis-ci.org/bingeboy/n-get.png" alt="build status"></a>
+<a href="http://david-dm.org/bingeboy/n-get.png"><img src="https://david-dm.org/bingeboy/n-get.png" alt="dev dependancy"></a></p>
+
+<h3>
+<a name="how-to-install" class="anchor" href="#how-to-install"><span class="octicon octicon-link"></span></a>How To Install</h3>
+
+<pre><code>$npm install n-get -g 
+</code></pre>
+
+<p>Or from the repo if you are a dev or want to test latest features:</p>
+
+<pre><code>$git clone https://github.com/bingeboy/n-get
+$cd ./n-get 
+$npm . install -g
+</code></pre>
+
+<h3>
+<a name="how-to-use-basic-mode" class="anchor" href="#how-to-use-basic-mode"><span class="octicon octicon-link"></span></a>How To Use Basic Mode</h3>
+
+<p>Download a single file</p>
+
+<pre><code>$nget [protocal]filePath
+</code></pre>
+
+<p>Or download to a specific location:</p>
+
+<pre><code>$nget [protocal]filePath -d [WritePath]
+</code></pre>
+
+<p>Even more that one request at a time:</p>
+
+<pre><code>$nget [protocal]filePath [protocal]filePath2 [protocal]filePath3 ... -d [WritePath]
+</code></pre>
+
+<h3>
+<a name="adavanced-mode" class="anchor" href="#adavanced-mode"><span class="octicon octicon-link"></span></a>Adavanced Mode</h3>
+
+<p>All of the above and spider crawling abilites</p>
+
+<pre><code>This only works in repo for now.
+$nget -rl domainToCrawl 
+</code></pre>
+
+<ul>
+<li>If no protocal is used in the file path http will be used by default</li>
+<li>If no writePath is provided current location will be used by default</li>
+</ul><p>Pull requests welcome. Use at your own risk.</p>
+
+<p>Licence: MIT</p>
+
+<p><a href="https://bitdeli.com/free" title="Bitdeli Badge"><img src="https://d2weczhvl823v0.cloudfront.net/bingeboy/n-get/trend.png" alt="Bitdeli Badge"></a></p>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/bingeboy">bingeboy</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
