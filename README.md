@@ -35,14 +35,14 @@ Even more that one request at a time:
 ```
 $nget [protocal]filePath [protocal]filePath2 [protocal]filePath3 ... -d [WritePath]
 ```
-
+<!--(
 ### Adavanced Mode 
 All of the above and spider crawling abilites
 ```
 This only works in repo for now.
 $nget -rl domainToCrawl 
 ```
-
+)-->
 
 * If no protocal is used in the file path http will be used by default
 * If no writePath is provided current location will be used by default
