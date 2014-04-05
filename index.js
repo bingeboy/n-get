@@ -47,5 +47,4 @@ var sendDownPipe = reqUrls.map(uriManager);
 
 //@Description take all the paths and download them in an async crazy manner for now. Maybe we will add a napkin in l8er for the squares that require them. ;)
 var recersivePipe = require("./lib/recersivePipe")
-console.log("this is destination", destination);
 recersivePipe(sendDownPipe, destination)
