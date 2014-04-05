@@ -2,7 +2,8 @@
 
 
 ![nget demo](https://raw.github.com/bingeboy/n-get/master/assets/nget.gif)
-This cast is a little dated. Tool not at loud as before.
+
+This cast is a little dated. nget not at loud as before.
 
 Goal to create a node flavored Wget.
 Repo version features improved support for:
