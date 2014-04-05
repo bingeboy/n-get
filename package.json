@@ -1,6 +1,6 @@
 {
   "name": "n-get",
-  "version": "0.0.21",
+  "version": "0.0.24",
   "homepage": "https://github.com/bingeboy/n-get",
   "description": "pipe request to disk",
   "repository": {
