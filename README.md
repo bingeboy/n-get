@@ -3,13 +3,12 @@
 
 ![nget demo](https://raw.github.com/bingeboy/n-get/master/assets/nget.gif)
 
-This cast is a little dated. nget not at loud as before.
-
 Goal to create a node flavored Wget.
-Repo version features improved support for:
 
-* Files with query strings
-* Mutiple async pipe requests
+Feature Request List:
+* Recursive crawling of domain
+* ssh support
+* oauth
 
 [![NPM version](https://badge.fury.io/js/n-get.png)](http://badge.fury.io/js/n-get)
 [![build status](https://secure.travis-ci.org/bingeboy/n-get.png)](http://travis-ci.org/bingeboy/n-get)
