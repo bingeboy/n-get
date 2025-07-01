@@ -8,18 +8,24 @@ const uriManager = require('./lib/uriManager');
 const recursivePipe = require('./lib/recursivePipe');
 const ui = require('./lib/ui');
 const resumeManager = require('./lib/resumeManager');
+const RecursiveDownloader = require('./lib/recursiveDownloader');
 
 const argv = minimist(process.argv.slice(2), {
-    boolean: ['resume', 'no-resume', 'list-resumable', 'help'],
-    string: ['d', 'destination', 'ssh-key', 'ssh-password', 'ssh-passphrase'],
+    boolean: ['resume', 'no-resume', 'list-resumable', 'help', 'recursive', 'no-parent'],
+    string: ['d', 'destination', 'ssh-key', 'ssh-password', 'ssh-passphrase', 'level', 'accept', 'reject', 'user-agent'],
     alias: {
         'd': 'destination',
         'r': 'resume',
         'l': 'list-resumable',
-        'h': 'help'
+        'h': 'help',
+        'R': 'recursive',
+        'np': 'no-parent',
+        'A': 'accept',
+        'j': 'reject'
     },
     default: {
-        'resume': true
+        'resume': true,
+        'level': 5
     }
 });
 
@@ -38,6 +44,14 @@ ${ui.emojis.gear} General Options:
   -l, --list-resumable       List resumable downloads in destination
   -h, --help                 Show this help message
 
+${ui.emojis.search} Recursive Download Options:
+  -R, --recursive            Enable recursive downloading (follow links)
+  --level <depth>            Maximum recursion depth (default: 5)
+  --no-parent                Don't ascend to parent directories
+  -A, --accept <patterns>    Comma-separated list of accepted file patterns
+  -j, --reject <patterns>    Comma-separated list of rejected file patterns
+  --user-agent <string>      Set custom User-Agent for crawling
+
 ${ui.emojis.network} SSH/SFTP Options:
   --ssh-key <path>           Path to SSH private key file
   --ssh-password <password>  SSH password (use with caution)
@@ -47,9 +61,10 @@ ${ui.emojis.rocket} Examples:
   nget https://example.com/file.zip
   nget sftp://user@server.com/path/to/file.zip
   nget sftp://user@server.com/file.zip --ssh-key ~/.ssh/id_rsa
-  nget sftp://user:pass@server.com/file.zip --ssh-passphrase mypassphrase
   nget https://example.com/file1.pdf sftp://server.com/file2.zip -d ./downloads
-  nget --no-resume https://example.com/file.zip
+  nget -R https://example.com/gallery/ --level 3 -d ./gallery
+  nget -R https://site.com --accept "*.pdf,*.zip" --reject "*.tmp"
+  nget -R https://docs.site.com --no-parent --level 2
   nget --list-resumable -d ./downloads
 
 ${ui.emojis.partial} Resume Features:
@@ -57,6 +72,13 @@ ${ui.emojis.partial} Resume Features:
   • Validates file integrity with ETag/Last-Modified
   • Supports HTTP range requests and SFTP resume
   • Smart duplicate file handling
+
+${ui.emojis.search} Recursive Features:
+  • Follow links in HTML, XHTML, and CSS files
+  • Recreate directory structure locally
+  • Fine-tuned depth and pattern control
+  • Respect robots.txt (can be disabled)
+  • Support for both website mirroring and selective downloads
 
 ${ui.emojis.gear} SSH Authentication:
   • Automatic detection of SSH keys in ~/.ssh/
@@ -153,8 +175,34 @@ async function main() {
             ui.displayInfo('SSH key passphrase provided');
         }
 
-        // Start downloads with resume and SSH options
-        await recursivePipe(processedUrls, destination, enableResume, sshOptions);
+        // Check if recursive mode is enabled
+        if (argv.recursive) {
+            // Parse patterns
+            const acceptPatterns = argv.accept ? argv.accept.split(',').map(p => p.trim()) : [];
+            const rejectPatterns = argv.reject ? argv.reject.split(',').map(p => p.trim()) : [];
+            
+            // Create recursive downloader with options
+            const recursiveOptions = {
+                level: parseInt(argv.level) || 5,
+                noParent: argv['no-parent'] || false,
+                accept: acceptPatterns,
+                reject: rejectPatterns,
+                enableResume: enableResume,
+                sshOptions: sshOptions,
+                userAgent: argv['user-agent'] || 'n-get-recursive/1.0'
+            };
+            
+            ui.displayInfo(`Recursive mode enabled (depth: ${recursiveOptions.level})`);
+            if (recursiveOptions.noParent) {
+                ui.displayInfo('Parent directory restriction enabled');
+            }
+            
+            const recursiveDownloader = new RecursiveDownloader(recursiveOptions);
+            await recursiveDownloader.recursiveDownload(processedUrls, destination || process.cwd());
+        } else {
+            // Normal download mode
+            await recursivePipe(processedUrls, destination, enableResume, sshOptions);
+        }
         
     } catch (error) {
         ui.displayError(`Application error: ${error.message}`);

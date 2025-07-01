@@ -20,3 +20,6 @@ build
 .grunt
 
 node_modules
+
+# test directory
+test/temp/*
