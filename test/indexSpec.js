@@ -1,33 +1,113 @@
 
-var expect = require("chai").expect;
-var index = require("../index");
+const { expect } = require('chai');
+const { execSync } = require('child_process');
+const path = require('path');
+const fs = require('fs').promises;
 
-describe("this file takes argv and looks for flags then calls methods accordingly", function(){
-
-   describe("get write stream with -d flag", function( ) {
-       it("process.argv after -d flag", function( ) {
-           var urls = ["google.com", "-d", "temp"];
-        urls.forEach(function(val, index, array) {
-        if (val === "-d") {
-            array.slice(index, index+1);
-            return destination = array[index+1];
+describe('Main CLI Application', function() {
+    const testDir = path.join(__dirname, 'cli-test');
+    
+    before(async function() {
+        try {
+            await fs.mkdir(testDir, { recursive: true });
+        } catch (err) {
+            // Directory might already exist
         }
-        if ( index > 1 && index !== array.indexOf(destination + 1) && index !== array.indexOf(destination)){
-            reqUrls.push(val);
-        }
-        })
-
-        expect(destination).equal("temp");
-       });
     });
 
-    /* spider not added yet
-   describe("get  with -rl flag", function(){
-       it("start spider function with -rl flag", function(){
-           var urls = ["-rl", "http://google.com"]
-           expect().to.have.a.property("./temp/");
-       });
+    after(async function() {
+        // Clean up test files
+        try {
+            const files = await fs.readdir(testDir);
+            for (const file of files) {
+                await fs.unlink(path.join(testDir, file));
+            }
+            await fs.rmdir(testDir);
+        } catch (err) {
+            // Ignore cleanup errors
+        }
     });
-    */
 
+    describe('CLI argument parsing', function() {
+        it('should show usage when no arguments provided', function() {
+            this.timeout(5000);
+            
+            try {
+                execSync('node index.js', { cwd: path.join(__dirname, '..') });
+                expect.fail('Should have exited with error');
+            } catch (error) {
+                expect(error.stdout.toString()).to.include('Usage: nget');
+            }
+        });
+
+        it('should handle single URL download', function() {
+            this.timeout(15000);
+            
+            const output = execSync(`node index.js https://httpbin.org/json -d ${testDir}`, {
+                cwd: path.join(__dirname, '..'),
+                encoding: 'utf8'
+            });
+            
+            // Strip ANSI color codes for testing
+            const cleanOutput = output.replace(/\x1b\[[0-9;]*m/g, '');
+            expect(cleanOutput).to.include('Download Summary');
+            expect(cleanOutput).to.include('Successful: 1/1');
+        });
+
+        it('should handle multiple URL downloads', function() {
+            this.timeout(20000);
+            
+            const output = execSync(`node index.js https://httpbin.org/json https://httpbin.org/uuid -d ${testDir}`, {
+                cwd: path.join(__dirname, '..'),
+                encoding: 'utf8'
+            });
+            
+            // Strip ANSI color codes for testing
+            const cleanOutput = output.replace(/\x1b\[[0-9;]*m/g, '');
+            expect(cleanOutput).to.include('Download Summary');
+            expect(cleanOutput).to.include('Successful: 2/2');
+        });
+
+        it('should handle invalid destination gracefully', function() {
+            this.timeout(5000);
+            
+            try {
+                execSync('node index.js https://httpbin.org/json -d /nonexistent/path', {
+                    cwd: path.join(__dirname, '..'),
+                    encoding: 'utf8'
+                });
+                expect.fail('Should have exited with error');
+            } catch (error) {
+                const output = error.stderr ? error.stderr.toString() : error.stdout.toString();
+                expect(output).to.include('Invalid destination path');
+            }
+        });
+    });
+
+    describe('Error handling', function() {
+        it('should handle network errors gracefully', function() {
+            this.timeout(10000);
+            
+            const output = execSync('node index.js https://invalid-domain-that-should-not-exist.com/file.txt', {
+                cwd: path.join(__dirname, '..'),
+                encoding: 'utf8'
+            });
+            
+            expect(output).to.include('Failed: 1');
+        });
+
+        it('should handle mixed valid and invalid URLs', function() {
+            this.timeout(15000);
+            
+            const output = execSync(`node index.js https://httpbin.org/json https://invalid-domain.com/file.txt -d ${testDir}`, {
+                cwd: path.join(__dirname, '..'),
+                encoding: 'utf8'
+            });
+            
+            // Strip ANSI color codes for testing
+            const cleanOutput = output.replace(/\x1b\[[0-9;]*m/g, '');
+            expect(cleanOutput).to.include('Successful: 1');
+            expect(cleanOutput).to.include('Failed: 1');
+        });
+    });
 });
