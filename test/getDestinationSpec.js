@@ -1,13 +1,23 @@
-var expect = require("chai").expect;
-var should = require('chai').should();
+const { expect } = require('chai');
+const path = require('path');
+const chdir = require('../lib/chdir.js');
 
-var chdir = require("../lib/chdir.js");
+describe('Destination handling', function() {
+    let originalCwd;
 
-describe("When a desination is declared, ", function( ) {
-       it("it should be written to", function( ) {
-           var dir = "../temp/";
-           chdir(dir, function(err, doc){
-                should.exist(doc)
-           })
-        });
+    beforeEach(function() {
+        originalCwd = process.cwd();
+    });
+
+    afterEach(function() {
+        // Restore original working directory
+        process.chdir(originalCwd);
+    });
+
+    it('should handle valid destination directory', function() {
+        const tempDir = path.join(__dirname, '..', 'temp');
+        const result = chdir(tempDir);
+        expect(result).to.equal(tempDir);
+        expect(process.cwd()).to.equal(tempDir);
+    });
 });

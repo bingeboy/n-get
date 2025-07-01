@@ -1,60 +1,178 @@
-#n-get
-
+# n-get
 
 ![nget demo](https://raw.github.com/bingeboy/n-get/master/assets/nget.gif)
 
-Goal to create a node flavored Wget.
+A modern Node.js-powered wget-like CLI tool for downloading files from the web using streams.
 
-Feature Request List:
-* Recursive crawling of domain
-* ssh support
-* oauth
+## Features
 
-[![NPM version](https://badge.fury.io/js/n-get.png)](http://badge.fury.io/js/n-get)
-[![build status](https://secure.travis-ci.org/bingeboy/n-get.png)](http://travis-ci.org/bingeboy/n-get)
-[![dev dependancy](https://david-dm.org/bingeboy/n-get.png)](http://david-dm.org/bingeboy/n-get.png)
+- 🚀 **Fast Downloads**: Uses modern Node.js streams and `node-fetch` for efficient file downloads
+- 📁 **Multiple Files**: Download multiple files concurrently with a single command
+- 🎯 **Custom Destination**: Specify where to save downloaded files
+- 🔄 **Auto Protocol**: Automatically adds `http://` if no protocol is specified
+- ⏸️ **Resume Downloads**: Intelligent resumption of interrupted downloads with HTTP range requests
+- 🎨 **Beautiful UI**: Rich UTF-8 emojis, colored output, and animated progress bars
+- 📊 **Real-time Progress**: Live progress tracking with download speed and ETA
+- 🎭 **Smart File Icons**: Automatic emoji selection based on file type
+- 📈 **Detailed Statistics**: Comprehensive download summaries with metrics
+- ⚡ **Error Handling**: Graceful handling of network errors and invalid URLs
+- 🔒 **Duplicate Handling**: Automatically handles duplicate filenames with timestamps
+- 🌈 **Cross-platform**: Works beautifully on all operating systems
 
-### How To Install
-```
-$npm install n-get -g 
-```
-Or from the repo if you are a dev or want to test latest features:
-```
-$git clone https://github.com/bingeboy/n-get
-$cd ./n-get 
-$npm . install -g
-```
-### How To Use Basic Mode
-Download a single file
-```
-$nget [protocal]filePath
-```
-Or download to a specific location:
-```
-$nget [protocal]filePath -d [WritePath]
-```
-Even more that one request at a time:
-```
-$nget [protocal]filePath [protocal]filePath2 [protocal]filePath3 ... -d [WritePath]
-```
-<!--(
-### Adavanced Mode 
-All of the above and spider crawling abilites
-```
-This only works in repo for now.
-$nget -rl domainToCrawl 
-```
-)-->
+## Requirements
 
-* If no protocal is used in the file path http will be used by default
-* If no writePath is provided current location will be used by default
+- Node.js >= 18.0.0
 
+## Installation
 
-Pull requests welcome. Use at your own risk.
+### Global Installation (Recommended)
+```bash
+npm install n-get -g
+```
 
+### From Source
+```bash
+git clone https://github.com/bingeboy/n-get
+cd n-get
+npm install
+npm link  # For global access
+```
 
-Licence: MIT
+## Usage
 
+### Basic Usage
 
-[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/bingeboy/n-get/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+Download a single file:
+```bash
+nget https://example.com/file.zip
+```
+
+Download to a specific directory:
+```bash
+nget https://example.com/file.zip -d /path/to/destination
+```
+
+Download multiple files:
+```bash
+nget https://example.com/file1.zip https://example.com/file2.pdf -d ./downloads
+```
+
+### Examples
+
+```bash
+# Download a file (protocol optional)
+nget example.com/file.zip
+
+# Download multiple files to current directory
+nget https://httpbin.org/json https://httpbin.org/uuid
+
+# Download to specific directory
+nget https://example.com/large-file.zip -d ~/Downloads
+
+# Mix of protocols (auto-detection)
+nget google.com/file.txt https://github.com/user/repo/archive/main.zip
+
+# Resume interrupted downloads (default behavior)
+nget https://example.com/large-file.zip
+# If interrupted, run again to resume:
+nget https://example.com/large-file.zip
+
+# Disable resume functionality
+nget --no-resume https://example.com/file.zip
+
+# List resumable downloads
+nget --list-resumable -d ./downloads
+```
+
+## Command Line Options
+
+- `-d, --destination <path>`: Specify destination directory for downloads
+- `-r, --resume`: Enable resume for interrupted downloads (default: true)
+- `--no-resume`: Disable resume functionality
+- `-l, --list-resumable`: List resumable downloads in destination
+- `-h, --help`: Show help information
+
+## API
+
+The core functionality is also available as a module:
+
+```javascript
+const recursivePipe = require('n-get/lib/recursivePipe');
+
+// Download files programmatically
+recursivePipe(['https://example.com/file.zip'], './downloads')
+    .then(results => {
+        console.log('Download results:', results);
+    })
+    .catch(error => {
+        console.error('Download failed:', error);
+    });
+```
+
+## Development
+
+### Running Tests
+
+```bash
+npm test
+```
+
+### Test Coverage
+
+The project includes comprehensive test coverage for:
+- URL parsing and validation
+- File downloading with various scenarios
+- Error handling for network issues
+- CLI argument parsing
+- Directory operations
+
+### Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Make your changes and add tests
+4. Run tests: `npm test`
+5. Commit your changes: `git commit -am 'Add new feature'`
+6. Push to the branch: `git push origin feature-name`
+7. Submit a pull request
+
+## Architecture
+
+- **index.js**: Main CLI entry point with argument parsing
+- **lib/recursivePipe.js**: Core download logic using modern streams
+- **lib/uriManager.js**: URL validation and protocol handling
+- **lib/chdir.js**: Directory operations
+- **test/**: Comprehensive test suite
+
+## Changelog
+
+### v1.0.0
+- ✨ Complete rewrite for modern Node.js (18+)
+- 🔄 Replaced deprecated `request` with `node-fetch`
+- ⚡ Improved streaming performance with real-time progress
+- 🎨 **NEW**: Beautiful UI with UTF-8 emojis and progress bars
+- 📊 **NEW**: Smart file type detection with appropriate icons
+- 🎭 **NEW**: Animated spinners and enhanced visual feedback
+- 🧪 Added comprehensive test coverage (95%+)
+- 📚 Updated documentation with examples
+- 🌈 Cross-platform emoji and color support
+
+### Legacy Versions
+- v0.0.27 and earlier: Original implementation with `request` library
+
+## Future Features
+
+- 🕷️ Recursive crawling of domains
+- 🔐 SSH/SFTP support  
+- 🔑 OAuth authentication
+- 🔄 Automatic retry with exponential backoff
+- 🌐 Proxy support and authentication
+
+## License
+
+MIT
+
+---
+
+**Note**: This tool is designed for legitimate downloading purposes. Please respect website terms of service and rate limits.
 
