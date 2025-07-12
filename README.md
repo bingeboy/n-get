@@ -1,6 +1,6 @@
-# n-get
+![Logo](https://raw.github.com/bingeboy/n-get/master/assets/nget-logo.png)
 
-![nget demo](https://raw.github.com/bingeboy/n-get/master/assets/nget.gif)
+# n-get
 
 A modern Node.js-powered wget-like CLI tool for downloading files from the web using streams.
 
