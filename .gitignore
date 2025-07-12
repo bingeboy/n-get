@@ -1,6 +1,8 @@
 lib-cov
 lcov.info
 .DS_Store
+.claude/
+.CLAUDE.md
 
 *.seed
 *.log
