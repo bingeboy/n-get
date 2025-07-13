@@ -29,14 +29,15 @@ describe('Main CLI Application', function() {
     });
 
     describe('CLI argument parsing', function() {
-        it('should show usage when no arguments provided', function() {
+        it('should show error message when no arguments provided', function() {
             this.timeout(5000);
             
             try {
                 execSync('node index.js', { cwd: path.join(__dirname, '..') });
                 expect.fail('Should have exited with error');
             } catch (error) {
-                expect(error.stdout.toString()).to.include('Usage: nget');
+                expect(error.stderr.toString()).to.include('Error: No URLs provided');
+                expect(error.stderr.toString()).to.include('nget --help');
             }
         });
 
@@ -88,12 +89,17 @@ describe('Main CLI Application', function() {
         it('should handle network errors gracefully', function() {
             this.timeout(10000);
             
-            const output = execSync('node index.js https://invalid-domain-that-should-not-exist.com/file.txt', {
-                cwd: path.join(__dirname, '..'),
-                encoding: 'utf8'
-            });
-            
-            expect(output).to.include('Failed: 1');
+            try {
+                execSync('node index.js https://invalid-domain-that-should-not-exist.com/file.txt', {
+                    cwd: path.join(__dirname, '..'),
+                    encoding: 'utf8'
+                });
+                expect.fail('Should have thrown an error');
+            } catch (error) {
+                // Should exit with non-zero code and show error summary
+                expect(error.status).to.equal(1);
+                expect(error.stdout).to.include('Failed: 1');
+            }
         });
 
         it('should handle mixed valid and invalid URLs', function() {
