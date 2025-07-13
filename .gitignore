@@ -3,7 +3,7 @@ lcov.info
 .claude/*
 temp/
 :4
-.CLAUDE.md
+CLAUDE.md
 
 *.seed
 *.log
