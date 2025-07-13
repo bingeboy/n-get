@@ -115,5 +115,48 @@ describe('Recursive Pipe Module', function() {
             expect(results[0].success).to.be.false;
             expect(results[0].error).to.include('404');
         });
+
+        it('should handle duplicate filenames with incremental postfix', async function() {
+            this.timeout(15000);
+            
+            // First, download a file normally
+            const urls = ['https://httpbin.org/json'];
+            const firstResult = await recursivePipe(urls, testDir);
+            
+            expect(firstResult).to.have.length(1);
+            expect(firstResult[0].success).to.be.true;
+            
+            // Check first file exists
+            const originalPath = path.join(testDir, 'json');
+            const originalStats = await fs.stat(originalPath);
+            expect(originalStats.isFile()).to.be.true;
+            
+            // Download the same file again (should get renamed)
+            const secondResult = await recursivePipe(urls, testDir, false); // Disable resume to force duplication
+            
+            expect(secondResult).to.have.length(1);
+            expect(secondResult[0].success).to.be.true;
+            
+            // Check second file exists with .1 postfix
+            const duplicatePath = path.join(testDir, 'json.1');
+            const duplicateStats = await fs.stat(duplicatePath);
+            expect(duplicateStats.isFile()).to.be.true;
+            
+            // Download again (should get .2 postfix)
+            const thirdResult = await recursivePipe(urls, testDir, false);
+            
+            expect(thirdResult).to.have.length(1);
+            expect(thirdResult[0].success).to.be.true;
+            
+            // Check third file exists with .2 postfix
+            const secondDuplicatePath = path.join(testDir, 'json.2');
+            const secondDuplicateStats = await fs.stat(secondDuplicatePath);
+            expect(secondDuplicateStats.isFile()).to.be.true;
+            
+            // Clean up test files
+            await fs.unlink(originalPath);
+            await fs.unlink(duplicatePath);
+            await fs.unlink(secondDuplicatePath);
+        });
     });
 });
