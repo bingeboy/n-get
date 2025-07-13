@@ -7,9 +7,11 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #2563eb;
-            --secondary-color: #1e40af;
-            --accent-color: #3b82f6;
+            --primary-color: #2d5a87;
+            --secondary-color: #1e3a5f;
+            --accent-color: #4a90a4;
+            --teal-accent: #5c9aa8;
+            --blue-gray: #6b8fa3;
             --text-primary: #1f2937;
             --text-secondary: #6b7280;
             --bg-primary: #ffffff;
@@ -39,7 +41,7 @@
 
         /* Header */
         header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color), var(--teal-accent));
             color: white;
             padding: 4rem 0;
             text-align: center;
@@ -68,10 +70,24 @@
             z-index: 1;
         }
 
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .hero-logo {
+            height: 80px;
+            width: auto;
+            filter: drop-shadow(2px 2px 8px rgba(0,0,0,0.2));
+        }
+
         .hero-title {
             font-size: 3.5rem;
             font-weight: 700;
-            margin-bottom: 1rem;
+            margin: 0;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
         }
 
@@ -129,7 +145,7 @@
 
         .nav-link:hover {
             color: var(--primary-color);
-            background: rgba(37, 99, 235, 0.1);
+            background: rgba(45, 90, 135, 0.1);
         }
 
         /* Main Content */
@@ -228,7 +244,7 @@
 
         .arch-card:hover {
             border-color: var(--primary-color);
-            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.1);
+            box-shadow: 0 10px 20px rgba(45, 90, 135, 0.1);
         }
 
         .arch-title {
@@ -388,6 +404,15 @@
                 font-size: 2.5rem;
             }
 
+            .logo-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .hero-logo {
+                height: 60px;
+            }
+
             .container {
                 padding: 0 1rem;
             }
@@ -411,12 +436,16 @@
     <header>
         <div class="container">
             <div class="hero-content">
-                <h1 class="hero-title">⚡ n-get</h1>
+                <div class="logo-container">
+                    <img src="gh_pages/imgs/nget-logo.png" alt="n-get logo" class="hero-logo">
+                    <h1 class="hero-title">n-get</h1>
+                </div>
                 <p class="hero-subtitle">A modern Node.js-powered wget-like CLI tool for downloading files from the web using streams</p>
                 <div class="badges">
                     <span class="badge">🚀 Fast Downloads</span>
                     <span class="badge">📁 Multiple Files</span>
                     <span class="badge">🔄 Resume Support</span>
+                    <span class="badge">⚡ Unix Pipes</span>
                     <span class="badge">🎨 Beautiful UI</span>
                 </div>
             </div>
@@ -477,6 +506,18 @@
                         <span class="feature-icon">📊</span>
                         <h3 class="feature-title">Real-time Progress</h3>
                         <p class="feature-description">Live progress tracking with download speed and ETA calculations</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <span class="feature-icon">🔄</span>
+                        <h3 class="feature-title">Unix Pipes Support</h3>
+                        <p class="feature-description">Full stdin/stdout support for seamless integration with shell pipes and command chaining</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <span class="feature-icon">🔄</span>
+                        <h3 class="feature-title">Smart File Naming</h3>
+                        <p class="feature-description">Automatic file deduplication with incremental naming (file.zip, file.zip.1, file.zip.2)</p>
                     </div>
                 </div>
             </section>
@@ -592,7 +633,9 @@ npm link</div>
                     <div class="code-tabs">
                         <button class="code-tab active" onclick="showTab('basic')">Basic Usage</button>
                         <button class="code-tab" onclick="showTab('advanced')">Advanced</button>
+                        <button class="code-tab" onclick="showTab('pipes')">Pipes & Streams</button>
                         <button class="code-tab" onclick="showTab('resume')">Resume Downloads</button>
+                        <button class="code-tab" onclick="showTab('flags')">All Flags</button>
                     </div>
                     
                     <div class="code-content">
@@ -614,8 +657,28 @@ nget example.com/file.zip
 # Multiple files with mixed protocols
 nget google.com/file.txt https://github.com/user/repo/archive/main.zip
 
+# Custom destination with quiet mode
+nget https://example.com/file.zip -d ./downloads -q
+
 # List resumable downloads
 nget --list-resumable -d ./downloads</code></pre>
+                        </div>
+                        
+                        <div id="pipes-content" class="tab-content" style="display: none;">
+                            <pre><code class="language-bash"># Read URLs from stdin
+echo "https://example.com/file.zip" | nget -i -
+
+# Download to stdout (pipe to other commands)
+nget https://example.com/file.txt -o - | grep "pattern"
+
+# Chain with other tools using pipes
+echo "https://httpbin.org/json" | nget -i - -o - | jq '.url'
+
+# Read multiple URLs from file via stdin
+cat urls.txt | nget -i -
+
+# Quiet mode with pipes (suppress progress output)
+echo "https://example.com/data.json" | nget -i - -o - -q | process-data</code></pre>
                         </div>
                         
                         <div id="resume-content" class="tab-content" style="display: none;">
@@ -627,6 +690,28 @@ nget https://example.com/large-file.zip
 
 # Disable resume functionality
 nget --no-resume https://example.com/file.zip</code></pre>
+                        </div>
+                        
+                        <div id="flags-content" class="tab-content" style="display: none;">
+                            <pre><code class="language-bash"># All supported flags and options:
+
+# Input/Output
+-i, --input-file FILE    Read URLs from file (use '-' for stdin)
+-o, --output-file FILE   Write to file (use '-' for stdout)
+-d, --destination DIR    Download destination directory
+
+# Behavior
+-q, --quiet             Suppress progress output
+-h, --help              Show help information
+--no-resume             Disable resume functionality
+--list-resumable        List resumable downloads
+
+# Examples with all flags:
+nget https://example.com/file.zip -d ./downloads
+nget -i urls.txt -d ./downloads -q
+nget https://example.com/data.json -o - -q
+nget --list-resumable -d ./downloads
+nget --help</code></pre>
                         </div>
                     </div>
                 </div>
