@@ -2,7 +2,7 @@
 
 # n-get
 
-A modern Node.js-powered wget-like CLI tool for downloading files from the web using streams.
+A wget-like CLI tool for downloading files from the web using streams.
 
 ## Features
 
@@ -11,7 +11,6 @@ A modern Node.js-powered wget-like CLI tool for downloading files from the web u
 - 🎯 **Custom Destination**: Specify where to save downloaded files
 - 🔄 **Auto Protocol**: Automatically adds `http://` if no protocol is specified
 - ⏸️ **Resume Downloads**: Intelligent resumption of interrupted downloads with HTTP range requests
-- 🎨 **Beautiful UI**: Rich UTF-8 emojis, colored output, and animated progress bars
 - 📊 **Real-time Progress**: Live progress tracking with download speed and ETA
 - 🎭 **Smart File Icons**: Automatic emoji selection based on file type
 - 📈 **Detailed Statistics**: Comprehensive download summaries with metrics
@@ -173,6 +172,3 @@ The project includes comprehensive test coverage for:
 MIT
 
 ---
-
-**Note**: This tool is designed for legitimate downloading purposes. Please respect website terms of service and rate limits.
-
