@@ -83,6 +83,8 @@ nget --no-resume https://example.com/file.zip
 nget --list-resumable -d ./downloads
 ```
 
+Fore more examples see project landing page or run `--help`.
+
 ## Command Line Options
 
 - `-d, --destination <path>`: Specify destination directory for downloads
@@ -115,34 +117,6 @@ recursivePipe(['https://example.com/file.zip'], './downloads')
 ```bash
 npm test
 ```
-
-### Test Coverage
-
-The project includes comprehensive test coverage for:
-- URL parsing and validation
-- File downloading with various scenarios
-- Error handling for network issues
-- CLI argument parsing
-- Directory operations
-
-### Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Make your changes and add tests
-4. Run tests: `npm test`
-5. Commit your changes: `git commit -am 'Add new feature'`
-6. Push to the branch: `git push origin feature-name`
-7. Submit a pull request
-
-## Architecture
-
-- **index.js**: Main CLI entry point with argument parsing
-- **lib/recursivePipe.js**: Core download logic using modern streams
-- **lib/uriManager.js**: URL validation and protocol handling
-- **lib/chdir.js**: Directory operations
-- **test/**: Comprehensive test suite
-
 ## Changelog
 
 ### v1.0.0
@@ -159,16 +133,7 @@ The project includes comprehensive test coverage for:
 ### Legacy Versions
 - v0.0.27 and earlier: Original implementation with `request` library
 
-## Future Features
-
-- 🕷️ Recursive crawling of domains
-- 🔐 SSH/SFTP support  
-- 🔑 OAuth authentication
-- 🔄 Automatic retry with exponential backoff
-- 🌐 Proxy support and authentication
-
 ## License
 
 MIT
 
----
