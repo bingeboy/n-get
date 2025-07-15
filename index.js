@@ -41,7 +41,6 @@ function showHelp() {
     ui.displayBanner();
     console.log(`
 ${ui.emojis.info} Usage: nget [options] <url1> [url2] ...
-${ui.emojis.info} Usage: nget resume [options]
 
 ${ui.emojis.gear} General Options:
   -d, --destination <path>    Destination directory for downloads
@@ -77,8 +76,6 @@ ${ui.emojis.rocket} Examples:
   nget -R https://site.com --accept "*.pdf,*.zip" --reject "*.tmp"
   nget -R https://docs.site.com --no-parent --level 2
   nget --list-resumable -d ./downloads
-  nget resume                     # Resume the most recent interrupted download
-  nget resume -d ./downloads      # Resume from specific directory
 
 ${ui.emojis.network} Pipe Examples:
   echo "https://example.com/file.zip" | nget -i -
@@ -92,7 +89,6 @@ ${ui.emojis.partial} Resume Features:
   • Validates file integrity with ETag/Last-Modified
   • Supports HTTP range requests and SFTP resume
   • Smart duplicate file handling
-  • Use 'nget resume' to resume the most recent interrupted download
 
 ${ui.emojis.search} Recursive Features:
   • Follow links in HTML, XHTML, and CSS files
@@ -213,41 +209,22 @@ async function main() {
             process.exit(0);
         }
 
-        // Handle resume command
-        if (argv._.length > 0 && argv._[0] === 'resume') {
-            const dest = destination || process.cwd();
-            const latestResumable = await resumeManager.findLatestResumableDownload(dest);
-            
-            if (!latestResumable) {
-                console.error("Error: No resumable downloads found in destination directory.");
-                process.exit(1);
+        // Get URLs from remaining arguments or input file
+        argv._.forEach(url => {
+            if (url && typeof url === 'string') {
+                reqUrls.push(url);
             }
-            
-            reqUrls.push(latestResumable.url);
-            
-            const quietMode = argv.quiet || argv['output-file'] === '-';
-            if (!quietMode) {
-                ui.displayInfo(`Resuming download: ${latestResumable.url}`);
-                ui.displayInfo(`Target file: ${latestResumable.filePath}`);
-            }
-        } else {
-            // Get URLs from remaining arguments or input file
-            argv._.forEach(url => {
-                if (url && typeof url === 'string') {
-                    reqUrls.push(url);
-                }
-            });
+        });
 
-            // Handle input file (including stdin)
-            if (argv['input-file']) {
-                const inputUrls = await readUrlsFromInput(argv['input-file']);
-                reqUrls.push(...inputUrls);
-            }
+        // Handle input file (including stdin)
+        if (argv['input-file']) {
+            const inputUrls = await readUrlsFromInput(argv['input-file']);
+            reqUrls.push(...inputUrls);
+        }
 
-            if (reqUrls.length === 0) {
-                console.error("Error: No URLs provided. Use 'nget --help' for usage information.");
-                process.exit(1);
-            }
+        if (reqUrls.length === 0) {
+            console.error("Error: No URLs provided. Use 'nget --help' for usage information.");
+            process.exit(1);
         }
 
         // Process URLs with spinner (unless in quiet mode)
