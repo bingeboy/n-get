@@ -12,13 +12,14 @@ const resumeManager = require('./lib/resumeManager');
 const RecursiveDownloader = require('./lib/recursiveDownloader');
 
 const argv = minimist(process.argv.slice(2), {
-    boolean: ['resume', 'no-resume', 'list-resumable', 'help', 'recursive', 'no-parent', 'quiet'],
+    boolean: ['resume', 'no-resume', 'list-resumable', 'help', 'version', 'recursive', 'no-parent', 'quiet'],
     string: ['d', 'destination', 'ssh-key', 'ssh-password', 'ssh-passphrase', 'level', 'accept', 'reject', 'user-agent', 'i', 'input-file', 'o', 'output-file'],
     alias: {
         'd': 'destination',
         'r': 'resume',
         'l': 'list-resumable',
         'h': 'help',
+        'v': 'version',
         'R': 'recursive',
         'np': 'no-parent',
         'A': 'accept',
@@ -165,6 +166,13 @@ async function main() {
         // Handle help
         if (argv.help) {
             showHelp();
+            process.exit(0);
+        }
+
+        // Handle version
+        if (argv.version) {
+            const packageJson = require('./package.json');
+            console.log(packageJson.version);
             process.exit(0);
         }
 
