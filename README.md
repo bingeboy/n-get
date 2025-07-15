@@ -110,29 +110,6 @@ recursivePipe(['https://example.com/file.zip'], './downloads')
     });
 ```
 
-## Development
-
-### Running Tests
-
-```bash
-npm test
-```
-## Changelog
-
-### v1.0.0
-- ✨ Complete rewrite for modern Node.js (18+)
-- 🔄 Replaced deprecated `request` with `node-fetch`
-- ⚡ Improved streaming performance with real-time progress
-- 🎨 **NEW**: Beautiful UI with UTF-8 emojis and progress bars
-- 📊 **NEW**: Smart file type detection with appropriate icons
-- 🎭 **NEW**: Animated spinners and enhanced visual feedback
-- 🧪 Added comprehensive test coverage (95%+)
-- 📚 Updated documentation with examples
-- 🌈 Cross-platform emoji and color support
-
-### Legacy Versions
-- v0.0.27 and earlier: Original implementation with `request` library
-
 ## License
 
 MIT
