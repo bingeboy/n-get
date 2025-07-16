@@ -12,12 +12,12 @@ const resumeManager = require('./lib/resumeManager');
 const RecursiveDownloader = require('./lib/recursiveDownloader');
 
 const argv = minimist(process.argv.slice(2), {
-    boolean: ['resume', 'no-resume', 'list-resumable', 'help', 'version', 'recursive', 'no-parent', 'quiet'],
+    boolean: ['resume', 'no-resume', 'list-resume', 'help', 'version', 'recursive', 'no-parent', 'quiet'],
     string: ['d', 'destination', 'ssh-key', 'ssh-password', 'ssh-passphrase', 'level', 'accept', 'reject', 'user-agent', 'i', 'input-file', 'o', 'output-file'],
     alias: {
         'd': 'destination',
         'r': 'resume',
-        'l': 'list-resumable',
+        'l': 'list-resume',
         'h': 'help',
         'v': 'version',
         'R': 'recursive',
@@ -47,7 +47,7 @@ ${ui.emojis.gear} General Options:
   -d, --destination <path>    Destination directory for downloads
   -r, --resume               Enable resume for interrupted downloads (default: true)
   --no-resume                Disable resume functionality
-  -l, --list-resumable       List resumable downloads in destination
+  -l, --list-resume          List resumable downloads in destination
   -h, --help                 Show this help message
 
 ${ui.emojis.network} Pipe Options:
@@ -76,8 +76,9 @@ ${ui.emojis.rocket} Examples:
   nget -R https://example.com/gallery/ --level 3 -d ./gallery
   nget -R https://site.com --accept "*.pdf,*.zip" --reject "*.tmp"
   nget -R https://docs.site.com --no-parent --level 2
-  nget --list-resumable -d ./downloads
-  nget resume                     # Resume the most recent interrupted download
+  nget --list-resume -d ./downloads
+  nget resume 1                        # Resume download #1 from list
+  nget resume all                      # Resume all downloads from list
   nget resume -d ./downloads      # Resume from specific directory
 
 ${ui.emojis.network} Pipe Examples:
@@ -92,7 +93,9 @@ ${ui.emojis.partial} Resume Features:
   • Validates file integrity with ETag/Last-Modified
   • Supports HTTP range requests and SFTP resume
   • Smart duplicate file handling
-  • Use 'nget resume' to resume the most recent interrupted download
+  • Use 'nget resume -d <path>' to resume from a specific directory
+  • Use 'nget resume <number>' to resume a specific numbered download
+  • Use 'nget resume all' to resume all downloads
 
 ${ui.emojis.search} Recursive Features:
   • Follow links in HTML, XHTML, and CSS files
@@ -158,7 +161,7 @@ async function listResumableDownloads() {
     ui.displayResumableList(resumableDownloads);
     
     if (resumableDownloads.length > 0) {
-        ui.displayInfo('To resume downloads, run: nget <original-url> -d <destination>');
+        ui.displayInfo('To resume downloads, run: nget resume -d <destination>, nget resume <number>, or nget resume all');
     }
     
     // Clean up old metadata
@@ -208,27 +211,86 @@ async function main() {
         }
 
         // Handle list resumable downloads
-        if (argv['list-resumable']) {
+        if (argv['list-resume']) {
             await listResumableDownloads();
             process.exit(0);
         }
 
         // Handle resume command
         if (argv._.length > 0 && argv._[0] === 'resume') {
-            const dest = destination || process.cwd();
-            const latestResumable = await resumeManager.findLatestResumableDownload(dest);
+            const resumeArg = argv._[1];
             
-            if (!latestResumable) {
-                console.error("Error: No resumable downloads found in destination directory.");
-                process.exit(1);
-            }
-            
-            reqUrls.push(latestResumable.url);
-            
-            const quietMode = argv.quiet || argv['output-file'] === '-';
-            if (!quietMode) {
-                ui.displayInfo(`Resuming download: ${latestResumable.url}`);
-                ui.displayInfo(`Target file: ${latestResumable.filePath}`);
+            // Check if it's a numbered selection (e.g., 1, 2, etc.) or 'all'
+            if (resumeArg && String(resumeArg).match(/^\d+$/)) {
+                const itemNumber = parseInt(resumeArg);
+                const dest = destination || process.cwd();
+                
+                const resumableDownloads = await resumeManager.getResumableDownloads(dest);
+                
+                if (resumableDownloads.length === 0) {
+                    console.error('Error: No resumable downloads found.');
+                    process.exit(1);
+                }
+                
+                if (itemNumber < 1 || itemNumber > resumableDownloads.length) {
+                    console.error(`Error: Invalid item number ${itemNumber}. Available items: 1-${resumableDownloads.length}`);
+                    process.exit(1);
+                }
+                
+                const selectedDownload = resumableDownloads[itemNumber - 1];
+                reqUrls.push(selectedDownload.url);
+                
+                const quietMode = argv.quiet || argv['output-file'] === '-';
+                if (!quietMode) {
+                    ui.displayInfo(`Resuming download #${itemNumber}: ${selectedDownload.url}`);
+                    ui.displayInfo(`Target file: ${selectedDownload.filePath}`);
+                }
+            } else if (resumeArg && String(resumeArg).toLowerCase() === 'all') {
+                // Resume all downloads
+                const dest = destination || process.cwd();
+                
+                const resumableDownloads = await resumeManager.getResumableDownloads(dest);
+                
+                if (resumableDownloads.length === 0) {
+                    console.error('Error: No resumable downloads found.');
+                    process.exit(1);
+                }
+                
+                // Add all URLs to the queue
+                resumableDownloads.forEach(download => {
+                    reqUrls.push(download.url);
+                });
+                
+                const quietMode = argv.quiet || argv['output-file'] === '-';
+                if (!quietMode) {
+                    ui.displayInfo(`Resuming all ${resumableDownloads.length} downloads...`);
+                    resumableDownloads.forEach((download, index) => {
+                        ui.displayInfo(`  #${index + 1}: ${download.url}`);
+                    });
+                }
+            } else {
+                // Resume from specific directory (requires -d flag)
+                if (!destination) {
+                    console.error("Error: 'nget resume' requires -d <path> option to specify directory.");
+                    process.exit(1);
+                }
+                
+                const dest = destination;
+                
+                const latestResumable = await resumeManager.findLatestResumableDownload(destination);
+                
+                if (!latestResumable) {
+                    console.error("Error: No resumable downloads found in destination directory.");
+                    process.exit(1);
+                }
+                
+                reqUrls.push(latestResumable.url);
+                
+                const quietMode = argv.quiet || argv['output-file'] === '-';
+                if (!quietMode) {
+                    ui.displayInfo(`Resuming download: ${latestResumable.url}`);
+                    ui.displayInfo(`Target file: ${latestResumable.filePath}`);
+                }
             }
         } else {
             // Get URLs from remaining arguments or input file

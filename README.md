@@ -76,9 +76,6 @@ nget https://example.com/large-file.zip
 # If interrupted, run again to resume:
 nget https://example.com/large-file.zip
 
-# Resume the most recent interrupted download
-nget resume
-
 # Resume from specific directory
 nget resume -d ./downloads
 
@@ -86,7 +83,13 @@ nget resume -d ./downloads
 nget --no-resume https://example.com/file.zip
 
 # List resumable downloads
-nget --list-resumable -d ./downloads
+nget --list-resume -d ./downloads
+
+# Resume specific download by number
+nget resume 1
+
+# Resume all downloads
+nget resume all
 ```
 
 ### SSH/SFTP Usage
@@ -149,7 +152,7 @@ Fore more examples see project landing page or run `--help`.
 - `-d, --destination <path>`: Specify destination directory for downloads
 - `-r, --resume`: Enable resume for interrupted downloads (default: true)
 - `--no-resume`: Disable resume functionality
-- `-l, --list-resumable`: List resumable downloads in destination
+- `-l, --list-resume`: List resumable downloads in destination
 - `--ssh-key <path>`: Path to SSH private key file for SFTP authentication
 - `--ssh-password <password>`: SSH password for SFTP authentication
 - `--ssh-passphrase <passphrase>`: Passphrase for encrypted SSH private keys
@@ -157,9 +160,10 @@ Fore more examples see project landing page or run `--help`.
 
 ## Resume Commands
 
-- `nget resume`: Resume the most recent interrupted download
 - `nget resume -d <path>`: Resume from specific directory
-- `nget --list-resumable`: List all resumable downloads
+- `nget resume <number>`: Resume a specific numbered download from the list
+- `nget resume all`: Resume all downloads from the list
+- `nget --list-resume`: List all resumable downloads
 
 ## API
 
