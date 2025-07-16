@@ -4,6 +4,7 @@ lcov.info
 temp/
 :4
 CLAUDE.md
+.nget/*
 
 *.seed
 *.log
