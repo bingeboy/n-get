@@ -414,14 +414,14 @@
                     <img src="gh_pages/imgs/nget-logo.png" alt="n-get logo" class="hero-logo">
                     <h1 class="hero-title">n-get</h1>
                 </div>
-                <p class="hero-subtitle">Download Smarter: Pause, Resume, Conquer.</p>
+                <p class="hero-subtitle">A modern Node.js-powered wget-like CLI tool with parallel downloads and smart resume functionality</p>
                 <div class="badges">
-                    <span class="badge">🚀 Fast Downloads</span>
-                    <span class="badge">📁 Multiple Files</span>
-                    <span class="badge">🔄 Enhanced Resume</span>
+                    <span class="badge">⚡ Parallel Downloads</span>
+                    <span class="badge">🔄 Smart Resume</span>
                     <span class="badge">🔒 SSH/SFTP Support</span>
-                    <span class="badge">⚡ Unix Pipes</span>
-                    <span class="badge">🎨 Beautiful UI</span>
+                    <span class="badge">📊 Configurable Concurrency</span>
+                    <span class="badge">🌐 Unix Pipes</span>
+                    <span class="badge">🎨 Rich UI</span>
                 </div>
             </div>
         </div>
@@ -448,15 +448,15 @@
                 
                 <div class="features-grid">
                     <div class="feature-card">
-                        <span class="feature-icon">🚀</span>
-                        <h3 class="feature-title">Fast Downloads</h3>
-                        <p class="feature-description">Uses modern Node.js streams and node-fetch for efficient file downloads with optimal memory usage</p>
+                        <span class="feature-icon">⚡</span>
+                        <h3 class="feature-title">Parallel Downloads</h3>
+                        <p class="feature-description">Download multiple files simultaneously with configurable concurrency limiting for optimal performance</p>
                     </div>
                     
                     <div class="feature-card">
-                        <span class="feature-icon">📁</span>
-                        <h3 class="feature-title">Multiple Files</h3>
-                        <p class="feature-description">Download multiple files concurrently with a single command using promise-based architecture</p>
+                        <span class="feature-icon">📊</span>
+                        <h3 class="feature-title">Smart Concurrency</h3>
+                        <p class="feature-description">Intelligent queue management with semaphore-based concurrency control and resource pooling</p>
                     </div>
                     
                     <div class="feature-card">
@@ -627,6 +627,7 @@ npm link  # For global access</div>
                     <div class="code-tabs">
                         <button class="code-tab active" onclick="showTab('basic')">Basic Usage</button>
                         <button class="code-tab" onclick="showTab('advanced')">Advanced</button>
+                        <button class="code-tab" onclick="showTab('parallel')">Parallel Downloads</button>
                         <button class="code-tab" onclick="showTab('pipes')">Pipes & Streams</button>
                         <button class="code-tab" onclick="showTab('resume')">Resume Downloads</button>
                         <button class="code-tab" onclick="showTab('ssh')">SSH/SFTP</button>
@@ -644,6 +645,26 @@ nget https://example.com/file.zip -d /path/to/destination
 
 # Download multiple files
 nget https://example.com/file1.zip https://example.com/file2.pdf -d ./downloads</code></pre>
+                        </div>
+                        
+                        <div id="parallel-content" class="tab-content" style="display: none;">
+                            <pre><code class="language-bash"># Download multiple files with default concurrency (3 concurrent)
+nget https://example.com/file1.zip https://example.com/file2.pdf https://example.com/file3.jpg
+
+# Configure concurrency for optimal performance
+nget file1.zip file2.zip file3.zip file4.zip --max-concurrent 5
+
+# Use sequential downloads (1 concurrent) for slow servers
+nget https://slow-server.com/file1.zip https://slow-server.com/file2.zip --max-concurrent 1
+
+# High performance download with resume support
+nget resume all --max-concurrent 5
+
+# Monitor concurrent downloads
+nget --list-resume --max-concurrent 3
+
+# Performance testing with different concurrency levels
+nget file1.zip file2.zip file3.zip file4.zip file5.zip --max-concurrent 10</code></pre>
                         </div>
                         
                         <div id="advanced-content" class="tab-content" style="display: none;">
@@ -757,6 +778,7 @@ nget -R https://example.com/docs/ \
 -r, --resume            Enable resume (default: true)
 --no-resume             Disable resume functionality
 -l, --list-resume       List resumable downloads
+-c, --max-concurrent N  Maximum concurrent downloads (default: 3)
 
 # SSH/SFTP Options
 --ssh-key PATH          Path to SSH private key file
@@ -778,6 +800,7 @@ nget https://example.com/data.json -o - -q
 nget --list-resume -d ./downloads
 nget resume 1
 nget resume all
+nget file1.zip file2.zip file3.zip --max-concurrent 5
 nget --help</code></pre>
                         </div>
                     </div>
@@ -792,13 +815,32 @@ nget --help</code></pre>
                 <div class="code-content">
                     <pre><code class="language-javascript">const recursivePipe = require('n-get/lib/recursivePipe');
 
-// Download files programmatically
+// Download files programmatically with default options
 recursivePipe(['https://example.com/file.zip'], './downloads')
   .then(results => {
     console.log('Download results:', results);
   })
   .catch(error => {
     console.error('Download failed:', error);
+  });
+
+// Download with custom concurrency and options
+const options = {
+  maxConcurrent: 5,
+  enableResume: true,
+  quietMode: false
+};
+
+recursivePipe([
+  'https://example.com/file1.zip',
+  'https://example.com/file2.pdf',
+  'https://example.com/file3.jpg'
+], './downloads', options)
+  .then(results => {
+    console.log(`Downloaded ${results.length} files`);
+    results.forEach(result => {
+      console.log(`${result.success ? '✅' : '❌'} ${result.url}`);
+    });
   });</code></pre>
                 </div>
             </section>
@@ -813,7 +855,7 @@ recursivePipe(['https://example.com/file.zip'], './downloads')
                 <a href="https://github.com/bingeboy/n-get/issues" class="footer-link">Report Issues</a>
                 <a href="https://github.com/bingeboy/n-get/blob/main/LICENSE" class="footer-link">MIT License</a>
             </div>
-            <p>&copy; 2025 n-get v1.1.1. A modern Node.js file downloader built with ❤️</p>
+            <p>&copy; 2025 n-get v1.2.0. A modern Node.js file downloader with parallel downloads built with ❤️</p>
         </div>
     </footer>
 
