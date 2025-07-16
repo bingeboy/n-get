@@ -316,32 +316,6 @@
         }
 
         /* Installation Section */
-        .install-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            margin-top: 2rem;
-        }
-
-        .install-card {
-            background: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            border-radius: 1rem;
-            padding: 2rem;
-            text-align: center;
-        }
-
-        .install-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            display: block;
-        }
-
-        .install-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-        }
 
         .install-code {
             background: var(--code-bg);
@@ -444,7 +418,8 @@
                 <div class="badges">
                     <span class="badge">🚀 Fast Downloads</span>
                     <span class="badge">📁 Multiple Files</span>
-                    <span class="badge">🔄 Resume Support</span>
+                    <span class="badge">🔄 Enhanced Resume</span>
+                    <span class="badge">🔒 SSH/SFTP Support</span>
                     <span class="badge">⚡ Unix Pipes</span>
                     <span class="badge">🎨 Beautiful UI</span>
                 </div>
@@ -486,8 +461,8 @@
                     
                     <div class="feature-card">
                         <span class="feature-icon">🔄</span>
-                        <h3 class="feature-title">Resume Downloads</h3>
-                        <p class="feature-description">Intelligent resumption of interrupted downloads with HTTP range requests</p>
+                        <h3 class="feature-title">Enhanced Resume</h3>
+                        <p class="feature-description">Intelligent resumption with numbered selection, batch resume, and HTTP range requests</p>
                     </div>
                     
                     <div class="feature-card">
@@ -509,13 +484,25 @@
                     </div>
                     
                     <div class="feature-card">
-                        <span class="feature-icon">🔄</span>
+                        <span class="feature-icon">🔒</span>
+                        <h3 class="feature-title">SSH/SFTP Support</h3>
+                        <p class="feature-description">Secure file downloads via SSH with key authentication and resume capability</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <span class="feature-icon">⚡</span>
                         <h3 class="feature-title">Unix Pipes Support</h3>
                         <p class="feature-description">Full stdin/stdout support for seamless integration with shell pipes and command chaining</p>
                     </div>
                     
                     <div class="feature-card">
-                        <span class="feature-icon">🔄</span>
+                        <span class="feature-icon">🔍</span>
+                        <h3 class="feature-title">Recursive Downloads</h3>
+                        <p class="feature-description">Website mirroring with depth control, pattern matching, and robots.txt support</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <span class="feature-icon">📝</span>
                         <h3 class="feature-title">Smart File Naming</h3>
                         <p class="feature-description">Automatic file deduplication with incremental naming (file.zip, file.zip.1, file.zip.2)</p>
                     </div>
@@ -536,7 +523,11 @@ n-get/
 ├── <span class="folder">lib/</span>
 │   ├── <span class="file">recursivePipe.js</span>  # Core download logic using streams
 │   ├── <span class="file">uriManager.js</span>     # URL validation & protocol handling
-│   └── <span class="file">chdir.js</span>          # Directory operations
+│   ├── <span class="file">resumeManager.js</span>  # Resume functionality & metadata
+│   ├── <span class="file">sftpManager.js</span>    # SSH/SFTP download support
+│   ├── <span class="file">ui.js</span>             # Enhanced UI with progress bars
+│   ├── <span class="file">chdir.js</span>          # Directory operations
+│   └── <span class="file">recursiveDownloader.js</span> # Website mirroring
 ├── <span class="folder">test/</span>               # Comprehensive test suite
 ├── <span class="file">package.json</span>         # Dependencies & CLI configuration
 └── <span class="file">README.md</span>            # Documentation
@@ -574,7 +565,13 @@ n-get/
                                 <strong style="color: var(--primary-color);">Download Engine:</strong> Stream-based file downloading with progress tracking
                             </li>
                             <li style="margin-bottom: 1rem;">
-                                <strong style="color: var(--primary-color);">File System:</strong> Directory operations and file management
+                                <strong style="color: var(--primary-color);">Resume Manager:</strong> Intelligent resume with metadata and validation
+                            </li>
+                            <li style="margin-bottom: 1rem;">
+                                <strong style="color: var(--primary-color);">SFTP Manager:</strong> SSH/SFTP secure download support
+                            </li>
+                            <li style="margin-bottom: 1rem;">
+                                <strong style="color: var(--primary-color);">UI Manager:</strong> Enhanced terminal UI with progress bars
                             </li>
                         </ul>
                     </div>
@@ -589,10 +586,13 @@ n-get/
                                 <strong style="color: var(--primary-color);">HTTP Client:</strong> node-fetch (modern replacement for request)
                             </li>
                             <li style="margin-bottom: 1rem;">
-                                <strong style="color: var(--primary-color);">Streams:</strong> Native Node.js streams for memory efficiency
+                                <strong style="color: var(--primary-color);">SSH/SFTP:</strong> ssh2 and ssh2-sftp-client for secure downloads
                             </li>
                             <li style="margin-bottom: 1rem;">
-                                <strong style="color: var(--primary-color);">Testing:</strong> Comprehensive test coverage (95%+)
+                                <strong style="color: var(--primary-color);">UI:</strong> cli-progress and colors for enhanced user experience
+                            </li>
+                            <li style="margin-bottom: 1rem;">
+                                <strong style="color: var(--primary-color);">Streams:</strong> Native Node.js streams for memory efficiency
                             </li>
                         </ul>
                     </div>
@@ -604,23 +604,17 @@ n-get/
                 <h2 class="section-title">Installation</h2>
                 <p class="section-subtitle">Get started with n-get in seconds</p>
                 
-                <div class="install-grid">
-                    <div class="install-card">
-                        <span class="install-icon">📦</span>
-                        <h3 class="install-title">NPM Global</h3>
-                        <div class="install-code">npm install n-get -g</div>
-                        <button class="copy-btn" onclick="copyToClipboard('npm install n-get -g')">Copy</button>
-                    </div>
+                <div style="max-width: 600px; margin: 0 auto;">
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: var(--primary-color);">📦 Global Installation (Recommended)</h3>
+                    <div class="install-code">npm install n-get -g</div>
+                    <button class="copy-btn" onclick="copyToClipboard('npm install n-get -g')">Copy</button>
                     
-                    <div class="install-card">
-                        <span class="install-icon">🔧</span>
-                        <h3 class="install-title">Development</h3>
-                        <div class="install-code">git clone https://github.com/bingeboy/n-get
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin: 2rem 0 1rem 0; color: var(--primary-color);">🔧 From Source</h3>
+                    <div class="install-code">git clone https://github.com/bingeboy/n-get
 cd n-get
 npm install
-npm link</div>
-                        <button class="copy-btn" onclick="copyToClipboard('git clone https://github.com/bingeboy/n-get\ncd n-get\nnpm install\nnpm link')">Copy</button>
-                    </div>
+npm link  # For global access</div>
+                    <button class="copy-btn" onclick="copyToClipboard('git clone https://github.com/bingeboy/n-get\ncd n-get\nnpm install\nnpm link')">Copy</button>
                 </div>
             </section>
 
@@ -635,6 +629,8 @@ npm link</div>
                         <button class="code-tab" onclick="showTab('advanced')">Advanced</button>
                         <button class="code-tab" onclick="showTab('pipes')">Pipes & Streams</button>
                         <button class="code-tab" onclick="showTab('resume')">Resume Downloads</button>
+                        <button class="code-tab" onclick="showTab('ssh')">SSH/SFTP</button>
+                        <button class="code-tab" onclick="showTab('recursive')">Recursive</button>
                         <button class="code-tab" onclick="showTab('flags')">All Flags</button>
                     </div>
                     
@@ -661,7 +657,7 @@ nget google.com/file.txt https://github.com/user/repo/archive/main.zip
 nget https://example.com/file.zip -d ./downloads -q
 
 # List resumable downloads
-nget --list-resumable -d ./downloads</code></pre>
+nget --list-resume -d ./downloads</code></pre>
                         </div>
                         
                         <div id="pipes-content" class="tab-content" style="display: none;">
@@ -684,12 +680,67 @@ echo "https://example.com/data.json" | nget -i - -o - -q | process-data</code></
                         <div id="resume-content" class="tab-content" style="display: none;">
                             <pre><code class="language-bash"># Resume interrupted downloads (default behavior)
 nget https://example.com/large-file.zip
-
-# If interrupted, run again to resume
+# If interrupted, run again to resume:
 nget https://example.com/large-file.zip
+
+# List resumable downloads with numbers
+nget --list-resume -d ./downloads
+
+# Resume specific download by number
+nget resume 1
+
+# Resume all downloads from list
+nget resume all
+
+# Resume from specific directory
+nget resume -d ./downloads
 
 # Disable resume functionality
 nget --no-resume https://example.com/file.zip</code></pre>
+                        </div>
+                        
+                        <div id="ssh-content" class="tab-content" style="display: none;">
+                            <pre><code class="language-bash"># Basic SFTP download (auto-detects SSH keys)
+nget sftp://user@server.com/path/to/file.zip
+
+# Download multiple files including SFTP
+nget https://example.com/file1.pdf sftp://server.com/file2.zip -d ./downloads
+
+# Custom SSH key authentication
+nget sftp://user@server.com/file.zip --ssh-key ~/.ssh/custom_key
+
+# Encrypted private key with passphrase
+nget sftp://user@server.com/file.zip --ssh-key ~/.ssh/encrypted_key --ssh-passphrase mypassword
+
+# Password authentication (not recommended)
+nget sftp://user@server.com/file.zip --ssh-password mypassword
+
+# Resume interrupted SFTP downloads
+nget sftp://user@server.com/large-file.zip
+# If interrupted, run again to resume:
+nget sftp://user@server.com/large-file.zip</code></pre>
+                        </div>
+                        
+                        <div id="recursive-content" class="tab-content" style="display: none;">
+                            <pre><code class="language-bash"># Enable recursive downloading
+nget -R https://example.com/gallery/ --level 3 -d ./gallery
+
+# Website mirroring with pattern control
+nget -R https://site.com --accept "*.pdf,*.zip" --reject "*.tmp"
+
+# Restrict to current directory (no parent access)
+nget -R https://docs.site.com --no-parent --level 2
+
+# Custom User-Agent for crawling
+nget -R https://site.com --user-agent "MyBot/1.0" --level 1
+
+# Comprehensive recursive download
+nget -R https://example.com/docs/ \
+  --level 5 \
+  --accept "*.pdf,*.doc,*.txt" \
+  --reject "*.tmp,*.log" \
+  --no-parent \
+  -d ./downloaded-docs</code></pre>
                         </div>
                         
                         <div id="flags-content" class="tab-content" style="display: none;">
@@ -703,14 +754,30 @@ nget --no-resume https://example.com/file.zip</code></pre>
 # Behavior
 -q, --quiet             Suppress progress output
 -h, --help              Show help information
+-r, --resume            Enable resume (default: true)
 --no-resume             Disable resume functionality
---list-resumable        List resumable downloads
+-l, --list-resume       List resumable downloads
+
+# SSH/SFTP Options
+--ssh-key PATH          Path to SSH private key file
+--ssh-password PASS     SSH password (use with caution)
+--ssh-passphrase PASS   Passphrase for encrypted SSH key
+
+# Recursive Options
+-R, --recursive         Enable recursive downloading
+--level DEPTH           Maximum recursion depth (default: 5)
+--no-parent            Don't ascend to parent directories
+-A, --accept PATTERNS   Comma-separated accepted file patterns
+-j, --reject PATTERNS   Comma-separated rejected file patterns
+--user-agent STRING     Custom User-Agent for crawling
 
 # Examples with all flags:
 nget https://example.com/file.zip -d ./downloads
 nget -i urls.txt -d ./downloads -q
 nget https://example.com/data.json -o - -q
-nget --list-resumable -d ./downloads
+nget --list-resume -d ./downloads
+nget resume 1
+nget resume all
 nget --help</code></pre>
                         </div>
                     </div>
@@ -746,7 +813,7 @@ recursivePipe(['https://example.com/file.zip'], './downloads')
                 <a href="https://github.com/bingeboy/n-get/issues" class="footer-link">Report Issues</a>
                 <a href="https://github.com/bingeboy/n-get/blob/main/LICENSE" class="footer-link">MIT License</a>
             </div>
-            <p>&copy; 2024 n-get. A modern Node.js file downloader built with ❤️</p>
+            <p>&copy; 2025 n-get v1.1.1. A modern Node.js file downloader built with ❤️</p>
         </div>
     </footer>
 
