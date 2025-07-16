@@ -208,17 +208,19 @@
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
         }
 
-        .feature-icon {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-            display: block;
-        }
-
         .feature-title {
             font-size: 1.25rem;
             font-weight: 600;
             margin-bottom: 0.5rem;
             color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .feature-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
         }
 
         .feature-description {
@@ -448,62 +450,82 @@
                 
                 <div class="features-grid">
                     <div class="feature-card">
-                        <span class="feature-icon">⚡</span>
-                        <h3 class="feature-title">Parallel Downloads</h3>
+                        <h3 class="feature-title">
+                            <span class="feature-icon">⚡</span>
+                            Parallel Downloads
+                        </h3>
                         <p class="feature-description">Download multiple files simultaneously with configurable concurrency limiting for optimal performance</p>
                     </div>
                     
                     <div class="feature-card">
-                        <span class="feature-icon">📊</span>
-                        <h3 class="feature-title">Smart Concurrency</h3>
+                        <h3 class="feature-title">
+                            <span class="feature-icon">📊</span>
+                            Smart Concurrency
+                        </h3>
                         <p class="feature-description">Intelligent queue management with semaphore-based concurrency control and resource pooling</p>
                     </div>
                     
                     <div class="feature-card">
-                        <span class="feature-icon">🔄</span>
-                        <h3 class="feature-title">Enhanced Resume</h3>
+                        <h3 class="feature-title">
+                            <span class="feature-icon">🔄</span>
+                            Enhanced Resume
+                        </h3>
                         <p class="feature-description">Intelligent resumption with numbered selection, batch resume, and HTTP range requests</p>
                     </div>
                     
                     <div class="feature-card">
-                        <span class="feature-icon">🎯</span>
-                        <h3 class="feature-title">Custom Destination</h3>
+                        <h3 class="feature-title">
+                            <span class="feature-icon">🎯</span>
+                            Custom Destination
+                        </h3>
                         <p class="feature-description">Specify where to save downloaded files with flexible path resolution</p>
                     </div>
                     
                     <div class="feature-card">
-                        <span class="feature-icon">🎨</span>
-                        <h3 class="feature-title">Beautiful UI</h3>
+                        <h3 class="feature-title">
+                            <span class="feature-icon">🎨</span>
+                            Beautiful UI
+                        </h3>
                         <p class="feature-description">Rich UTF-8 emojis, colored output, and animated progress bars for enhanced user experience</p>
                     </div>
                     
                     <div class="feature-card">
-                        <span class="feature-icon">📊</span>
-                        <h3 class="feature-title">Real-time Progress</h3>
+                        <h3 class="feature-title">
+                            <span class="feature-icon">📊</span>
+                            Real-time Progress
+                        </h3>
                         <p class="feature-description">Live progress tracking with download speed and ETA calculations</p>
                     </div>
                     
                     <div class="feature-card">
-                        <span class="feature-icon">🔒</span>
-                        <h3 class="feature-title">SSH/SFTP Support</h3>
+                        <h3 class="feature-title">
+                            <span class="feature-icon">🔒</span>
+                            SSH/SFTP Support
+                        </h3>
                         <p class="feature-description">Secure file downloads via SSH with key authentication and resume capability</p>
                     </div>
                     
                     <div class="feature-card">
-                        <span class="feature-icon">⚡</span>
-                        <h3 class="feature-title">Unix Pipes Support</h3>
+                        <h3 class="feature-title">
+                            <span class="feature-icon">⚡</span>
+                            Unix Pipes Support
+                        </h3>
                         <p class="feature-description">Full stdin/stdout support for seamless integration with shell pipes and command chaining</p>
                     </div>
                     
                     <div class="feature-card">
-                        <span class="feature-icon">🔍</span>
-                        <h3 class="feature-title">Recursive Downloads</h3>
+                        <h3 class="feature-title">
+                            <span class="feature-icon">🔍</span>
+                            Recursive Downloads
+                        </h3>
                         <p class="feature-description">Website mirroring with depth control, pattern matching, and robots.txt support</p>
                     </div>
                     
                     <div class="feature-card">
-                        <span class="feature-icon">📝</span>
-                        <h3 class="feature-title">Smart File Naming</h3>
+                        <h3 class="feature-title">
+                            <span class="feature-icon">📝</span>
+                            Smart File Naming
+                        </h3>
                         <p class="feature-description">Automatic file deduplication with incremental naming (file.zip, file.zip.1, file.zip.2)</p>
                     </div>
                 </div>
