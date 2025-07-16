@@ -13,7 +13,7 @@ const RecursiveDownloader = require('./lib/recursiveDownloader');
 
 const argv = minimist(process.argv.slice(2), {
     boolean: ['resume', 'no-resume', 'list-resume', 'help', 'version', 'recursive', 'no-parent', 'quiet'],
-    string: ['d', 'destination', 'ssh-key', 'ssh-password', 'ssh-passphrase', 'level', 'accept', 'reject', 'user-agent', 'i', 'input-file', 'o', 'output-file'],
+    string: ['d', 'destination', 'ssh-key', 'ssh-password', 'ssh-passphrase', 'level', 'accept', 'reject', 'user-agent', 'i', 'input-file', 'o', 'output-file', 'max-concurrent'],
     alias: {
         'd': 'destination',
         'r': 'resume',
@@ -26,11 +26,13 @@ const argv = minimist(process.argv.slice(2), {
         'j': 'reject',
         'i': 'input-file',
         'o': 'output-file',
-        'q': 'quiet'
+        'q': 'quiet',
+        'c': 'max-concurrent'
     },
     default: {
         'resume': true,
-        'level': 5
+        'level': 5,
+        'max-concurrent': 3
     }
 });
 
@@ -48,6 +50,7 @@ ${ui.emojis.gear} General Options:
   -r, --resume               Enable resume for interrupted downloads (default: true)
   --no-resume                Disable resume functionality
   -l, --list-resume          List resumable downloads in destination
+  -c, --max-concurrent <num> Maximum concurrent downloads (default: 3)
   -h, --help                 Show this help message
 
 ${ui.emojis.network} Pipe Options:
@@ -357,12 +360,19 @@ async function main() {
         // Check for stdout output mode
         const outputToStdout = argv['output-file'] === '-';
         
+        // Parse concurrency limit
+        const maxConcurrent = Math.max(1, parseInt(argv['max-concurrent']) || 3);
+        if (!quietMode && maxConcurrent !== 3) {
+            ui.displayInfo(`Using ${maxConcurrent} concurrent downloads`);
+        }
+
         // Build download options
         const downloadOptions = {
             enableResume: enableResume,
             sshOptions: sshOptions,
             outputToStdout: outputToStdout,
-            quietMode: quietMode || outputToStdout // Auto-enable quiet mode for stdout
+            quietMode: quietMode || outputToStdout, // Auto-enable quiet mode for stdout
+            maxConcurrent: maxConcurrent
         };
 
         // Check if recursive mode is enabled
@@ -385,7 +395,8 @@ async function main() {
                 enableResume: enableResume,
                 sshOptions: sshOptions,
                 userAgent: argv['user-agent'] || 'n-get-recursive/1.0',
-                quietMode: quietMode
+                quietMode: quietMode,
+                maxConcurrent: maxConcurrent
             };
             
             if (!quietMode) {

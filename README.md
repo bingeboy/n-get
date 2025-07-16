@@ -7,7 +7,7 @@ A wget-like CLI tool for downloading files from the web using streams.
 ## Features
 
 - 🚀 **Fast Downloads**: Uses modern Node.js streams and `node-fetch` for efficient file downloads
-- 📁 **Multiple Files**: Download multiple files concurrently with a single command
+- 📁 **Parallel Downloads**: Download multiple files concurrently with configurable concurrency limit
 - 🎯 **Custom Destination**: Specify where to save downloaded files
 - ⏸️ **Resume Downloads**: Intelligent resumption of interrupted downloads with HTTP range requests
 - 📊 **Real-time Progress**: Live progress tracking with download speed and ETA
@@ -90,6 +90,21 @@ nget resume 1
 nget resume all
 ```
 
+### Parallel Downloads
+
+n-get supports concurrent downloads for improved performance when downloading multiple files.
+
+```bash
+# Download multiple files with default concurrency (3)
+nget https://example.com/file1.zip https://example.com/file2.pdf https://example.com/file3.jpg
+
+# Use higher concurrency for faster downloads
+nget https://site.com/file1.zip https://site.com/file2.zip --max-concurrent 5
+
+# Conservative approach with lower concurrency
+nget https://slow-server.com/file1.zip https://slow-server.com/file2.zip --max-concurrent 1
+```
+
 ### SSH/SFTP Usage
 
 n-get supports downloading files via SSH/SFTP with automatic authentication and resume capabilities.
@@ -151,6 +166,7 @@ Fore more examples see project landing page or run `--help`.
 - `-r, --resume`: Enable resume for interrupted downloads (default: true)
 - `--no-resume`: Disable resume functionality
 - `-l, --list-resume`: List resumable downloads in destination
+- `-c, --max-concurrent <num>`: Maximum concurrent downloads (default: 3)
 - `--ssh-key <path>`: Path to SSH private key file for SFTP authentication
 - `--ssh-password <password>`: SSH password for SFTP authentication
 - `--ssh-passphrase <passphrase>`: Passphrase for encrypted SSH private keys
