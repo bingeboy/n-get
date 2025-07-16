@@ -76,11 +76,70 @@ nget https://example.com/large-file.zip
 # If interrupted, run again to resume:
 nget https://example.com/large-file.zip
 
+# Resume the most recent interrupted download
+nget resume
+
+# Resume from specific directory
+nget resume -d ./downloads
+
 # Disable resume functionality
 nget --no-resume https://example.com/file.zip
 
 # List resumable downloads
 nget --list-resumable -d ./downloads
+```
+
+### SSH/SFTP Usage
+
+n-get supports downloading files via SSH/SFTP with automatic authentication and resume capabilities.
+
+#### Basic SFTP Downloads
+```bash
+# Download via SFTP (auto-detects SSH keys)
+nget sftp://user@server.com/path/to/file.zip
+
+# Download multiple files including SFTP
+nget https://example.com/file1.pdf sftp://server.com/file2.zip -d ./downloads
+
+# Download to specific directory
+nget sftp://user@server.com/large-file.zip -d ~/Downloads
+```
+
+#### SSH Authentication Methods
+
+**Auto-detection (Default):**
+```bash
+# Automatically scans ~/.ssh/ for keys (id_rsa, id_ed25519, id_ecdsa)
+nget sftp://user@server.com/file.zip
+```
+
+**Private Key Authentication:**
+```bash
+# Specify custom SSH key
+nget sftp://user@server.com/file.zip --ssh-key ~/.ssh/custom_key
+
+# Encrypted private key with passphrase
+nget sftp://user@server.com/file.zip --ssh-key ~/.ssh/encrypted_key --ssh-passphrase mypassword
+```
+
+**Password Authentication:**
+```bash
+# Password in URL (not recommended for security)
+nget sftp://user:password@server.com/file.zip
+
+# Password via command line
+nget sftp://user@server.com/file.zip --ssh-password mypassword
+```
+
+#### SFTP Resume Support
+```bash
+# Resume interrupted SFTP downloads (default behavior)
+nget sftp://user@server.com/large-file.zip
+# If interrupted, run again to resume:
+nget sftp://user@server.com/large-file.zip
+
+# Resume SFTP downloads from specific directory
+nget resume -d ./downloads
 ```
 
 Fore more examples see project landing page or run `--help`.
@@ -91,7 +150,16 @@ Fore more examples see project landing page or run `--help`.
 - `-r, --resume`: Enable resume for interrupted downloads (default: true)
 - `--no-resume`: Disable resume functionality
 - `-l, --list-resumable`: List resumable downloads in destination
+- `--ssh-key <path>`: Path to SSH private key file for SFTP authentication
+- `--ssh-password <password>`: SSH password for SFTP authentication
+- `--ssh-passphrase <passphrase>`: Passphrase for encrypted SSH private keys
 - `-h, --help`: Show help information
+
+## Resume Commands
+
+- `nget resume`: Resume the most recent interrupted download
+- `nget resume -d <path>`: Resume from specific directory
+- `nget --list-resumable`: List all resumable downloads
 
 ## API
 
