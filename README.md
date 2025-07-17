@@ -184,10 +184,10 @@ Fore more examples see project landing page or run `--help`.
 The core functionality is also available as a module:
 
 ```javascript
-const recursivePipe = require('n-get/lib/recursivePipe');
+const download = require('n-get/lib/recursivePipe');
 
 // Download files programmatically
-recursivePipe(['https://example.com/file.zip'], './downloads')
+download(['https://example.com/file.zip'], './downloads')
     .then(results => {
         console.log('Download results:', results);
     })
