@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-const path = require('path');
 const fs = require('fs').promises;
 const readline = require('readline');
 const minimist = require('minimist');
@@ -15,25 +14,25 @@ const argv = minimist(process.argv.slice(2), {
     boolean: ['resume', 'no-resume', 'list-resume', 'help', 'version', 'recursive', 'no-parent', 'quiet'],
     string: ['d', 'destination', 'ssh-key', 'ssh-password', 'ssh-passphrase', 'level', 'accept', 'reject', 'user-agent', 'i', 'input-file', 'o', 'output-file', 'max-concurrent'],
     alias: {
-        'd': 'destination',
-        'r': 'resume',
-        'l': 'list-resume',
-        'h': 'help',
-        'v': 'version',
-        'R': 'recursive',
-        'np': 'no-parent',
-        'A': 'accept',
-        'j': 'reject',
-        'i': 'input-file',
-        'o': 'output-file',
-        'q': 'quiet',
-        'c': 'max-concurrent'
+        d: 'destination',
+        r: 'resume',
+        l: 'list-resume',
+        h: 'help',
+        v: 'version',
+        R: 'recursive',
+        np: 'no-parent',
+        A: 'accept',
+        j: 'reject',
+        i: 'input-file',
+        o: 'output-file',
+        q: 'quiet',
+        c: 'max-concurrent',
     },
     default: {
-        'resume': true,
-        'level': 5,
-        'max-concurrent': 3
-    }
+        resume: true,
+        level: 5,
+        'max-concurrent': 3,
+    },
 });
 
 let destination;
@@ -117,18 +116,18 @@ ${ui.emojis.gear} SSH Authentication:
 
 async function readUrlsFromInput(inputFile) {
     const urls = [];
-    
+
     if (inputFile === '-') {
         // Read from stdin
         if (process.stdin.isTTY) {
             throw new Error('No URLs provided in stdin. Use pipes or provide URLs as arguments.');
         }
-        
+
         const rl = readline.createInterface({
             input: process.stdin,
-            crlfDelay: Infinity
+            crlfDelay: Infinity,
         });
-        
+
         for await (const line of rl) {
             const trimmedLine = line.trim();
             if (trimmedLine && !trimmedLine.startsWith('#')) {
@@ -150,23 +149,23 @@ async function readUrlsFromInput(inputFile) {
             throw new Error(`Cannot read input file '${inputFile}': ${error.message}`);
         }
     }
-    
+
     return urls;
 }
 
 async function listResumableDownloads() {
     const dest = destination || process.cwd();
-    
+
     ui.displayBanner();
     ui.displayInfo(`Scanning for resumable downloads in: ${dest}`);
-    
+
     const resumableDownloads = await resumeManager.getResumableDownloads(dest);
     ui.displayResumableList(resumableDownloads);
-    
+
     if (resumableDownloads.length > 0) {
         ui.displayInfo('To resume downloads, run: nget resume -d <destination>, nget resume <number>, or nget resume all');
     }
-    
+
     // Clean up old metadata
     await resumeManager.cleanupOldMetadata(dest);
 }
@@ -190,24 +189,24 @@ async function main() {
         if (argv.destination) {
             destination = argv.destination;
             const quietMode = argv.quiet || argv['output-file'] === '-';
-            
-            if (!quietMode) {
+
+            if (quietMode) {
+                try {
+                    const resolvedPath = await fs.realpath(destination);
+                    destination = chdir(resolvedPath, true);
+                } catch {
+                    process.exit(1);
+                }
+            } else {
                 const spinner = ui.createSpinner('Validating destination path...', ui.emojis.folder);
                 spinner.spinner.start();
-                
+
                 try {
                     const resolvedPath = await fs.realpath(destination);
                     destination = chdir(resolvedPath, false);
                     spinner.spinner.succeed(`${ui.emojis.folder} Destination set: ${destination}`);
-                } catch (err) {
+                } catch {
                     spinner.spinner.fail(`${ui.emojis.error} Invalid destination path: ${destination}`);
-                    process.exit(1);
-                }
-            } else {
-                try {
-                    const resolvedPath = await fs.realpath(destination);
-                    destination = chdir(resolvedPath, true);
-                } catch (err) {
                     process.exit(1);
                 }
             }
@@ -221,49 +220,49 @@ async function main() {
 
         // Handle resume command
         if (argv._.length > 0 && argv._[0] === 'resume') {
-            const resumeArg = argv._[1];
-            
+            const resumeArgument = argv._[1];
+
             // Check if it's a numbered selection (e.g., 1, 2, etc.) or 'all'
-            if (resumeArg && String(resumeArg).match(/^\d+$/)) {
-                const itemNumber = parseInt(resumeArg);
+            if (resumeArgument && /^\d+$/.test(String(resumeArgument))) {
+                const itemNumber = Number.parseInt(resumeArgument);
                 const dest = destination || process.cwd();
-                
+
                 const resumableDownloads = await resumeManager.getResumableDownloads(dest);
-                
+
                 if (resumableDownloads.length === 0) {
                     console.error('Error: No resumable downloads found.');
                     process.exit(1);
                 }
-                
+
                 if (itemNumber < 1 || itemNumber > resumableDownloads.length) {
                     console.error(`Error: Invalid item number ${itemNumber}. Available items: 1-${resumableDownloads.length}`);
                     process.exit(1);
                 }
-                
+
                 const selectedDownload = resumableDownloads[itemNumber - 1];
                 reqUrls.push(selectedDownload.url);
-                
+
                 const quietMode = argv.quiet || argv['output-file'] === '-';
                 if (!quietMode) {
                     ui.displayInfo(`Resuming download #${itemNumber}: ${selectedDownload.url}`);
                     ui.displayInfo(`Target file: ${selectedDownload.filePath}`);
                 }
-            } else if (resumeArg && String(resumeArg).toLowerCase() === 'all') {
+            } else if (resumeArgument && String(resumeArgument).toLowerCase() === 'all') {
                 // Resume all downloads
                 const dest = destination || process.cwd();
-                
+
                 const resumableDownloads = await resumeManager.getResumableDownloads(dest);
-                
+
                 if (resumableDownloads.length === 0) {
                     console.error('Error: No resumable downloads found.');
                     process.exit(1);
                 }
-                
+
                 // Add all URLs to the queue
                 resumableDownloads.forEach(download => {
                     reqUrls.push(download.url);
                 });
-                
+
                 const quietMode = argv.quiet || argv['output-file'] === '-';
                 if (!quietMode) {
                     ui.displayInfo(`Resuming all ${resumableDownloads.length} downloads...`);
@@ -274,21 +273,20 @@ async function main() {
             } else {
                 // Resume from specific directory (requires -d flag)
                 if (!destination) {
-                    console.error("Error: 'nget resume' requires -d <path> option to specify directory.");
+                    console.error('Error: \'nget resume\' requires -d <path> option to specify directory.');
                     process.exit(1);
                 }
-                
-                const dest = destination;
-                
+
+
                 const latestResumable = await resumeManager.findLatestResumableDownload(destination);
-                
+
                 if (!latestResumable) {
-                    console.error("Error: No resumable downloads found in destination directory.");
+                    console.error('Error: No resumable downloads found in destination directory.');
                     process.exit(1);
                 }
-                
+
                 reqUrls.push(latestResumable.url);
-                
+
                 const quietMode = argv.quiet || argv['output-file'] === '-';
                 if (!quietMode) {
                     ui.displayInfo(`Resuming download: ${latestResumable.url}`);
@@ -310,7 +308,7 @@ async function main() {
             }
 
             if (reqUrls.length === 0) {
-                console.error("Error: No URLs provided. Use 'nget --help' for usage information.");
+                console.error('Error: No URLs provided. Use \'nget --help\' for usage information.');
                 process.exit(1);
             }
         }
@@ -318,14 +316,14 @@ async function main() {
         // Process URLs with spinner (unless in quiet mode)
         const quietMode = argv.quiet || argv['output-file'] === '-';
         let urlSpinner = null;
-        
+
         if (!quietMode) {
             urlSpinner = ui.createSpinner('Processing URLs...', ui.emojis.network);
             urlSpinner.spinner.start();
         }
-        
+
         const processedUrls = reqUrls.map(uriManager);
-        
+
         if (!quietMode && urlSpinner) {
             urlSpinner.spinner.succeed(`${ui.emojis.network} ${processedUrls.length} URL(s) processed`);
         }
@@ -344,12 +342,14 @@ async function main() {
                 ui.displayInfo(`Using SSH key: ${argv['ssh-key']}`);
             }
         }
+
         if (argv['ssh-password']) {
             sshOptions.password = argv['ssh-password'];
             if (!quietMode) {
                 ui.displayWarning('SSH password provided via command line (consider using key authentication)');
             }
         }
+
         if (argv['ssh-passphrase']) {
             sshOptions.passphrase = argv['ssh-passphrase'];
             if (!quietMode) {
@@ -359,20 +359,20 @@ async function main() {
 
         // Check for stdout output mode
         const outputToStdout = argv['output-file'] === '-';
-        
+
         // Parse concurrency limit
-        const maxConcurrent = Math.max(1, parseInt(argv['max-concurrent']) || 3);
+        const maxConcurrent = Math.max(1, Number.parseInt(argv['max-concurrent']) || 3);
         if (!quietMode && maxConcurrent !== 3) {
             ui.displayInfo(`Using ${maxConcurrent} concurrent downloads`);
         }
 
         // Build download options
         const downloadOptions = {
-            enableResume: enableResume,
-            sshOptions: sshOptions,
-            outputToStdout: outputToStdout,
+            enableResume,
+            sshOptions,
+            outputToStdout,
             quietMode: quietMode || outputToStdout, // Auto-enable quiet mode for stdout
-            maxConcurrent: maxConcurrent
+            maxConcurrent,
         };
 
         // Check if recursive mode is enabled
@@ -381,64 +381,65 @@ async function main() {
                 ui.displayError('Recursive mode is not compatible with stdout output (-o -)');
                 process.exit(1);
             }
-            
+
             // Parse patterns
             const acceptPatterns = argv.accept ? argv.accept.split(',').map(p => p.trim()) : [];
             const rejectPatterns = argv.reject ? argv.reject.split(',').map(p => p.trim()) : [];
-            
+
             // Create recursive downloader with options
             const recursiveOptions = {
-                level: parseInt(argv.level) || 5,
+                level: Number.parseInt(argv.level) || 5,
                 noParent: argv['no-parent'] || false,
                 accept: acceptPatterns,
                 reject: rejectPatterns,
-                enableResume: enableResume,
-                sshOptions: sshOptions,
+                enableResume,
+                sshOptions,
                 userAgent: argv['user-agent'] || 'n-get-recursive/1.0',
-                quietMode: quietMode,
-                maxConcurrent: maxConcurrent
+                quietMode,
+                maxConcurrent,
             };
-            
+
             if (!quietMode) {
                 ui.displayInfo(`Recursive mode enabled (depth: ${recursiveOptions.level})`);
                 if (recursiveOptions.noParent) {
                     ui.displayInfo('Parent directory restriction enabled');
                 }
             }
-            
+
             const recursiveDownloader = new RecursiveDownloader(recursiveOptions);
             await recursiveDownloader.recursiveDownload(processedUrls, destination || process.cwd());
         } else {
             // Normal download mode
             const results = await recursivePipe(processedUrls, destination, downloadOptions);
-            
+
             // Exit with error code if all downloads failed
             const allFailed = results.every(result => !result.success);
             if (allFailed && results.length > 0) {
                 process.exit(1);
             }
         }
-        
     } catch (error) {
         // Handle broken pipe errors gracefully (common in pipe scenarios)
         if (error.code === 'EPIPE' || error.errno === 'EPIPE') {
             process.exit(0);
         }
-        
+
         const quietMode = argv.quiet || argv['output-file'] === '-';
         if (!quietMode) {
             ui.displayError(`Application error: ${error.message}`);
             ui.cleanup();
         }
+
         process.exit(1);
     }
 }
 
-main().catch(err => {
+main().catch(error => {
     // Handle broken pipe errors gracefully
-    if (err.code === 'EPIPE' || err.errno === 'EPIPE') {
+    if (error.code === 'EPIPE' || error.errno === 'EPIPE') {
         process.exit(0);
     }
-    console.error('Error:', err.message);
+
+    console.error('Error:', error.message);
     process.exit(1);
 });
