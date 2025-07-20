@@ -246,3 +246,7 @@ temp-downloads/
 # Any files with problematic names (like the one causing your git issue)
 *\(*\)*
 *GMT*
+
+# Local configuration overrides
+config/local.yaml
+config/local.yml

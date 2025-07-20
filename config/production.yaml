@@ -1,0 +1,66 @@
+# N-Get Production Configuration
+# Optimized for production deployment
+
+# Structured logging for production
+logging:
+  level: "info"
+  format: "json"
+  enableColors: false
+  outputs:
+    - console
+    - file
+  rotation:
+    maxFileSize: 50485760     # 50MB log files in production
+    maxFiles: 10
+
+# Enhanced security for production
+security:
+  blockPrivateNetworks: true
+  blockLocalhost: true
+  certificateValidation: true
+  rateLimiting:
+    enabled: true
+    requestsPerMinute: 1000   # Higher limits for production
+  pathTraversalProtection: true
+  sanitizeFilenames: true
+
+# Production performance settings
+http:
+  maxConnections: 50
+  keepAlive:
+    maxSockets: 20
+    maxFreeSockets: 10
+
+downloads:
+  maxConcurrent: 5
+  chunkUpdateFrequency: 2000
+
+# Monitoring enabled for production
+monitoring:
+  enabled: true
+  metricsPort: 9090
+  healthCheckPort: 8080
+  tracingEnabled: true
+  performanceTracking: true
+
+# Enterprise features for production
+enterprise:
+  auditLogging: true
+  complianceMode: true
+  configVersioning: true
+
+# AI features controlled in production
+ai:
+  enabled: true
+  mcp:
+    enabled: false            # Disabled by default, enable as needed
+  profiles:
+    enabled: true
+    learningEnabled: false    # Learning disabled in production
+    adaptiveOptimization: false
+
+# Development features disabled
+development:
+  hotReload: false
+  debugMode: false
+  mockExternalServices: false
