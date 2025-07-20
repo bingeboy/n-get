@@ -14,6 +14,7 @@ A wget-like CLI tool for downloading files from the web using streams.
 - 📈 **Detailed Statistics**: Comprehensive download summaries with metrics
 - ⚡ **Error Handling**: Graceful handling of network errors and invalid URLs
 - 🔒 **Duplicate Handling**: Automatically handles duplicate filenames with timestamps
+- 🤖 **AI Integration**: Intelligent configuration management with support for MCP servers, CrewAI, AutoGen, and LangChain
 - 🌈 **Cross-platform**: Works beautifully on all operating systems
 
 ## Requirements
@@ -158,7 +159,50 @@ nget sftp://user@server.com/large-file.zip
 nget resume -d ./downloads
 ```
 
-Fore more examples see project landing page or run `--help`.
+For more examples see project landing page or run `--help`.
+
+## AI Integration
+
+N-Get includes enterprise-grade AI integration capabilities for intelligent download automation and configuration management. The AI system enables dynamic optimization, profile management, and integration with popular AI frameworks.
+
+### Quick Start with AI
+
+```bash
+# Enable AI features
+nget --config-ai-enabled=true https://example.com/file.zip
+
+# Use AI-optimized profiles
+nget --config-ai-profile=fast https://example.com/urgent-file.zip
+nget --config-ai-profile=secure https://example.com/sensitive-file.pdf
+nget --config-ai-profile=bulk https://example.com/dataset1.zip https://example.com/dataset2.zip
+```
+
+### Supported AI Frameworks
+
+- **MCP (Model Context Protocol)**: Full server implementation for Claude and other MCP-compatible AI assistants
+- **CrewAI**: Multi-agent download optimization and task management
+- **AutoGen**: Function-based integration for conversational AI workflows  
+- **LangChain**: Tool integration for AI agent ecosystems
+
+### Configuration Profiles
+
+N-Get includes four AI-optimized profiles:
+
+- **Fast**: High-speed downloads with maximum concurrency
+- **Secure**: Security-focused with HTTPS-only and certificate validation
+- **Bulk**: Optimized for large batch operations and bulk downloads
+- **Careful**: Conservative settings with detailed monitoring and progress reporting
+
+### Key AI Features
+
+- **Dynamic Configuration**: AI agents can adapt download settings in real-time
+- **Performance Learning**: System learns from successful download patterns
+- **Adaptive Optimization**: Automatic adjustment based on network conditions
+- **Task Intelligence**: Smart profile recommendations based on download characteristics
+- **Enterprise Integration**: Full audit logging and compliance features
+
+For complete AI integration documentation, examples, and API reference, see:
+**📖 [AI Integration Guide](docs/AI-INTEGRATION.md)**
 
 ## Command Line Options
 

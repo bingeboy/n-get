@@ -1,0 +1,162 @@
+# N-Get Default Configuration
+# This file contains all default settings for n-get enterprise
+
+version: "2.0.0"
+
+# HTTP/HTTPS Download Configuration
+http:
+  timeout: 30000              # Request timeout in milliseconds
+  maxRetries: 3               # Maximum number of retry attempts
+  maxConnections: 20          # Maximum concurrent connections
+  userAgent: "N-Get-Enterprise/2.0"
+  keepAlive:
+    enabled: true             # Enable HTTP keep-alive
+    timeout: 30000           # Keep-alive timeout in milliseconds
+    maxSockets: 10           # Maximum sockets per host
+    maxFreeSockets: 5        # Maximum free sockets per host
+  
+# Download Behavior Configuration
+downloads:
+  maxConcurrent: 3            # Maximum concurrent downloads
+  enableResume: true          # Enable download resume capability
+  progressReporting: true     # Show progress bars and status
+  chunkUpdateFrequency: 1000  # Progress update frequency in milliseconds
+  chunkSize: 50              # Number of chunks before forced update
+
+# Security Configuration
+security:
+  maxFileSize: 10737418240    # Maximum file size (10GB in bytes)
+  allowedProtocols:           # Allowed URL protocols
+    - https
+    - http
+    - sftp
+  blockPrivateNetworks: false # Block access to private network addresses
+  blockLocalhost: false       # Block access to localhost
+  pathTraversalProtection: true # Enable path traversal protection
+  rateLimiting:
+    enabled: true             # Enable rate limiting
+    requestsPerMinute: 100    # Maximum requests per minute per IP
+    windowMs: 60000          # Rate limiting window in milliseconds
+  sanitizeFilenames: true     # Sanitize downloaded filenames
+  certificateValidation: true # Validate SSL certificates
+
+# Logging Configuration
+logging:
+  level: "info"               # Log level: trace, debug, info, warn, error
+  format: "json"              # Log format: json, text
+  outputs:                    # Log output destinations
+    - console
+  enableColors: true          # Enable colored console output
+  rotation:
+    maxFileSize: 10485760     # Maximum log file size (10MB)
+    maxFiles: 5               # Maximum number of log files to keep
+  structured:
+    includeStackTrace: true   # Include stack traces in error logs
+    includePerformance: true  # Include performance metrics
+    correlationIds: true      # Generate correlation IDs for requests
+
+# SSH/SFTP Configuration
+ssh:
+  timeout: 30000              # SSH connection timeout
+  algorithms:
+    kex:                      # Key exchange algorithms
+      - ecdh-sha2-nistp256
+      - ecdh-sha2-nistp384
+      - ecdh-sha2-nistp521
+      - diffie-hellman-group14-sha256
+    serverHostKey:            # Server host key algorithms
+      - rsa-sha2-512
+      - rsa-sha2-256
+      - ssh-rsa
+      - ecdsa-sha2-nistp256
+    cipher:                   # Cipher algorithms
+      - aes128-gcm
+      - aes256-gcm
+      - aes128-ctr
+      - aes256-ctr
+    hmac:                     # HMAC algorithms
+      - hmac-sha2-256
+      - hmac-sha2-512
+      - hmac-sha1
+
+# Monitoring and Metrics
+monitoring:
+  enabled: true               # Enable monitoring and metrics
+  metricsPort: 9090          # Port for metrics endpoint
+  healthCheckPort: 8080      # Port for health check endpoint
+  tracingEnabled: true       # Enable request tracing
+  performanceTracking: true  # Track performance metrics
+
+# AI Agent Integration Configuration
+ai:
+  enabled: false              # Enable AI agent features
+  mcp:
+    enabled: false            # Enable MCP server
+    port: 8080               # MCP server port
+    host: "127.0.0.1"        # MCP server host
+  profiles:
+    enabled: true             # Enable configuration profiles
+    learningEnabled: false   # Enable configuration learning
+    adaptiveOptimization: false # Enable adaptive optimization
+
+# Configuration Profiles for Different Use Cases
+profiles:
+  fast:
+    description: "Optimized for speed and high throughput"
+    http:
+      maxConnections: 50
+      timeout: 15000
+    downloads:
+      maxConcurrent: 10
+      chunkUpdateFrequency: 2000
+    
+  secure:
+    description: "Optimized for security and reliability"
+    security:
+      allowedProtocols: [https, sftp]
+      blockPrivateNetworks: true
+      blockLocalhost: true
+      certificateValidation: true
+    http:
+      timeout: 60000
+      maxRetries: 5
+    downloads:
+      maxConcurrent: 2
+      
+  bulk:
+    description: "Optimized for bulk downloads and batch operations"
+    http:
+      maxConnections: 100
+      timeout: 45000
+    downloads:
+      maxConcurrent: 20
+      chunkUpdateFrequency: 5000
+    logging:
+      level: "warn"
+      
+  careful:
+    description: "Optimized for careful, monitored downloads"
+    http:
+      maxRetries: 5
+      timeout: 60000
+    downloads:
+      maxConcurrent: 1
+      progressReporting: true
+    logging:
+      level: "debug"
+      structured:
+        includePerformance: true
+
+# Development and Debugging
+development:
+  hotReload: true             # Enable configuration hot-reloading
+  validateOnChange: true      # Validate configuration on changes
+  debugMode: false           # Enable debug mode
+  mockExternalServices: false # Mock external services for testing
+
+# Enterprise Features
+enterprise:
+  auditLogging: false        # Enable audit logging
+  complianceMode: false      # Enable compliance mode
+  encryptedConfig: false     # Enable encrypted configuration values
+  configVersioning: false   # Enable configuration versioning
