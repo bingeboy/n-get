@@ -361,6 +361,7 @@ async function main() {
             urlSpinner.spinner.start();
         }
 
+        // Process URLs - keep synchronous since uriManager is sync
         const processedUrls = reqUrls.map(uriManager);
 
         if (!quietMode && urlSpinner) {
