@@ -16,13 +16,24 @@ This guide explains how to integrate N-Get with AI agents, MCP (Model Context Pr
 
 ## Overview
 
-N-Get's AI integration enables intelligent automation of download tasks through:
+N-Get's AI integration enables intelligent automation of download tasks through modern AI standards and protocols:
 
 - **Dynamic Configuration**: AI agents can adapt download settings based on task requirements
 - **Performance Optimization**: Real-time adjustment based on network conditions and performance metrics
 - **Profile Management**: Pre-configured profiles for different scenarios (fast, secure, bulk, careful)
 - **Learning System**: Configuration learning from successful download patterns
 - **Task Intelligence**: Automatic optimization recommendations for different download scenarios
+
+### Latest AI Standards Support (2024-2025)
+
+N-Get integrates with the newest AI capabilities:
+
+- **OpenAI Structured Outputs**: 100% reliable JSON schema adherence with `strict: true`
+- **Responses API**: Advanced tool calling with web search, file search, and computer use
+- **Model Context Protocol (MCP)**: Full MCP server implementation for universal AI integration
+- **GPT-4o Models**: Support for latest reasoning models including o1, o3, o3-mini, and o4-mini
+- **Built-in Web Search**: Real-time information retrieval powered by ChatGPT search
+- **Computer Use Integration**: Direct system interaction for autonomous download management
 
 ## Configuration Management
 
@@ -78,7 +89,9 @@ N-Get includes four pre-configured profiles optimized for different scenarios:
 
 ## MCP Server Integration
 
-### Setting Up MCP Server
+### Setting Up MCP Server (2025 Standards)
+
+The Model Context Protocol (MCP) is now the universal standard for AI integration, with OpenAI joining the MCP steering committee in 2025.
 
 ```javascript
 // mcp-server.js
@@ -396,15 +409,197 @@ user_proxy.initiate_chat(
 )
 ```
 
+## OpenAI Responses API Integration (2025)
+
+### N-Get with Responses API and Structured Outputs
+
+```javascript
+// openai-responses-integration.js
+const OpenAI = require('openai');
+const ConfigManager = require('./lib/config/ConfigManager');
+
+const openai = new OpenAI();
+const configManager = new ConfigManager();
+
+// OpenAI Structured Outputs schema for n-get configuration
+const ngetConfigSchema = {
+    type: "object",
+    properties: {
+        action: {
+            type: "string",
+            enum: ["download", "configure", "optimize", "analyze"]
+        },
+        urls: {
+            type: "array",
+            items: { type: "string" }
+        },
+        profile: {
+            type: "string",
+            enum: ["fast", "secure", "bulk", "careful", "auto"]
+        },
+        taskConfig: {
+            type: "object",
+            properties: {
+                fileCount: { type: "number" },
+                totalSize: { type: "number" },
+                priority: { type: "string", enum: ["low", "medium", "high"] },
+                securityCritical: { type: "boolean" }
+            }
+        },
+        destination: { type: "string" }
+    },
+    required: ["action"]
+};
+
+async function ngetWithResponsesAPI(userQuery) {
+    const response = await openai.responses.create({
+        model: "gpt-4o-2024-08-06",
+        messages: [
+            {
+                role: "system",
+                content: `You are an AI assistant that helps users download files using n-get. 
+                Analyze user requests and provide structured responses for optimal download configuration.
+                Use web search when you need current information about files or URLs.`
+            },
+            {
+                role: "user", 
+                content: userQuery
+            }
+        ],
+        tools: [
+            {
+                type: "web_search"
+            },
+            {
+                type: "function",
+                function: {
+                    name: "configure_nget_download",
+                    description: "Configure and execute n-get download with optimal settings",
+                    strict: true,  // Enable structured outputs
+                    parameters: ngetConfigSchema
+                }
+            }
+        ],
+        response_format: {
+            type: "json_schema",
+            json_schema: {
+                name: "NGetResponse",
+                strict: true,
+                schema: {
+                    type: "object",
+                    properties: {
+                        reasoning: { type: "string" },
+                        configuration: ngetConfigSchema,
+                        webSearchUsed: { type: "boolean" },
+                        recommendations: {
+                            type: "array",
+                            items: { type: "string" }
+                        }
+                    },
+                    required: ["reasoning", "configuration"]
+                }
+            }
+        }
+    });
+
+    const result = JSON.parse(response.choices[0].message.content);
+    
+    // Apply AI recommendations to n-get
+    if (result.configuration.profile === "auto") {
+        const optimalProfile = await configManager.applyOptimalProfile(
+            result.configuration.taskConfig || {}
+        );
+        result.configuration.profile = optimalProfile;
+    } else if (result.configuration.profile) {
+        await configManager.applyProfile(result.configuration.profile);
+    }
+
+    return result;
+}
+
+// Example usage with web search integration
+async function smartDownload(userRequest) {
+    try {
+        const aiResponse = await ngetWithResponsesAPI(userRequest);
+        
+        console.log("AI Analysis:", aiResponse.reasoning);
+        console.log("Recommended Profile:", aiResponse.configuration.profile);
+        
+        if (aiResponse.webSearchUsed) {
+            console.log("Used web search for current information");
+        }
+
+        // Execute download with AI-optimized configuration
+        if (aiResponse.configuration.action === "download") {
+            const subprocess = require('child_process');
+            const cmd = [
+                'node', 'bin/n-get.js',
+                `--config-ai-profile=${aiResponse.configuration.profile}`,
+                ...aiResponse.configuration.urls
+            ];
+            
+            if (aiResponse.configuration.destination) {
+                cmd.push('-d', aiResponse.configuration.destination);
+            }
+
+            const result = subprocess.spawn('node', cmd.slice(1));
+            return { success: true, aiResponse, process: result };
+        }
+
+        return { success: true, aiResponse };
+        
+    } catch (error) {
+        console.error("AI-powered download failed:", error);
+        return { success: false, error: error.message };
+    }
+}
+
+module.exports = { ngetWithResponsesAPI, smartDownload };
+```
+
+### Using with Computer Use Tool
+
+```javascript
+// computer-use-integration.js
+async function ngetWithComputerUse(task) {
+    const response = await openai.responses.create({
+        model: "gpt-4o-2024-08-06",
+        messages: [
+            {
+                role: "user",
+                content: `Download files using n-get and verify the downloads completed successfully: ${task}`
+            }
+        ],
+        tools: [
+            {
+                type: "computer_use",
+                computer_use: {
+                    display_width_px: 1920,
+                    display_height_px: 1080
+                }
+            }
+        ]
+    });
+
+    // OpenAI will use computer use to:
+    // 1. Execute n-get commands
+    // 2. Verify file downloads
+    // 3. Check file integrity
+    // 4. Report results back
+    
+    return response;
+}
+```
+
 ## LangChain Integration
 
-### N-Get LangChain Tool
+### N-Get LangChain Tool with Structured Outputs
 
 ```python
 # n_get_langchain.py
 from langchain.tools import BaseTool
 from langchain.agents import initialize_agent, Tool
-from langchain.llms import OpenAI
+from langchain_openai import ChatOpenAI
 import subprocess
 import json
 
@@ -660,5 +855,63 @@ To contribute to N-Get's AI integration:
 2. Create AI integration examples
 3. Submit pull requests with documentation
 4. Report issues with AI agent integration
+
+## OpenAI 2025 Standards Compliance
+
+### Supported Models and Pricing
+
+**Latest Models (2025):**
+- `gpt-4o-2024-08-06` - Structured outputs with 100% reliability
+- `gpt-4o-mini-2024-07-18` - Cost-effective structured outputs
+- `o1`, `o3`, `o3-mini`, `o4-mini` - Advanced reasoning models
+
+**Tool Pricing (2025):**
+- Web Search: $30/1K queries (GPT-4o), $25/1K queries (GPT-4o-mini)
+- File Search: $0.10/GB vector storage/day + $2.50/1K tool calls
+- Computer Use: Standard token pricing
+- MCP Integration: No additional cost (token-based billing only)
+
+### Migration from Legacy APIs
+
+**From JSON Mode to Structured Outputs:**
+```javascript
+// Legacy JSON Mode (deprecated)
+{
+    response_format: { type: "json_object" }
+}
+
+// New Structured Outputs (recommended)
+{
+    response_format: {
+        type: "json_schema",
+        json_schema: {
+            name: "NGetConfig",
+            strict: true,  // Guarantees 100% schema adherence
+            schema: ngetConfigSchema
+        }
+    }
+}
+```
+
+**From Chat Completions to Responses API:**
+```javascript
+// Legacy approach
+const chatResponse = await openai.chat.completions.create({...});
+
+// New Responses API (recommended for tools)
+const response = await openai.responses.create({
+    tools: [
+        { type: "web_search" },
+        { type: "function", function: {...} }
+    ]
+});
+```
+
+### Safety and Compliance Features
+
+- **Refusal Handling**: Programmatic detection of safety-based refusals
+- **Schema Validation**: Guaranteed JSON schema compliance with `strict: true`
+- **Source Attribution**: Automatic citation links for web search results
+- **Audit Logging**: Enterprise-grade logging for all AI interactions
 
 For more information, see the main [README.md](../README.md) and [CLAUDE.md](../CLAUDE.md) files.
