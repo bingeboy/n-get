@@ -1,8 +1,8 @@
 
 const {expect} = require('chai');
-const {execSync} = require('child_process');
-const path = require('path');
-const fs = require('fs').promises;
+const {execSync} = require('node:child_process');
+const path = require('node:path');
+const fs = require('node:fs').promises;
 
 describe('Main CLI Application', () => {
     const testDir = path.join(__dirname, 'cli-test');

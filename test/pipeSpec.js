@@ -1,7 +1,7 @@
 const {expect} = require('chai');
-const fs = require('fs').promises;
-const path = require('path');
-const {spawn} = require('child_process');
+const fs = require('node:fs').promises;
+const path = require('node:path');
+const {spawn} = require('node:child_process');
 // const recursivePipe = require('../lib/recursivePipe'); // TODO: Use in future tests
 
 describe('Pipe Functionality', () => {
@@ -178,11 +178,11 @@ describe('Pipe Functionality', () => {
             child.on('close', code => {
                 try {
                     expect(code).to.equal(0);
-                    expect(stdout).to.be.a('string');
-                    expect(stdout.length).to.be.greaterThan(0);
+                    expect(_stdout).to.be.a('string');
+                    expect(_stdout.length).to.be.greaterThan(0);
 
                     // Should be valid JSON
-                    const parsed = JSON.parse(stdout);
+                    const parsed = JSON.parse(_stdout);
                     expect(parsed).to.be.an('object');
 
                     done();
@@ -215,12 +215,12 @@ describe('Pipe Functionality', () => {
                     expect(code).to.equal(0);
 
                     // Stderr should not contain banner or progress info
-                    expect(stderr).to.not.include('n-get');
-                    expect(stderr).to.not.include('Download Summary');
+                    expect(_stderr).to.not.include('n-get');
+                    expect(_stderr).to.not.include('Download Summary');
 
                     // Stdout should contain only the file content
-                    expect(stdout).to.be.a('string');
-                    expect(stdout.length).to.be.greaterThan(0);
+                    expect(_stdout).to.be.a('string');
+                    expect(_stdout.length).to.be.greaterThan(0);
 
                     done();
                 } catch (error) {
@@ -267,9 +267,9 @@ describe('Pipe Functionality', () => {
                     expect(code).to.equal(0);
 
                     // Should have minimal output
-                    expect(stdout.trim()).to.equal('');
-                    expect(stderr).to.not.include('n-get');
-                    expect(stderr).to.not.include('Download Summary');
+                    expect(_stdout.trim()).to.equal('');
+                    expect(_stderr).to.not.include('n-get');
+                    expect(_stderr).to.not.include('Download Summary');
 
                     // But file should still be downloaded
                     const jsonPath = path.join(testDir, 'json');
@@ -342,7 +342,7 @@ describe('Pipe Functionality', () => {
             child.on('close', async code => {
                 try {
                     expect(code).to.equal(0);
-                    expect(stdout.trim()).to.equal('');
+                    expect(_stdout.trim()).to.equal('');
 
                     // File should still be downloaded
                     const jsonPath = path.join(testDir, 'json');

@@ -20,63 +20,10 @@
     "test": "mocha test/*.js --timeout 30000",
     "test:watch": "mocha test/*.js --watch --timeout 30000",
     "test:coverage": "nyc mocha test/*.js --timeout 30000",
-    "lint": "xo",
-    "lint:fix": "xo --fix",
+    "lint": "eslint . && echo '✓ No linting errors found!'",
+    "lint:verbose": "eslint . --debug 2>&1 | grep -E 'files found|Processing' && eslint . && echo '✓ No linting errors found!'",
+    "lint:fix": "eslint . --fix",
     "clean": "rm -rf temp/* test/temp/* test/cli-test/*"
-  },
-  "xo": {
-    "space": 4,
-    "rules": {
-      "unicorn/no-process-exit": "off",
-      "unicorn/prevent-abbreviations": ["error", {
-        "allowList": {
-          "args": true,
-          "argv": true,
-          "env": true,
-          "err": true,
-          "fn": true,
-          "req": true,
-          "res": true,
-          "tmp": true,
-          "dir": true,
-          "dest": true,
-          "src": true,
-          "lib": true,
-          "opts": true,
-          "stats": true,
-          "url": true,
-          "urls": true,
-          "uri": true,
-          "ui": true,
-          "i": true
-        }
-      }],
-      "unicorn/filename-case": ["error", {
-        "cases": {
-          "kebabCase": true,
-          "camelCase": true,
-          "pascalCase": true
-        }
-      }],
-      "unicorn/no-array-reduce": "off",
-      "unicorn/no-null": "off",
-      "unicorn/prefer-module": "off",
-      "unicorn/prefer-top-level-await": "off",
-      "unicorn/import-style": "off",
-      "unicorn/prefer-node-protocol": "off",
-      "unicorn/numeric-separators-style": "off",
-      "unicorn/no-anonymous-default-export": "off",
-      "unicorn/no-array-for-each": "off",
-      "unicorn/no-array-callback-reference": "off",
-      "no-console": "off"
-    },
-    "ignores": [
-      "temp/**",
-      "test-resume/**", 
-      "gh_pages/**",
-      "*.tgz",
-      "test/temp/**"
-    ]
   },
   "author": "bingeboy",
   "license": "MIT",
@@ -97,7 +44,6 @@
     "chai": "^4.3.10",
     "eslint": "^9.31.0",
     "mocha": "^10.2.0",
-    "nyc": "^15.1.0",
-    "xo": "^1.2.1"
+    "nyc": "^15.1.0"
   }
 }

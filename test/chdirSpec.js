@@ -1,5 +1,5 @@
 const {expect} = require('chai');
-const path = require('path');
+const path = require('node:path');
 const chdir = require('../lib/chdir');
 
 describe('Chdir Module', () => {

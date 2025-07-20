@@ -1,4 +1,4 @@
-const path = require('path');
+const path = require('node:path');
 const {expect} = require('chai');
 const chdir = require('../lib/chdir.js');
 

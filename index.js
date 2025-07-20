@@ -1,7 +1,15 @@
 #!/usr/bin/env node
 
-const fs = require('fs').promises;
-const readline = require('readline');
+/**
+ * @fileoverview n-get - A wget-like CLI tool for Node.js with enhanced features
+ * Supports HTTP/HTTPS and SFTP downloads, resume capability, recursive downloading,
+ * and concurrent downloads with progress tracking.
+ * @author bingeboy
+ * @version 1.2.0
+ */
+
+const fs = require('node:fs').promises;
+const readline = require('node:readline');
 const minimist = require('minimist');
 const chdir = require('./lib/chdir');
 const uriManager = require('./lib/uriManager');
@@ -38,6 +46,11 @@ const argv = minimist(process.argv.slice(2), {
 let destination;
 const reqUrls = [];
 
+/**
+ * Displays help information including usage, options, and examples
+ * @function showHelp
+ * @returns {void}
+ */
 function showHelp() {
     ui.displayBanner();
     console.log(`
@@ -114,6 +127,15 @@ ${ui.emojis.gear} SSH Authentication:
     `.trim());
 }
 
+/**
+ * Reads URLs from an input source (file or stdin)
+ * Supports comment lines (starting with #) which are ignored
+ * @async
+ * @function readUrlsFromInput  
+ * @param {string} inputFile - Path to input file or '-' for stdin
+ * @returns {Promise<string[]>} Array of URLs read from input
+ * @throws {Error} When input file cannot be read or stdin is not available
+ */
 async function readUrlsFromInput(inputFile) {
     const urls = [];
 
@@ -153,6 +175,13 @@ async function readUrlsFromInput(inputFile) {
     return urls;
 }
 
+/**
+ * Lists all resumable downloads in the specified destination directory
+ * Scans for partial download metadata and displays them to the user
+ * @async
+ * @function listResumableDownloads
+ * @returns {Promise<void>}
+ */
 async function listResumableDownloads() {
     const dest = destination || process.cwd();
 
@@ -170,6 +199,16 @@ async function listResumableDownloads() {
     await resumeManager.cleanupOldMetadata(dest);
 }
 
+/**
+ * Main application entry point
+ * Handles CLI argument parsing, validates options, and coordinates the download process.
+ * Supports various modes: help, version, list resumable downloads, recursive downloads,
+ * and standard file downloads with resume capability.
+ * @async
+ * @function main
+ * @returns {Promise<void>}
+ * @throws {Error} When invalid arguments or download failures occur
+ */
 async function main() {
     try {
         // Handle help

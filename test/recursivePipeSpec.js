@@ -1,7 +1,7 @@
 
 const {expect} = require('chai');
-const fs = require('fs').promises;
-const path = require('path');
+const fs = require('node:fs').promises;
+const path = require('node:path');
 const recursivePipe = require('../lib/recursivePipe');
 
 describe('Recursive Pipe Module', () => {
