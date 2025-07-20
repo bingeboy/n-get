@@ -1,0 +1,48 @@
+# N-Get Development Configuration
+# Overrides for development environment
+
+# Logging optimized for development
+logging:
+  level: "debug"
+  format: "text"
+  enableColors: true
+  outputs:
+    - console
+
+# Security relaxed for development
+security:
+  blockPrivateNetworks: false
+  blockLocalhost: false
+  rateLimiting:
+    enabled: false
+    
+# Development features enabled
+development:
+  hotReload: true
+  validateOnChange: true
+  debugMode: true
+  mockExternalServices: false
+
+# AI features enabled for development
+ai:
+  enabled: true
+  profiles:
+    enabled: true
+    learningEnabled: true
+    adaptiveOptimization: true
+
+# Monitoring disabled in development
+monitoring:
+  enabled: false
+  tracingEnabled: true
+  performanceTracking: true
+
+# Lower limits for development testing
+downloads:
+  maxConcurrent: 2
+  chunkUpdateFrequency: 500
+
+# Shorter timeouts for faster development feedback
+http:
+  timeout: 15000
+  maxRetries: 2
