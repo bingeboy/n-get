@@ -1,20 +1,20 @@
-const { expect } = require('chai');
-const path = require('path');
+const path = require('node:path');
+const {expect} = require('chai');
 const chdir = require('../lib/chdir.js');
 
-describe('Destination handling', function() {
+describe('Destination handling', () => {
     let originalCwd;
 
-    beforeEach(function() {
+    beforeEach(() => {
         originalCwd = process.cwd();
     });
 
-    afterEach(function() {
+    afterEach(() => {
         // Restore original working directory
         process.chdir(originalCwd);
     });
 
-    it('should handle valid destination directory', function() {
+    it('should handle valid destination directory', () => {
         const tempDir = path.join(__dirname, '..', 'temp');
         const result = chdir(tempDir);
         expect(result).to.equal(tempDir);
