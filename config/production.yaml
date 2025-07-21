@@ -23,6 +23,11 @@ security:
     requestsPerMinute: 1000   # Higher limits for production
   pathTraversalProtection: true
   sanitizeFilenames: true
+  ipv6:
+    blockPrivateRanges: true
+    blockDocumentation: true
+    blockMulticast: true
+    strictValidation: true
 
 # Production performance settings
 http:
@@ -30,6 +35,13 @@ http:
   keepAlive:
     maxSockets: 20
     maxFreeSockets: 10
+  ipv6:
+    enabled: true
+    preferIPv6: false
+    dualStack: true
+    dnsResolution:
+      timeout: 5000
+      retries: 2
 
 downloads:
   maxConcurrent: 5

@@ -5,7 +5,6 @@
  * Supports HTTP/HTTPS and SFTP downloads, resume capability, recursive downloading,
  * and concurrent downloads with progress tracking.
  * @author bingeboy
- * @version 1.3.0
  */
 
 const fs = require('node:fs').promises;

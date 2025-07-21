@@ -15,6 +15,11 @@ security:
   blockLocalhost: false
   rateLimiting:
     enabled: false
+  ipv6:
+    blockPrivateRanges: false
+    blockDocumentation: false
+    blockMulticast: false
+    strictValidation: false
     
 # Development features enabled
 development:
@@ -45,3 +50,9 @@ downloads:
 http:
   timeout: 15000
   maxRetries: 2
+  ipv6:
+    enabled: true
+    dualStack: true
+    dnsResolution:
+      timeout: 3000
+      retries: 1
