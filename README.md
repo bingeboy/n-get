@@ -228,7 +228,7 @@ For complete AI integration documentation, examples, and API reference, see:
 The core functionality is also available as a module:
 
 ```javascript
-const download = require('n-get/lib/recursivePipe');
+const download = require('n-get/lib/downloadPipeline');
 
 // Download files programmatically
 download(['https://example.com/file.zip'], './downloads')
