@@ -13,16 +13,18 @@ const readline = require('node:readline');
 const minimist = require('minimist');
 const chdir = require('./lib/chdir');
 const uriManager = require('./lib/uriManager');
-const recursivePipe = require('./lib/recursivePipe');
+const download = require('./lib/downloadPipeline');
 const ui = require('./lib/ui');
 const resumeManager = require('./lib/resumeManager');
 const RecursiveDownloader = require('./lib/recursiveDownloader');
 const ConfigManager = require('./lib/config/ConfigManager');
 const ConfigCommands = require('./lib/cli/configCommands');
+const LogsCommands = require('./lib/cli/logsCommands');
+const HistoryCommands = require('./lib/cli/historyCommands');
 
 const argv = minimist(process.argv.slice(2), {
-    boolean: ['resume', 'no-resume', 'list-resume', 'help', 'version', 'recursive', 'no-parent', 'quiet', 'verbose'],
-    string: ['d', 'destination', 'ssh-key', 'ssh-password', 'ssh-passphrase', 'level', 'accept', 'reject', 'user-agent', 'i', 'input-file', 'o', 'output-file', 'max-concurrent', 'config-environment', 'config-ai-profile'],
+    boolean: ['resume', 'no-resume', 'list-resume', 'help', 'version', 'recursive', 'no-parent', 'quiet', 'verbose', 'json', 'csv', 'text', 'confirm', 'force'],
+    string: ['d', 'destination', 'ssh-key', 'ssh-password', 'ssh-passphrase', 'level', 'accept', 'reject', 'user-agent', 'i', 'input-file', 'o', 'output-file', 'max-concurrent', 'config-environment', 'config-ai-profile', 'limit', 'status', 'since', 'until', 'output', 'days'],
     alias: {
         d: 'destination',
         r: 'resume',
@@ -139,6 +141,19 @@ ${ui.emojis.rocket} Configuration Commands:
   nget config profile <name>      Switch to profile
   nget config validate           Validate configuration
   nget config debug              Show debug information
+
+${ui.emojis.gear} Logging Commands:
+  nget logs format               Show current logging format
+  nget logs format --json        Use JSON structured logging
+  nget logs format --csv         Use CSV logging format
+  nget logs format --text        Use human-readable text format (default)
+
+${ui.emojis.search} History Commands:
+  nget history show              Show recent download history
+  nget history search <term>     Search downloads by URL or filename
+  nget history stats             Show download statistics
+  nget history export            Export history data
+  nget history clear --confirm   Clear all download history
     `.trim());
 }
 
@@ -316,6 +331,22 @@ async function main() {
             const configCommands = new ConfigCommands();
             const configArgs = argv._.slice(1); // Remove 'config' from args
             await configCommands.execute(configArgs, argv);
+            process.exit(0);
+        }
+
+        // Handle logs commands
+        if (argv._.length > 0 && argv._[0] === 'logs') {
+            const logsCommands = new LogsCommands();
+            const logsArgs = argv._.slice(1); // Remove 'logs' from args
+            await logsCommands.execute(logsArgs, argv);
+            process.exit(0);
+        }
+
+        // Handle history commands
+        if (argv._.length > 0 && argv._[0] === 'history') {
+            const historyCommands = new HistoryCommands();
+            const historyArgs = argv._.slice(1); // Remove 'history' from args
+            await historyCommands.execute(historyArgs, argv);
             process.exit(0);
         }
 
@@ -521,7 +552,7 @@ async function main() {
             await recursiveDownloader.recursiveDownload(processedUrls, destination || process.cwd());
         } else {
             // Normal download mode
-            const results = await recursivePipe(processedUrls, destination, downloadOptions);
+            const results = await download(processedUrls, destination, downloadOptions);
 
             // Exit with error code if all downloads failed
             const allFailed = results.every(result => !result.success);
