@@ -97,7 +97,6 @@ ai:
   profiles:
     enabled: true             # Enable configuration profiles
     learningEnabled: false   # Enable configuration learning
-    adaptiveOptimization: false # Enable adaptive optimization
 
 # Configuration Profiles for Different Use Cases
 profiles:
