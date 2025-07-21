@@ -57,7 +57,6 @@ ai:
   profiles:
     enabled: true
     learningEnabled: false    # Learning disabled in production
-    adaptiveOptimization: false
 
 # Development features disabled
 development:

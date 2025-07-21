@@ -195,10 +195,10 @@ N-Get includes four AI-optimized profiles:
 
 ### Key AI Features
 
-- **Dynamic Configuration**: AI agents can adapt download settings in real-time
-- **Performance Learning**: System learns from successful download patterns
-- **Adaptive Optimization**: Automatic adjustment based on network conditions
-- **Task Intelligence**: Smart profile recommendations based on download characteristics
+- **Agent Control**: AI agents have complete control over all configuration settings
+- **Performance Monitoring**: Real-time metrics and status reporting for agent decision-making
+- **Profile Selection**: Agents can choose and apply optimal profiles for different scenarios
+- **Learning Data Collection**: Optional outcome tracking for agent training and improvement
 - **Enterprise Integration**: Full audit logging and compliance features
 
 For complete AI integration documentation, examples, and API reference, see:
