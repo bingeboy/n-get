@@ -18,9 +18,10 @@ const ui = require('./lib/ui');
 const resumeManager = require('./lib/resumeManager');
 const RecursiveDownloader = require('./lib/recursiveDownloader');
 const ConfigManager = require('./lib/config/ConfigManager');
+const ConfigCommands = require('./lib/cli/configCommands');
 
 const argv = minimist(process.argv.slice(2), {
-    boolean: ['resume', 'no-resume', 'list-resume', 'help', 'version', 'recursive', 'no-parent', 'quiet'],
+    boolean: ['resume', 'no-resume', 'list-resume', 'help', 'version', 'recursive', 'no-parent', 'quiet', 'verbose'],
     string: ['d', 'destination', 'ssh-key', 'ssh-password', 'ssh-passphrase', 'level', 'accept', 'reject', 'user-agent', 'i', 'input-file', 'o', 'output-file', 'max-concurrent', 'config-environment', 'config-ai-profile'],
     alias: {
         d: 'destination',
@@ -28,6 +29,7 @@ const argv = minimist(process.argv.slice(2), {
         l: 'list-resume',
         h: 'help',
         v: 'version',
+        V: 'verbose',
         R: 'recursive',
         np: 'no-parent',
         A: 'accept',
@@ -60,6 +62,7 @@ function showHelp() {
     console.log(`
 ${ui.emojis.info} Usage: nget [options] <url1> [url2] ...
 ${ui.emojis.info} Usage: nget resume [options]
+${ui.emojis.info} Usage: nget config <command> [options]
 
 ${ui.emojis.gear} General Options:
   -d, --destination <path>    Destination directory for downloads
@@ -128,6 +131,14 @@ ${ui.emojis.gear} SSH Authentication:
   • Support for id_rsa, id_ed25519, id_ecdsa
   • Password and key-based authentication
   • Encrypted private key support with passphrase
+
+${ui.emojis.rocket} Configuration Commands:
+  nget config show [section]      Show current configuration
+  nget config set <key> <value>   Set configuration value
+  nget config profiles            List available profiles
+  nget config profile <name>      Switch to profile
+  nget config validate           Validate configuration
+  nget config debug              Show debug information
     `.trim());
 }
 
@@ -298,6 +309,14 @@ async function main() {
                     process.exit(1);
                 }
             }
+        }
+
+        // Handle config commands
+        if (argv._.length > 0 && argv._[0] === 'config') {
+            const configCommands = new ConfigCommands();
+            const configArgs = argv._.slice(1); // Remove 'config' from args
+            await configCommands.execute(configArgs, argv);
+            process.exit(0);
         }
 
         // Handle list resumable downloads
