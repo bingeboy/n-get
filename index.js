@@ -217,9 +217,19 @@ async function main() {
     try {
         // Initialize ConfigManager
         try {
+            // Check if we're outputting to stdout (which should suppress logs)
+            const outputToStdout = argv['output-file'] === '-';
+            const shouldSuppressLogs = argv.quiet || outputToStdout;
+            
             const configOptions = {
                 environment: argv['config-environment'] || process.env.NODE_ENV || 'development',
-                enableHotReload: process.env.NODE_ENV === 'development'
+                enableHotReload: process.env.NODE_ENV === 'development' && process.env.NODE_ENV !== 'test',
+                logger: shouldSuppressLogs ? { 
+                    info: () => {}, 
+                    debug: () => {}, 
+                    warn: () => {}, 
+                    error: (...args) => console.error(...args) 
+                } : console
             };
             configManager = new ConfigManager(configOptions);
             

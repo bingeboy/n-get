@@ -1,7 +1,7 @@
 lib-cov
 lcov.info
 .claude/*
-temp/
+temp/*
 :4
 CLAUDE.md
 .nget/*
