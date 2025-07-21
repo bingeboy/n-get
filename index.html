@@ -421,7 +421,8 @@
                     <span class="badge">⚡ Parallel Downloads</span>
                     <span class="badge">🔄 Smart Resume</span>
                     <span class="badge">🔒 SSH/SFTP Support</span>
-                    <span class="badge">📊 Configurable Concurrency</span>
+                    <span class="badge">📊 Enterprise Config</span>
+                    <span class="badge">🤖 AI Agent Ready</span>
                     <span class="badge">🌐 Unix Pipes</span>
                     <span class="badge">🎨 Rich UI</span>
                 </div>
@@ -433,6 +434,8 @@
         <div class="container">
             <div class="nav-container">
                 <a href="#features" class="nav-link">Features</a>
+                <a href="#configuration" class="nav-link">Configuration</a>
+                <a href="#ai-integration" class="nav-link">AI Integration</a>
                 <a href="#architecture" class="nav-link">Architecture</a>
                 <a href="#installation" class="nav-link">Installation</a>
                 <a href="#usage" class="nav-link">Usage</a>
@@ -528,6 +531,256 @@
                         </h3>
                         <p class="feature-description">Automatic file deduplication with incremental naming (file.zip, file.zip.1, file.zip.2)</p>
                     </div>
+                    
+                    <div class="feature-card">
+                        <h3 class="feature-title">
+                            <span class="feature-icon">⚙️</span>
+                            Enterprise Configuration
+                        </h3>
+                        <p class="feature-description">YAML-based hierarchical configuration with validation, profiles, and environment-specific settings</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3 class="feature-title">
+                            <span class="feature-icon">🤖</span>
+                            AI Agent Integration
+                        </h3>
+                        <p class="feature-description">Built-in support for AI agents with MCP servers, configuration profiles, and learning capabilities</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Configuration Management Section -->
+            <section id="configuration" class="section">
+                <h2 class="section-title">Enterprise Configuration Management</h2>
+                <p class="section-subtitle">Powerful YAML-based configuration system with validation, profiles, and hot-reloading</p>
+                
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h3 class="feature-title">
+                            <span class="feature-icon">🏗️</span>
+                            Hierarchical Configuration
+                        </h3>
+                        <p class="feature-description">Multi-layer configuration with precedence: CLI args > env vars > local.yaml > environment.yaml > default.yaml</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3 class="feature-title">
+                            <span class="feature-icon">✅</span>
+                            Schema Validation
+                        </h3>
+                        <p class="feature-description">Joi-powered validation ensures configuration integrity with type checking and constraint enforcement</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3 class="feature-title">
+                            <span class="feature-icon">⚡</span>
+                            Hot Reloading
+                        </h3>
+                        <p class="feature-description">Automatic configuration reloading in development mode when YAML files change</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3 class="feature-title">
+                            <span class="feature-icon">🎯</span>
+                            Performance Profiles
+                        </h3>
+                        <p class="feature-description">Pre-configured profiles for different scenarios: fast, secure, bulk, and careful downloading</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3 class="feature-title">
+                            <span class="feature-icon">🌍</span>
+                            Environment Support
+                        </h3>
+                        <p class="feature-description">Separate configurations for development, production, staging, and testing environments</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3 class="feature-title">
+                            <span class="feature-icon">📊</span>
+                            Metrics & Monitoring
+                        </h3>
+                        <p class="feature-description">Built-in configuration metrics, history tracking, and performance monitoring</p>
+                    </div>
+                </div>
+
+                <div class="code-content" style="margin-top: 3rem;">
+                    <h3 style="color: var(--primary-color); margin-bottom: 1rem;">Example Configuration Structure</h3>
+                    <pre><code class="language-yaml"># config/default.yaml - Base configuration
+version: "2.0.0"
+http:
+  timeout: 30000
+  maxRetries: 3
+  maxConnections: 20
+  userAgent: "N-Get-Enterprise/2.0"
+
+downloads:
+  maxConcurrent: 3
+  enableResume: true
+  progressReporting: true
+
+security:
+  maxFileSize: 10737418240  # 10GB
+  allowedProtocols: ["https", "http", "sftp"]
+  certificateValidation: true
+
+profiles:
+  fast:
+    description: "Optimized for speed and high throughput"
+    http:
+      maxConnections: 50
+      timeout: 15000
+    downloads:
+      maxConcurrent: 10
+  
+  secure:
+    description: "Maximum security settings"
+    security:
+      allowedProtocols: ["https"]
+      blockPrivateNetworks: true
+      certificateValidation: true
+
+# Environment variables: NGET_HTTP_TIMEOUT=45000
+# CLI overrides: --config-downloads-maxconcurrent 5</code></pre>
+                </div>
+            </section>
+
+            <!-- AI Integration Section -->
+            <section id="ai-integration" class="section">
+                <h2 class="section-title">AI Agent Integration</h2>
+                <p class="section-subtitle">Purpose-built for AI agents with MCP server support and dynamic configuration</p>
+                
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h3 class="feature-title">
+                            <span class="feature-icon">🔌</span>
+                            MCP Server Support
+                        </h3>
+                        <p class="feature-description">Compatible with Model Context Protocol (MCP) for seamless AI agent integration</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3 class="feature-title">
+                            <span class="feature-icon">⚙️</span>
+                            Dynamic Configuration
+                        </h3>
+                        <p class="feature-description">AI agents can dynamically switch profiles and adjust settings based on task requirements</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3 class="feature-title">
+                            <span class="feature-icon">📈</span>
+                            Learning Capabilities
+                        </h3>
+                        <p class="feature-description">Optional learning from successful downloads to optimize future configuration choices</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3 class="feature-title">
+                            <span class="feature-icon">🎛️</span>
+                            Agent-Controlled
+                        </h3>
+                        <p class="feature-description">No autonomous decisions - AI agents maintain full control over configuration and behavior</p>
+                    </div>
+                </div>
+
+                <div class="code-content" style="margin-top: 3rem;">
+                    <h3 style="color: var(--primary-color); margin-bottom: 1rem;">AI Agent Integration Examples</h3>
+                    <pre><code class="language-javascript">// AI Agent using n-get with ConfigManager
+const { ConfigManager } = require('n-get/lib/config/ConfigManager');
+const recursivePipe = require('n-get/lib/recursivePipe');
+
+// Initialize configuration for AI agent
+const configManager = new ConfigManager({
+  environment: 'production',
+  logger: myAILogger
+});
+
+// Get available profiles for AI decision making
+const profiles = configManager.getAvailableProfiles();
+console.log('Available profiles:', Object.keys(profiles));
+
+// AI agent decides to use 'fast' profile for bulk download
+await configManager.applyProfile('fast');
+
+// Get AI-optimized configuration summary
+const summary = configManager.getAIConfigSummary();
+console.log('Current settings:', summary.keySettings);
+
+// Download files with AI-configured settings
+const results = await recursivePipe(urls, destination, {
+  configManager,
+  maxConcurrent: summary.keySettings.maxConcurrentDownloads
+});
+
+// Learn from successful outcome
+configManager.learnFromOutcome({
+  success: true,
+  duration: 30000,
+  throughput: 5242880,
+  errors: {}
+});
+
+// Export data for AI model training
+const trainingData = configManager.exportForAITraining();</code></pre>
+                </div>
+
+                <div class="code-content" style="margin-top: 2rem;">
+                    <h3 style="color: var(--primary-color); margin-bottom: 1rem;">MCP Server Integration</h3>
+                    <pre><code class="language-bash"># Enable MCP server support
+export NGET_AI_MCP_ENABLED=true
+export NGET_AI_MCP_PORT=8080
+
+# AI agent can now use configuration profiles
+nget --config-ai-profile fast https://example.com/files.zip
+
+# Environment-specific configuration for AI
+nget --config-environment production --config-ai-profile secure</code></pre>
+                </div>
+
+                <div class="code-content" style="margin-top: 2rem;">
+                    <h3 style="color: var(--primary-color); margin-bottom: 1rem;">CrewAI / AutoGen / LangChain Integration</h3>
+                    <pre><code class="language-python"># Python AI agent using n-get via subprocess
+import subprocess
+import json
+
+class NGetTool:
+    def __init__(self):
+        self.config_profiles = {
+            'fast': 'Optimized for speed and high throughput',
+            'secure': 'Maximum security settings',
+            'bulk': 'Designed for large batch downloads',
+            'careful': 'Conservative settings for unreliable connections'
+        }
+    
+    def download_files(self, urls, profile='fast', destination='./downloads'):
+        """Download files using n-get with specified profile"""
+        cmd = [
+            'nget',
+            '--config-ai-profile', profile,
+            '--config-environment', 'production',
+            '-d', destination
+        ] + urls
+        
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        return {
+            'success': result.returncode == 0,
+            'output': result.stdout,
+            'error': result.stderr
+        }
+    
+    def get_available_profiles(self):
+        """Get available configuration profiles"""
+        return self.config_profiles
+
+# Usage in CrewAI agent
+agent = Agent(
+    role='Download Manager',
+    goal='Efficiently download files based on requirements',
+    tools=[NGetTool()],
+    backstory='Expert in optimizing download performance'
+)</code></pre>
                 </div>
             </section>
 
@@ -549,7 +802,16 @@ n-get/
 │   ├── <span class="file">sftpManager.js</span>    # SSH/SFTP download support
 │   ├── <span class="file">ui.js</span>             # Enhanced UI with progress bars
 │   ├── <span class="file">chdir.js</span>          # Directory operations
-│   └── <span class="file">recursiveDownloader.js</span> # Website mirroring
+│   ├── <span class="file">recursiveDownloader.js</span> # Website mirroring
+│   └── <span class="folder">config/</span>         # Enterprise configuration system
+│       └── <span class="file">ConfigManager.js</span>   # YAML config with validation
+├── <span class="folder">config/</span>             # Configuration files
+│   ├── <span class="file">default.yaml</span>      # Base configuration
+│   ├── <span class="file">development.yaml</span>  # Development overrides
+│   ├── <span class="file">production.yaml</span>   # Production settings
+│   └── <span class="file">local.yaml</span>        # Local overrides (git-ignored)
+├── <span class="folder">docs/</span>               # AI integration documentation
+│   └── <span class="file">AI_AGENT_INTEGRATION.md</span> # AI agent usage guide
 ├── <span class="folder">test/</span>               # Comprehensive test suite
 ├── <span class="file">package.json</span>         # Dependencies & CLI configuration
 └── <span class="file">README.md</span>            # Documentation
@@ -611,10 +873,16 @@ n-get/
                                 <strong style="color: var(--primary-color);">SSH/SFTP:</strong> ssh2 and ssh2-sftp-client for secure downloads
                             </li>
                             <li style="margin-bottom: 1rem;">
+                                <strong style="color: var(--primary-color);">Configuration:</strong> js-yaml for YAML parsing, Joi for validation
+                            </li>
+                            <li style="margin-bottom: 1rem;">
                                 <strong style="color: var(--primary-color);">UI:</strong> cli-progress and colors for enhanced user experience
                             </li>
                             <li style="margin-bottom: 1rem;">
                                 <strong style="color: var(--primary-color);">Streams:</strong> Native Node.js streams for memory efficiency
+                            </li>
+                            <li style="margin-bottom: 1rem;">
+                                <strong style="color: var(--primary-color);">AI Integration:</strong> MCP compatible, supports CrewAI, AutoGen, LangChain
                             </li>
                         </ul>
                     </div>
@@ -648,6 +916,8 @@ npm link  # For global access</div>
                     
                     <div class="code-tabs">
                         <button class="code-tab active" onclick="showTab('basic')">Basic Usage</button>
+                        <button class="code-tab" onclick="showTab('configuration')">Configuration</button>
+                        <button class="code-tab" onclick="showTab('ai-agents')">AI Agents</button>
                         <button class="code-tab" onclick="showTab('advanced')">Advanced</button>
                         <button class="code-tab" onclick="showTab('parallel')">Parallel Downloads</button>
                         <button class="code-tab" onclick="showTab('pipes')">Pipes & Streams</button>
@@ -667,6 +937,74 @@ nget https://example.com/file.zip -d /path/to/destination
 
 # Download multiple files
 nget https://example.com/file1.zip https://example.com/file2.pdf -d ./downloads</code></pre>
+                        </div>
+                        
+                        <div id="configuration-content" class="tab-content" style="display: none;">
+                            <pre><code class="language-bash"># Use configuration profiles for different scenarios
+nget --config-ai-profile fast https://example.com/files.zip
+
+# Environment-specific configuration
+nget --config-environment production https://example.com/data.zip
+
+# Override specific configuration values via CLI
+nget --config-downloads-maxconcurrent 10 --config-http-timeout 60000 file.zip
+
+# Use environment variables for configuration
+export NGET_HTTP_MAXCONNECTIONS=50
+export NGET_DOWNLOADS_MAXCONCURRENT=8
+nget https://example.com/file.zip
+
+# Profile-based downloads for different use cases
+nget --config-ai-profile secure https://sensitive-site.com/file.zip  # Use secure profile
+nget --config-ai-profile bulk file1.zip file2.zip file3.zip         # Use bulk profile
+nget --config-ai-profile careful https://unreliable-server.com/file.zip  # Use careful profile
+
+# Configuration precedence (highest to lowest):
+# 1. CLI arguments (--config-*)
+# 2. Environment variables (NGET_*)
+# 3. local.yaml (git-ignored)
+# 4. environment.yaml (development/production/staging)
+# 5. default.yaml (base configuration)</code></pre>
+                        </div>
+                        
+                        <div id="ai-agents-content" class="tab-content" style="display: none;">
+                            <pre><code class="language-bash"># AI Agent Integration Examples
+
+# Basic AI agent usage with profiles
+nget --config-ai-profile fast https://example.com/dataset.zip
+
+# Enable learning mode for AI optimization (optional)
+export NGET_AI_PROFILES_LEARNINGENABLED=true
+nget --config-ai-profile fast https://example.com/files.zip
+
+# MCP Server integration for AI agents
+export NGET_AI_MCP_ENABLED=true
+export NGET_AI_MCP_PORT=8080
+nget --config-environment production https://example.com/data.zip
+
+# Different profiles for different AI tasks:
+
+# Fast profile - for high-throughput AI data collection
+nget --config-ai-profile fast \
+  https://api.example.com/dataset1.json \
+  https://api.example.com/dataset2.json \
+  https://api.example.com/dataset3.json
+
+# Secure profile - for sensitive AI training data
+nget --config-ai-profile secure \
+  https://secure-data-source.com/training-data.zip
+
+# Bulk profile - for large AI model downloads
+nget --config-ai-profile bulk \
+  https://huggingface.co/model1.bin \
+  https://huggingface.co/model2.bin
+
+# Careful profile - for unreliable AI data sources
+nget --config-ai-profile careful \
+  https://unstable-api.com/data.json
+
+# AI agent can query available profiles
+# (Available profiles: fast, secure, bulk, careful)</code></pre>
                         </div>
                         
                         <div id="parallel-content" class="tab-content" style="display: none;">
@@ -802,6 +1140,11 @@ nget -R https://example.com/docs/ \
 -l, --list-resume       List resumable downloads
 -c, --max-concurrent N  Maximum concurrent downloads (default: 3)
 
+# Configuration Options (NEW!)
+--config-environment ENV         Set configuration environment (development/production/staging)
+--config-ai-profile PROFILE     Use AI configuration profile (fast/secure/bulk/careful)
+--config-* VALUE                Override any configuration value (e.g., --config-http-timeout 60000)
+
 # SSH/SFTP Options
 --ssh-key PATH          Path to SSH private key file
 --ssh-password PASS     SSH password (use with caution)
@@ -815,8 +1158,16 @@ nget -R https://example.com/docs/ \
 -j, --reject PATTERNS   Comma-separated rejected file patterns
 --user-agent STRING     Custom User-Agent for crawling
 
-# Examples with all flags:
+# Configuration Environment Variables (NEW!)
+NGET_HTTP_TIMEOUT=30000           # Set HTTP timeout
+NGET_DOWNLOADS_MAXCONCURRENT=5    # Set max concurrent downloads
+NGET_AI_MCP_ENABLED=true          # Enable MCP server for AI agents
+NGET_AI_PROFILES_LEARNINGENABLED=true  # Enable AI learning mode
+
+# Examples with new configuration features:
 nget https://example.com/file.zip -d ./downloads
+nget --config-ai-profile fast https://example.com/files.zip
+nget --config-environment production --config-downloads-maxconcurrent 10 file.zip
 nget -i urls.txt -d ./downloads -q
 nget https://example.com/data.json -o - -q
 nget --list-resume -d ./downloads
@@ -836,8 +1187,9 @@ nget --help</code></pre>
                 
                 <div class="code-content">
                     <pre><code class="language-javascript">const recursivePipe = require('n-get/lib/recursivePipe');
+const ConfigManager = require('n-get/lib/config/ConfigManager');
 
-// Download files programmatically with default options
+// Basic usage without configuration
 recursivePipe(['https://example.com/file.zip'], './downloads')
   .then(results => {
     console.log('Download results:', results);
@@ -846,9 +1198,23 @@ recursivePipe(['https://example.com/file.zip'], './downloads')
     console.error('Download failed:', error);
   });
 
-// Download with custom concurrency and options
+// Advanced usage with ConfigManager (Enterprise features)
+const configManager = new ConfigManager({
+  environment: 'production',
+  enableHotReload: false
+});
+
+// Apply AI profile for optimized downloads
+await configManager.applyProfile('fast');
+
+// Get AI-optimized settings
+const summary = configManager.getAIConfigSummary();
+console.log('Using settings:', summary.keySettings);
+
+// Download with enterprise configuration
 const options = {
-  maxConcurrent: 5,
+  configManager,
+  maxConcurrent: summary.keySettings.maxConcurrentDownloads,
   enableResume: true,
   quietMode: false
 };
@@ -863,7 +1229,25 @@ recursivePipe([
     results.forEach(result => {
       console.log(`${result.success ? '✅' : '❌'} ${result.url}`);
     });
-  });</code></pre>
+    
+    // Learn from successful outcome for AI optimization
+    if (results.every(r => r.success)) {
+      configManager.learnFromOutcome({
+        success: true,
+        duration: Date.now() - startTime,
+        throughput: calculateThroughput(results),
+        errors: {}
+      });
+    }
+  });
+
+// Configuration management examples
+const profiles = configManager.getAvailableProfiles();
+console.log('Available profiles:', Object.keys(profiles));
+
+// Export configuration for AI training
+const trainingData = configManager.exportForAITraining();
+console.log('Training data collected:', trainingData.history.length, 'events');</code></pre>
                 </div>
             </section>
         </div>
@@ -884,6 +1268,8 @@ recursivePipe([
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
     
     <script>
         // Smooth scrolling for navigation links
