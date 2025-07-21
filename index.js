@@ -17,10 +17,11 @@ const recursivePipe = require('./lib/recursivePipe');
 const ui = require('./lib/ui');
 const resumeManager = require('./lib/resumeManager');
 const RecursiveDownloader = require('./lib/recursiveDownloader');
+const ConfigManager = require('./lib/config/ConfigManager');
 
 const argv = minimist(process.argv.slice(2), {
     boolean: ['resume', 'no-resume', 'list-resume', 'help', 'version', 'recursive', 'no-parent', 'quiet'],
-    string: ['d', 'destination', 'ssh-key', 'ssh-password', 'ssh-passphrase', 'level', 'accept', 'reject', 'user-agent', 'i', 'input-file', 'o', 'output-file', 'max-concurrent'],
+    string: ['d', 'destination', 'ssh-key', 'ssh-password', 'ssh-passphrase', 'level', 'accept', 'reject', 'user-agent', 'i', 'input-file', 'o', 'output-file', 'max-concurrent', 'config-environment', 'config-ai-profile'],
     alias: {
         d: 'destination',
         r: 'resume',
@@ -42,6 +43,9 @@ const argv = minimist(process.argv.slice(2), {
         'max-concurrent': 3,
     },
 });
+
+// ConfigManager will be initialized in main function
+let configManager;
 
 let destination;
 const reqUrls = [];
@@ -211,6 +215,41 @@ async function listResumableDownloads() {
  */
 async function main() {
     try {
+        // Initialize ConfigManager
+        try {
+            const configOptions = {
+                environment: argv['config-environment'] || process.env.NODE_ENV || 'development',
+                enableHotReload: process.env.NODE_ENV === 'development'
+            };
+            configManager = new ConfigManager(configOptions);
+            
+            // Apply CLI configuration overrides
+            Object.keys(argv).forEach(key => {
+                if (key.startsWith('config-')) {
+                    const configPath = key.replace('config-', '').replace(/-/g, '.');
+                    if (configPath !== 'environment' && configPath !== 'ai.profile') {
+                        try {
+                            configManager.set(configPath, argv[key]);
+                        } catch (error) {
+                            console.warn(`Warning: Could not set config ${configPath}: ${error.message}`);
+                        }
+                    }
+                }
+            });
+            
+            // Apply AI profile if specified
+            if (argv['config-ai-profile']) {
+                try {
+                    await configManager.applyProfile(argv['config-ai-profile']);
+                } catch (error) {
+                    console.warn(`Warning: Could not apply profile ${argv['config-ai-profile']}: ${error.message}`);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to initialize configuration:', error.message);
+            process.exit(1);
+        }
+
         // Handle help
         if (argv.help) {
             showHelp();
@@ -400,9 +439,10 @@ async function main() {
         // Check for stdout output mode
         const outputToStdout = argv['output-file'] === '-';
 
-        // Parse concurrency limit
-        const maxConcurrent = Math.max(1, Number.parseInt(argv['max-concurrent']) || 3);
-        if (!quietMode && maxConcurrent !== 3) {
+        // Parse concurrency limit - use config value as default
+        const configMaxConcurrent = configManager.get('downloads.maxConcurrent', 3);
+        const maxConcurrent = Math.max(1, Number.parseInt(argv['max-concurrent']) || configMaxConcurrent);
+        if (!quietMode && maxConcurrent !== configMaxConcurrent) {
             ui.displayInfo(`Using ${maxConcurrent} concurrent downloads`);
         }
 
@@ -413,6 +453,7 @@ async function main() {
             outputToStdout,
             quietMode: quietMode || outputToStdout, // Auto-enable quiet mode for stdout
             maxConcurrent,
+            configManager, // Pass config manager to download functions
         };
 
         // Check if recursive mode is enabled
@@ -434,9 +475,10 @@ async function main() {
                 reject: rejectPatterns,
                 enableResume,
                 sshOptions,
-                userAgent: argv['user-agent'] || 'n-get-recursive/1.0',
+                userAgent: argv['user-agent'] || configManager.get('http.userAgent', 'n-get-recursive/1.0'),
                 quietMode,
                 maxConcurrent,
+                configManager, // Pass config manager to recursive downloader
             };
 
             if (!quietMode) {
