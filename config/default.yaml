@@ -14,6 +14,13 @@ http:
     timeout: 30000           # Keep-alive timeout in milliseconds
     maxSockets: 10           # Maximum sockets per host
     maxFreeSockets: 5        # Maximum free sockets per host
+  ipv6:
+    enabled: true             # Enable IPv6 support
+    preferIPv6: false         # Prefer IPv6 over IPv4 when both available
+    dualStack: true           # Enable dual-stack (IPv4/IPv6) connections
+    dnsResolution:
+      timeout: 5000          # DNS resolution timeout for IPv6 in milliseconds
+      retries: 2             # Number of DNS resolution retries
   
 # Download Behavior Configuration
 downloads:
@@ -39,6 +46,12 @@ security:
     windowMs: 60000          # Rate limiting window in milliseconds
   sanitizeFilenames: true     # Sanitize downloaded filenames
   certificateValidation: true # Validate SSL certificates
+  ipv6:
+    blockPrivateRanges: false # Block IPv6 private ranges (fc00::/7, fe80::/10, etc.)
+    blockDocumentation: false # Block IPv6 documentation ranges (2001:db8::/32)
+    blockMulticast: false     # Block IPv6 multicast ranges (ff00::/8)
+    allowIPv4Mapped: true     # Allow IPv4-mapped IPv6 addresses (::ffff:0:0/96)
+    strictValidation: false   # Enable strict IPv6 address format validation
 
 # Logging Configuration
 logging:
@@ -105,6 +118,13 @@ profiles:
     http:
       maxConnections: 50
       timeout: 15000
+      ipv6:
+        enabled: true
+        preferIPv6: true
+        dualStack: true
+        dnsResolution:
+          timeout: 3000
+          retries: 1
     downloads:
       maxConcurrent: 10
       chunkUpdateFrequency: 2000
@@ -116,9 +136,17 @@ profiles:
       blockPrivateNetworks: true
       blockLocalhost: true
       certificateValidation: true
+      ipv6:
+        blockPrivateRanges: true
+        blockDocumentation: true
+        blockMulticast: true
+        strictValidation: true
     http:
       timeout: 60000
       maxRetries: 5
+      ipv6:
+        preferIPv6: false
+        dualStack: true
     downloads:
       maxConcurrent: 2
       
