@@ -16,13 +16,13 @@ This guide explains how to integrate N-Get with AI agents, MCP (Model Context Pr
 
 ## Overview
 
-N-Get's AI integration enables intelligent automation of download tasks through modern AI standards and protocols:
+N-Get's AI integration provides AI agents with complete control over download configuration through modern AI standards and protocols:
 
-- **Dynamic Configuration**: AI agents can adapt download settings based on task requirements
-- **Performance Optimization**: Real-time adjustment based on network conditions and performance metrics
-- **Profile Management**: Pre-configured profiles for different scenarios (fast, secure, bulk, careful)
-- **Learning System**: Configuration learning from successful download patterns
-- **Task Intelligence**: Automatic optimization recommendations for different download scenarios
+- **Agent-Controlled Configuration**: AI agents have full control over all download settings and behavior
+- **Profile Management**: Pre-configured profiles that agents can select and apply (fast, secure, bulk, careful)
+- **Real-time Monitoring**: Performance and status reporting for agents to make informed decisions
+- **Learning Data**: Optional collection of outcome data for agent training and improvement
+- **Standards Compliance**: Full support for MCP, OpenAI APIs, and other AI frameworks
 
 ### Latest AI Standards Support (2024-2025)
 
@@ -237,30 +237,40 @@ class NGetTool(BaseTool):
     description: str = "Download files using N-Get with AI-optimized configuration"
     
     def _run(self, url: str, task_type: str = "download", **kwargs) -> str:
-        # Get optimal configuration
+        # Agent gets available profiles and decides
         config_cmd = [
             'node', '-e', f'''
             const ConfigManager = require('./lib/config/ConfigManager');
             const config = new ConfigManager();
-            const profile = config.suggestProfileForTask({kwargs});
-            console.log(JSON.stringify({{profile, recommendations: config.getRecommendationsForTask("{task_type}")}}));
+            const profiles = config.getAvailableProfiles();
+            const summary = config.getAIConfigSummary();
+            console.log(JSON.stringify({{profiles, summary}}));
             '''
         ]
         
         result = subprocess.run(config_cmd, capture_output=True, text=True)
         config_data = json.loads(result.stdout)
         
-        # Apply optimal profile and download
+        # Agent logic to select profile based on task_type
+        profile_map = {
+            "bulk": "bulk",
+            "secure": "secure", 
+            "fast": "fast",
+            "download": "careful"
+        }
+        selected_profile = profile_map.get(task_type, "careful")
+        
+        # Apply agent-selected profile and download
         download_cmd = [
             'node', 'bin/n-get.js',
             '--config-ai-enabled=true',
-            f'--config-ai-profile={config_data["profile"]}',
+            f'--config-ai-profile={selected_profile}',
             url
         ]
         
         download_result = subprocess.run(download_cmd, capture_output=True, text=True)
         
-        return f"Downloaded {url} using {config_data['profile']} profile. Result: {download_result.stdout}"
+        return f"Downloaded {url} using {selected_profile} profile (agent decision). Result: {download_result.stdout}"
 
 # Create specialized agents
 download_agent = Agent(
@@ -329,23 +339,33 @@ def n_get_download(url: str, task_config: dict = None) -> str:
     if task_config is None:
         task_config = {}
     
-    # Get AI recommendations
+    # Get available profiles for agent decision
     config_script = f"""
     const ConfigManager = require('./lib/config/ConfigManager');
     const config = new ConfigManager();
-    const profile = config.suggestProfileForTask({json.dumps(task_config)});
+    const profiles = config.getAvailableProfiles();
     const summary = config.getAIConfigSummary();
-    console.log(JSON.stringify({{profile, summary}}));
+    console.log(JSON.stringify({{profiles, summary}}));
     """
     
     result = subprocess.run(['node', '-e', config_script], capture_output=True, text=True)
-    ai_config = json.loads(result.stdout)
+    config_data = json.loads(result.stdout)
     
-    # Execute download with optimal configuration
+    # Agent logic to select profile
+    if task_config.get('securityCritical'):
+        selected_profile = 'secure'
+    elif task_config.get('fileCount', 1) > 10:
+        selected_profile = 'bulk'
+    elif task_config.get('priority') == 'high':
+        selected_profile = 'fast'
+    else:
+        selected_profile = 'careful'
+    
+    # Execute download with agent-selected configuration
     cmd = [
         'node', 'bin/n-get.js',
         '--config-ai-enabled=true',
-        f'--config-ai-profile={ai_config["profile"]}',
+        f'--config-ai-profile={selected_profile}',
         url
     ]
     
@@ -354,8 +374,9 @@ def n_get_download(url: str, task_config: dict = None) -> str:
     return {
         "success": download_result.returncode == 0,
         "output": download_result.stdout,
-        "profile_used": ai_config["profile"],
-        "ai_summary": ai_config["summary"]
+        "profile_used": selected_profile,
+        "agent_decision": f"Selected {selected_profile} based on task analysis",
+        "available_profiles": list(config_data["profiles"].keys())
     }
 
 # Register function with AutoGen
@@ -504,13 +525,8 @@ async function ngetWithResponsesAPI(userQuery) {
 
     const result = JSON.parse(response.choices[0].message.content);
     
-    // Apply AI recommendations to n-get
-    if (result.configuration.profile === "auto") {
-        const optimalProfile = await configManager.applyOptimalProfile(
-            result.configuration.taskConfig || {}
-        );
-        result.configuration.profile = optimalProfile;
-    } else if (result.configuration.profile) {
+    // Apply AI-selected profile to n-get
+    if (result.configuration.profile && result.configuration.profile !== "auto") {
         await configManager.applyProfile(result.configuration.profile);
     }
 
@@ -625,16 +641,26 @@ class NGetDownloadTool(BaseTool):
                     else:
                         task_config[key] = value
             
-            # Get AI optimization
+            # Agent gets available profiles and decides
             config_script = f"""
             const ConfigManager = require('./lib/config/ConfigManager');
             const config = new ConfigManager();
-            const profile = config.suggestProfileForTask({json.dumps(task_config)});
-            console.log(profile);
+            const profiles = config.getAvailableProfiles();
+            console.log(JSON.stringify(Object.keys(profiles)));
             """
             
             result = subprocess.run(['node', '-e', config_script], capture_output=True, text=True)
-            optimal_profile = result.stdout.strip()
+            available_profiles = json.loads(result.stdout)
+            
+            # Agent decision logic
+            if 'securityCritical=true' in query:
+                optimal_profile = 'secure'
+            elif 'fileCount' in query and int(query.split('fileCount=')[1].split()[0]) > 10:
+                optimal_profile = 'bulk'
+            elif 'priority=high' in query:
+                optimal_profile = 'fast'
+            else:
+                optimal_profile = 'careful'
             
             # Execute download
             cmd = [
@@ -646,7 +672,7 @@ class NGetDownloadTool(BaseTool):
             
             download_result = subprocess.run(cmd, capture_output=True, text=True)
             
-            return f"Downloaded {url} using {optimal_profile} profile. Status: {'Success' if download_result.returncode == 0 else 'Failed'}"
+            return f"Downloaded {url} using {optimal_profile} profile (agent decision). Status: {'Success' if download_result.returncode == 0 else 'Failed'}"
             
         except Exception as e:
             return f"Error downloading {query}: {str(e)}"
@@ -686,31 +712,24 @@ Returns AI-optimized configuration overview including current settings, capabili
 #### `getAvailableProfiles()`
 Lists all available configuration profiles with descriptions and current status.
 
-#### `suggestProfileForTask(task)`
-Recommends optimal profile based on task characteristics:
-- `task.fileCount` - Number of files to download
-- `task.totalSize` - Total size in bytes  
-- `task.priority` - Task priority (low, medium, high)
-- `task.securityCritical` - Whether security is critical
+#### `applyProfile(profileName)`
+Applies a specific configuration profile. Agents can choose from: 'fast', 'secure', 'bulk', 'careful'.
 
-#### `applyOptimalProfile(task)`
-Automatically applies the best profile for the given task.
+#### `get(path, defaultValue)`
+Gets configuration value by path (e.g., 'http.timeout', 'downloads.maxConcurrent').
 
-#### `adaptiveOptimization(metrics)`
-Dynamically adjusts configuration based on performance metrics:
-- `metrics.avgDownloadSpeed` - Average download speed in bytes/sec
-- `metrics.errorRate` - Error rate (0-1)
-- `metrics.connectionFailures` - Number of connection failures
+#### `set(path, value)`
+Sets configuration value by path. Allows agents to make granular configuration changes.
 
 #### `learnFromOutcome(outcome)`
-Records learning data from download outcomes for future optimization.
+Records learning data from download outcomes for agent training and improvement.
 
-#### `getRecommendationsForTask(taskType)`
-Returns configuration recommendations for specific task types: 'download', 'bulk', 'secure', 'fast'.
+#### `getMetrics()`
+Returns configuration metrics, performance data, and usage statistics for agent analysis.
 
 ## Examples
 
-### Basic AI Integration
+### Basic AI Agent Integration
 
 ```javascript
 const ConfigManager = require('./lib/config/ConfigManager');
@@ -720,74 +739,89 @@ const config = new ConfigManager();
 await config.set('ai.enabled', true);
 await config.set('ai.profiles.enabled', true);
 
-// Get optimal configuration for bulk download
-const profile = await config.applyOptimalProfile({
-    fileCount: 100,
-    totalSize: 10737418240, // 10GB
-    priority: 'medium'
-});
+// Agent examines available profiles
+const profiles = config.getAvailableProfiles();
+console.log('Available profiles:', Object.keys(profiles));
 
-console.log(`Applied profile: ${profile}`);
+// Agent decides to use bulk profile for large download
+await config.applyProfile('bulk');
+
+// Agent can also make granular adjustments
+await config.set('downloads.maxConcurrent', 15);
+await config.set('http.maxConnections', 80);
+
+console.log('Configuration applied by agent');
 ```
 
-### Performance Monitoring and Adaptation
+### Agent Performance Monitoring
 
 ```javascript
-// Monitor download performance
-const performanceTracker = {
-    downloadSpeed: 0,
-    errorCount: 0,
-    totalRequests: 0
-};
+// Agent monitors current configuration
+const summary = config.getAIConfigSummary();
+console.log('Current settings:', summary.keySettings);
+console.log('Current capabilities:', summary.capabilities);
 
-// After downloads, apply adaptive optimization
-const optimizations = config.adaptiveOptimization({
-    avgDownloadSpeed: performanceTracker.downloadSpeed,
-    errorRate: performanceTracker.errorCount / performanceTracker.totalRequests,
-    connectionFailures: performanceTracker.errorCount
+// Agent checks metrics after download
+const metrics = config.getMetrics();
+console.log('Performance metrics:', {
+    profileSwitches: metrics.profileSwitches,
+    configurationChanges: metrics.configurationChanges,
+    environment: metrics.environment
 });
-
-console.log('Applied optimizations:', optimizations);
 ```
 
-### Learning from Outcomes
+### Agent Learning from Outcomes
 
 ```javascript
-// Record successful download for learning
+// Agent records download outcome for learning
 config.learnFromOutcome({
     success: true,
     duration: 30000, // 30 seconds
     throughput: 5242880, // 5MB/s
     errors: {}
 });
+
+// Agent can export learning data for training
+const trainingData = config.exportForAITraining();
+console.log('Learning data collected:', trainingData.history.length, 'entries');
 ```
 
 ## Best Practices
 
-### 1. Environment-Specific Configuration
-- Use `development` environment for AI experimentation
-- Use `production` environment with conservative AI settings
-- Enable learning only in development/staging environments
+### 1. Agent-Controlled Configuration
+- Agents should examine available profiles before making decisions
+- Use `getAIConfigSummary()` to understand current state before changes
+- Make incremental configuration adjustments rather than wholesale changes
+- Validate configuration changes using agent logic before applying
 
-### 2. Security Considerations
-- Always validate AI-generated configurations
-- Use `secure` profile for sensitive downloads
+### 2. Environment-Specific Behavior
+- Use `development` environment for agent experimentation and learning
+- Use `production` environment with conservative agent behavior
+- Enable learning data collection only in development/staging environments
+
+### 3. Security Considerations
+- Agents should use `secure` profile for sensitive downloads
+- Validate all agent-requested configuration changes
 - Enable audit logging in enterprise environments
+- Implement agent authorization for configuration changes
 
-### 3. Performance Optimization
-- Monitor download metrics for adaptive optimization
-- Use bulk profiles for large batch operations
-- Implement circuit breakers for high error rates
+### 4. Performance Monitoring
+- Agents should monitor metrics using `getMetrics()` after downloads
+- Use performance data to inform future agent decisions
+- Implement agent circuit breakers for high error rates
+- Allow agents to switch profiles based on performance feedback
 
-### 4. Error Handling
-- Implement fallback configurations for AI failures
-- Log all AI decisions for debugging
-- Validate configuration changes before applying
+### 5. Error Handling and Fallbacks
+- Implement fallback profiles when agent decisions fail
+- Log all agent configuration decisions for debugging
+- Provide default configurations when agent communication fails
+- Validate agent-requested settings against schema
 
-### 5. Testing
-- Test AI configurations in isolated environments
-- Use mock data for AI training
-- Validate profile recommendations with real workloads
+### 6. Testing Agent Integration
+- Test agent configurations in isolated environments
+- Use mock download scenarios for agent training
+- Validate agent decision-making with real workloads
+- Implement agent behavior regression testing
 
 ## Configuration Examples
 
@@ -799,7 +833,6 @@ ai:
   profiles:
     enabled: true
     learningEnabled: true
-    adaptiveOptimization: true
 ```
 
 ### Production AI Settings
@@ -810,7 +843,6 @@ ai:
   profiles:
     enabled: true
     learningEnabled: false
-    adaptiveOptimization: false
 enterprise:
   auditLogging: true
 ```
@@ -830,7 +862,7 @@ enterprise:
    - Ensure profile exists in configuration
 
 3. **Performance Issues**
-   - Monitor adaptive optimization logs
+   - Monitor agent configuration decisions in logs
    - Check if learning data is being recorded
    - Verify metric collection is working
 
@@ -843,8 +875,8 @@ node -e "const c = require('./lib/config/ConfigManager'); console.log(new c().ge
 # List available profiles
 node -e "const c = require('./lib/config/ConfigManager'); console.log(new c().getAvailableProfiles())"
 
-# Test profile suggestion
-node -e "const c = require('./lib/config/ConfigManager'); console.log(c.suggestProfileForTask({fileCount: 10}))"
+# Test agent profile selection
+node -e "const c = require('./lib/config/ConfigManager'); const cm = new c(); console.log(cm.getAvailableProfiles())"
 ```
 
 ## Contributing

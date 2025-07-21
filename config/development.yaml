@@ -29,7 +29,6 @@ ai:
   profiles:
     enabled: true
     learningEnabled: true
-    adaptiveOptimization: true
 
 # Monitoring disabled in development
 monitoring:
