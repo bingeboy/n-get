@@ -2,7 +2,7 @@ const {expect} = require('chai');
 const fs = require('node:fs').promises;
 const path = require('node:path');
 const {spawn} = require('node:child_process');
-// const recursivePipe = require('../lib/recursivePipe'); // TODO: Use in future tests
+// const download = require('../lib/downloadPipeline'); // TODO: Use in future tests
 
 describe('Pipe Functionality', () => {
     const testDir = path.join(__dirname, 'temp');

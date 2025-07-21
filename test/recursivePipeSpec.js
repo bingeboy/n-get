@@ -2,9 +2,9 @@
 const {expect} = require('chai');
 const fs = require('node:fs').promises;
 const path = require('node:path');
-const recursivePipe = require('../lib/recursivePipe');
+const download = require('../lib/downloadPipeline');
 
-describe('Recursive Pipe Module', () => {
+describe('Download Pipeline Module', () => {
     const testDir = path.join(__dirname, 'temp');
 
     before(async () => {
@@ -30,12 +30,12 @@ describe('Recursive Pipe Module', () => {
         }
     });
 
-    describe('#recursivePipe()', () => {
+    describe('#download()', () => {
         it('should download a single file successfully', async function () {
             this.timeout(10000); // Increase timeout for network requests
 
             const urls = ['https://httpbin.org/json'];
-            const results = await recursivePipe(urls, testDir);
+            const results = await download(urls, testDir);
 
             expect(results).to.have.length(1);
             expect(results[0].success).to.be.true;
@@ -55,7 +55,7 @@ describe('Recursive Pipe Module', () => {
                 'https://httpbin.org/uuid',
                 'https://httpbin.org/json',
             ];
-            const results = await recursivePipe(urls, testDir);
+            const results = await download(urls, testDir);
 
             expect(results).to.have.length(2);
             expect(results.every(r => r.success)).to.be.true;
@@ -75,7 +75,7 @@ describe('Recursive Pipe Module', () => {
             this.timeout(10000);
 
             const urls = ['https://invalid-domain-that-should-not-exist.com/file.txt'];
-            const results = await recursivePipe(urls, testDir);
+            const results = await download(urls, testDir);
 
             expect(results).to.have.length(1);
             expect(results[0].success).to.be.false;
@@ -84,7 +84,7 @@ describe('Recursive Pipe Module', () => {
 
         it('should handle empty URL array', async () => {
             try {
-                await recursivePipe([], testDir);
+                await download([], testDir);
                 expect.fail('Should have thrown an error');
             } catch (error) {
                 expect(error.message).to.equal('No URLs provided');
@@ -98,7 +98,7 @@ describe('Recursive Pipe Module', () => {
                 'https://httpbin.org/json',
                 'https://invalid-domain-that-should-not-exist.com/file.txt',
             ];
-            const results = await recursivePipe(urls, testDir);
+            const results = await download(urls, testDir);
 
             expect(results).to.have.length(2);
             expect(results[0].success).to.be.true;
@@ -109,7 +109,7 @@ describe('Recursive Pipe Module', () => {
             this.timeout(10000);
 
             const urls = ['https://httpbin.org/status/404'];
-            const results = await recursivePipe(urls, testDir);
+            const results = await download(urls, testDir);
 
             expect(results).to.have.length(1);
             expect(results[0].success).to.be.false;
@@ -121,7 +121,7 @@ describe('Recursive Pipe Module', () => {
 
             // First, download a file normally
             const urls = ['https://httpbin.org/json'];
-            const firstResult = await recursivePipe(urls, testDir);
+            const firstResult = await download(urls, testDir);
 
             expect(firstResult).to.have.length(1);
             expect(firstResult[0].success).to.be.true;
@@ -132,7 +132,7 @@ describe('Recursive Pipe Module', () => {
             expect(originalStats.isFile()).to.be.true;
 
             // Download the same file again (should get renamed)
-            const secondResult = await recursivePipe(urls, testDir, false); // Disable resume to force duplication
+            const secondResult = await download(urls, testDir, { enableResume: false }); // Disable resume to force duplication
 
             expect(secondResult).to.have.length(1);
             expect(secondResult[0].success).to.be.true;
@@ -143,7 +143,7 @@ describe('Recursive Pipe Module', () => {
             expect(duplicateStats.isFile()).to.be.true;
 
             // Download again (should get .2 postfix)
-            const thirdResult = await recursivePipe(urls, testDir, false);
+            const thirdResult = await download(urls, testDir, { enableResume: false });
 
             expect(thirdResult).to.have.length(1);
             expect(thirdResult[0].success).to.be.true;
