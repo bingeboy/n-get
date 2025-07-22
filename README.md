@@ -484,7 +484,7 @@ N-Get supports extensive configuration through environment variables using the `
 
 #### Logging Configuration
 - `NGET_LOGGING_LEVEL=info` - Log level (trace, debug, info, warn, error)
-- `NGET_LOGGING_FORMAT=json` - Output format (json, text)
+- `NGET_LOGGING_FORMAT=json` - Output format (json, csv, text)
 - `NGET_LOGGING_ENABLECOLORS=true` - Enable colored console output
 - `NGET_LOG_FORMAT=json` - Alternative format setting (same as above)
 - `NGET_LOG_LEVEL=info` - Alternative level setting (same as above)

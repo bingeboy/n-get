@@ -99,7 +99,8 @@ describe('ConfigManager', () => {
             process.env.NODE_ENV = originalEnv;
             
             expect(config).to.be.an.instanceOf(ConfigManager);
-            expect(config.options.environment).to.equal('development');
+            // When running via mocha, it should detect test environment
+            expect(config.options.environment).to.equal('test');
             expect(config.options.enableHotReload).to.be.true;
         });
 
