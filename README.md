@@ -279,9 +279,6 @@ N-Get includes four AI-optimized profiles:
 - **Learning Data Collection**: Optional outcome tracking for agent training and improvement
 - **Enterprise Integration**: Full audit logging and compliance features
 
-For complete AI integration documentation, examples, and API reference, see:
-**📖 [AI Integration Guide](docs/AI-INTEGRATION.md)**
-
 ## Command Line Options
 
 ### Download Options
