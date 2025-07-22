@@ -2,20 +2,28 @@
 
 # n-get
 
-A wget-like CLI tool for downloading files from the web using streams.
+A modern, intelligent download manager with agent support and tooling + comprehensive tracking capabilities.
 
 ## Features
 
-- 🚀 **Fast Downloads**: Uses modern Node.js streams and `node-fetch` for efficient file downloads
-- 📁 **Parallel Downloads**: Download multiple files concurrently with configurable concurrency limit
-- 🎯 **Custom Destination**: Specify where to save downloaded files
+- 🚀 **Parallel Downloads**: Download multiple files concurrently with configurable concurrency limit
+- 🤖 **Built for Agents**: Intelligent configuration management with support for MCP servers, CrewAI, AutoGen, and LangChain
 - ⏸️ **Resume Downloads**: Intelligent resumption of interrupted downloads with HTTP range requests
-- 📊 **Real-time Progress**: Live progress tracking with download speed and ETA
 - 📈 **Detailed Statistics**: Comprehensive download summaries with metrics
-- ⚡ **Error Handling**: Graceful handling of network errors and invalid URLs
-- 🔒 **Duplicate Handling**: Automatically handles duplicate filenames with timestamps
-- 🤖 **AI Integration**: Intelligent configuration management with support for MCP servers, CrewAI, AutoGen, and LangChain
-- 🌈 **Cross-platform**: Works beautifully on all operating systems
+
+## Table of Contents
+
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Basic Usage](#usage)
+- [Parallel Downloads](#parallel-downloads)
+- [SSH/SFTP Support](#sshsftp-usage)
+- [Configuration Management](#configuration-management)
+- [Download History](#download-history)
+- [AI Integration](#ai-integration)
+- [Command Line Options](#command-line-options)
+- [Resume Commands](#resume-commands)
+- [API](#api)
 
 ## Requirements
 
@@ -161,6 +169,76 @@ nget resume -d ./downloads
 
 For more examples see project landing page or run `--help`.
 
+## Configuration Management
+
+N-Get includes a comprehensive configuration system added in v1.3.0, allowing you to manage settings, profiles, and preferences.
+
+### Configuration Commands
+
+```bash
+# Show current configuration
+nget config show
+
+# Show specific configuration section
+nget config show http
+
+# Set configuration values
+nget config set http.timeout 45000
+nget config set downloads.maxConcurrent 5
+
+# List available profiles
+nget config profiles
+
+# Switch to a configuration profile
+nget config profile fast
+
+# Validate your configuration
+nget config validate
+
+# Debug configuration issues
+nget config debug
+```
+
+### Configuration Profiles
+
+N-Get includes several pre-configured profiles for different use cases:
+
+- **fast**: High-speed downloads with maximum concurrency
+- **secure**: Security-focused with HTTPS-only and certificate validation  
+- **bulk**: Optimized for large batch operations and bulk downloads
+- **careful**: Conservative settings with detailed monitoring
+
+## Download History
+
+Track and analyze your download history with commands added in v1.4.0:
+
+```bash
+# Show recent download history
+nget history show
+
+# Show last 10 downloads
+nget history show --limit 10
+
+# Search downloads by URL or filename
+nget history search "example.com"
+
+# View download statistics
+nget history stats
+
+# Export history to CSV
+nget history export --csv --output downloads.csv
+
+# Clear all download history (requires confirmation)
+nget history clear --confirm
+```
+
+### History Options
+
+- `--limit <number>`: Maximum number of entries to display
+- `--status <status>`: Filter by status (success, failed, in_progress)
+- `--since <date>`: Show entries after specified date
+- `--until <date>`: Show entries before specified date
+
 ## AI Integration
 
 N-Get includes enterprise-grade AI integration capabilities for intelligent download automation and configuration management. The AI system enables dynamic optimization, profile management, and integration with popular AI frameworks.
@@ -206,6 +284,7 @@ For complete AI integration documentation, examples, and API reference, see:
 
 ## Command Line Options
 
+### Download Options
 - `-d, --destination <path>`: Specify destination directory for downloads
 - `-r, --resume`: Enable resume for interrupted downloads (default: true)
 - `--no-resume`: Disable resume functionality
@@ -215,6 +294,21 @@ For complete AI integration documentation, examples, and API reference, see:
 - `--ssh-password <password>`: SSH password for SFTP authentication
 - `--ssh-passphrase <passphrase>`: Passphrase for encrypted SSH private keys
 - `-h, --help`: Show help information
+
+### Configuration Commands
+- `nget config show [section]`: Show current configuration
+- `nget config set <key> <value>`: Set configuration value
+- `nget config profiles`: List available configuration profiles
+- `nget config profile <name>`: Switch to configuration profile
+- `nget config validate`: Validate current configuration
+- `nget config debug`: Show configuration debug information
+
+### History Commands
+- `nget history show`: Show recent download history
+- `nget history search <term>`: Search downloads by URL or filename
+- `nget history stats`: Show download statistics
+- `nget history export`: Export history data
+- `nget history clear --confirm`: Clear all download history
 
 ## Resume Commands
 
