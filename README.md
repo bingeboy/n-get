@@ -23,6 +23,7 @@ A modern, intelligent download manager with agent support and tooling + comprehe
 - [AI Integration](#ai-integration)
 - [Command Line Options](#command-line-options)
 - [Resume Commands](#resume-commands)
+- [Environment Variables](#environment-variables)
 - [API](#api)
 
 ## Requirements
@@ -199,6 +200,8 @@ nget config validate
 nget config debug
 ```
 
+> **Environment Variables**: All configuration values can be set via `NGET_*` environment variables. See [Environment Variables](#environment-variables) section for details.
+
 ### Configuration Profiles
 
 N-Get includes several pre-configured profiles for different use cases:
@@ -238,6 +241,139 @@ nget history clear --confirm
 - `--status <status>`: Filter by status (success, failed, in_progress)
 - `--since <date>`: Show entries after specified date
 - `--until <date>`: Show entries before specified date
+
+## Logging and Output Formats
+
+N-Get provides structured logging with multiple output formats for different use cases. This is especially useful for AI agents, monitoring systems, and data analysis.
+
+### Logging Format Commands
+
+```bash
+# Show current logging format
+nget logs format
+
+# Set JSON structured logging (ideal for AI agents and log analysis)
+nget logs format --json
+
+# Set CSV format for spreadsheet analysis
+nget logs format --csv
+
+# Set human-readable text format (default)
+nget logs format --text
+```
+
+> **Environment Variables**: Logging format can be controlled via `NGET_LOG_FORMAT` and `NGET_LOG_LEVEL` environment variables.
+
+### Output Format Examples
+
+**Text Format (Default):**
+```
+[2024-01-15T10:30:25.123Z] INFO: Download started {"url":"https://example.com/file.zip","size":1048576}
+[2024-01-15T10:30:26.456Z] INFO: Download completed {"duration":1333,"speed":"786KB/s","status":"success"}
+[2024-01-15T10:30:26.457Z] WARN: File already exists, renamed to file_1.zip {"originalName":"file.zip"}
+```
+
+**JSON Format (Machine-Readable):**
+```json
+{"timestamp":"2024-01-15T10:30:25.123Z","level":"INFO","message":"Download started","meta":{"url":"https://example.com/file.zip","size":1048576},"process":{"pid":12345,"uptime":45.2}}
+{"timestamp":"2024-01-15T10:30:26.456Z","level":"INFO","message":"Download completed","meta":{"duration":1333,"speed":"786KB/s","status":"success"},"correlationId":"req_123"}
+{"timestamp":"2024-01-15T10:30:26.457Z","level":"WARN","message":"File already exists, renamed to file_1.zip","meta":{"originalName":"file.zip","newName":"file_1.zip"}}
+```
+
+**CSV Format (Spreadsheet-Ready):**
+```csv
+timestamp,level,message,url,size,duration,speed,status,error
+2024-01-15T10:30:25.123Z,INFO,Download started,https://example.com/file.zip,1048576,,,started,
+2024-01-15T10:30:26.456Z,INFO,Download completed,https://example.com/file.zip,1048576,1333,786KB/s,success,
+2024-01-15T10:30:26.457Z,WARN,File already exists renamed,https://example.com/file.zip,1048576,,,warning,duplicate_file
+```
+
+### Using Logging Formats with Downloads
+
+```bash
+# Download with JSON logging for AI processing
+nget logs format --json
+nget https://example.com/large-file.zip -d ./downloads
+
+# Download with CSV logging for analysis
+nget logs format --csv  
+nget https://site1.com/data.zip https://site2.com/backup.tar.gz
+
+# Batch downloads with structured logging
+nget logs format --json
+nget https://example.com/file1.zip https://example.com/file2.pdf --max-concurrent 5
+```
+
+### Programmatic Usage
+
+When embedding n-get as a module, you can configure logging programmatically:
+
+```javascript
+const Logger = require('n-get/lib/services/Logger');
+
+// Create logger with JSON format for AI processing
+const logger = new Logger({
+    format: 'json',
+    level: 'info',
+    outputs: ['console', 'file']
+});
+
+// Create logger with CSV format for data analysis
+const csvLogger = new Logger({
+    format: 'text', // Use text format but process as CSV
+    level: 'debug',
+    outputs: ['console', 'file'],
+    logDir: './analysis-logs'
+});
+
+// Use with download operations
+const download = require('n-get/lib/downloadPipeline');
+
+download(['https://example.com/file.zip'], './downloads', {
+    logger: logger,
+    onProgress: (progress) => {
+        logger.info('Download progress', {
+            percentage: progress.percentage,
+            speed: progress.speed,
+            eta: progress.eta
+        });
+    }
+})
+.then(results => {
+    logger.info('Batch download completed', {
+        totalFiles: results.length,
+        successful: results.filter(r => r.success).length,
+        failed: results.filter(r => !r.success).length
+    });
+})
+.catch(error => {
+    logger.error('Download failed', { 
+        error: error.message,
+        code: error.code 
+    }, error);
+});
+```
+
+### Environment Variable Configuration
+
+You can also control logging format via environment variables:
+
+```bash
+# Set format via environment variable
+export NGET_LOG_FORMAT=json
+nget https://example.com/file.zip
+
+# Set log level and format
+export NGET_LOG_LEVEL=debug
+export NGET_LOG_FORMAT=csv
+nget https://example.com/batch-files/*.zip
+```
+
+### Use Cases by Format
+
+- **Text Format**: Human-readable console output, debugging, development
+- **JSON Format**: AI agent processing, log aggregation systems, structured analysis
+- **CSV Format**: Spreadsheet import, data analysis, reporting dashboards
 
 ## AI Integration
 
@@ -292,6 +428,8 @@ N-Get includes four AI-optimized profiles:
 - `--ssh-passphrase <passphrase>`: Passphrase for encrypted SSH private keys
 - `-h, --help`: Show help information
 
+> **Environment Variables**: Many download settings can be controlled via environment variables like `NGET_DOWNLOADS_MAXCONCURRENT`, `NGET_DOWNLOADS_ENABLERESUME`. See [Environment Variables](#environment-variables).
+
 ### Configuration Commands
 - `nget config show [section]`: Show current configuration
 - `nget config set <key> <value>`: Set configuration value
@@ -313,6 +451,169 @@ N-Get includes four AI-optimized profiles:
 - `nget resume <number>`: Resume a specific numbered download from the list
 - `nget resume all`: Resume all downloads from the list
 - `nget --list-resume`: List all resumable downloads
+
+## Environment Variables
+
+N-Get supports extensive configuration through environment variables using the `NGET_*` prefix. Environment variables follow the pattern `NGET_SECTION_KEY=value` and override configuration file settings.
+
+### Core Configuration Variables
+
+#### HTTP/Network Settings
+- `NGET_HTTP_TIMEOUT=30000` - Request timeout in milliseconds
+- `NGET_HTTP_MAXRETRIES=3` - Maximum retry attempts
+- `NGET_HTTP_MAXCONNECTIONS=20` - Maximum concurrent connections
+- `NGET_HTTP_USERAGENT="N-Get-Enterprise/2.0"` - Custom user agent
+- `NGET_HTTP_KEEPALIVE_ENABLED=true` - Enable HTTP keep-alive
+- `NGET_HTTP_IPV6_ENABLED=true` - Enable IPv6 support
+- `NGET_HTTP_IPV6_PREFERIPV6=false` - Prefer IPv6 over IPv4
+
+#### Download Behavior
+- `NGET_DOWNLOADS_MAXCONCURRENT=3` - Maximum concurrent downloads
+- `NGET_DOWNLOADS_ENABLERESUME=true` - Enable download resumption
+- `NGET_DOWNLOADS_PROGRESSREPORTING=true` - Show progress bars
+- `NGET_DOWNLOADS_CHUNKUPDATEFREQUENCY=1000` - Progress update interval (ms)
+- `NGET_DOWNLOADS_CHUNKSIZE=50` - Chunk size for progress updates
+
+#### Security Settings
+- `NGET_SECURITY_MAXFILESIZE=10737418240` - Max file size in bytes (10GB)
+- `NGET_SECURITY_ALLOWEDPROTOCOLS="https,http,sftp"` - Allowed protocols (comma-separated)
+- `NGET_SECURITY_BLOCKPRIVATENETWORKS=false` - Block private network access
+- `NGET_SECURITY_BLOCKLOCALHOST=false` - Block localhost access
+- `NGET_SECURITY_CERTIFICATEVALIDATION=true` - Validate SSL certificates
+- `NGET_SECURITY_SANITIZEFILENAMES=true` - Sanitize downloaded filenames
+
+#### Logging Configuration
+- `NGET_LOGGING_LEVEL=info` - Log level (trace, debug, info, warn, error)
+- `NGET_LOGGING_FORMAT=json` - Output format (json, text)
+- `NGET_LOGGING_ENABLECOLORS=true` - Enable colored console output
+- `NGET_LOG_FORMAT=json` - Alternative format setting (same as above)
+- `NGET_LOG_LEVEL=info` - Alternative level setting (same as above)
+
+#### SSH/SFTP Settings  
+- `NGET_SSH_TIMEOUT=30000` - SSH connection timeout in milliseconds
+
+#### AI Integration
+- `NGET_AI_ENABLED=false` - Enable AI agent features
+- `NGET_AI_MCP_ENABLED=false` - Enable MCP server
+- `NGET_AI_MCP_PORT=8080` - MCP server port
+- `NGET_AI_PROFILES_ENABLED=true` - Enable configuration profiles
+
+#### Monitoring
+- `NGET_MONITORING_ENABLED=true` - Enable monitoring and metrics
+- `NGET_MONITORING_METRICSPORT=9090` - Port for metrics endpoint
+- `NGET_MONITORING_HEALTHCHECKPORT=8080` - Port for health checks
+
+### Usage Examples
+
+#### Basic Environment Setup
+```bash
+# Set basic download configuration
+export NGET_DOWNLOADS_MAXCONCURRENT=5
+export NGET_HTTP_TIMEOUT=45000
+export NGET_LOGGING_LEVEL=debug
+
+# Download with environment settings
+nget https://example.com/file.zip
+```
+
+#### High-Performance Configuration
+```bash
+# Optimize for speed
+export NGET_HTTP_MAXCONNECTIONS=50
+export NGET_DOWNLOADS_MAXCONCURRENT=10
+export NGET_HTTP_IPV6_PREFERIPV6=true
+export NGET_LOGGING_LEVEL=warn
+
+nget https://cdn.example.com/large-files/*.zip
+```
+
+#### Security-Focused Setup
+```bash
+# Maximum security settings
+export NGET_SECURITY_ALLOWEDPROTOCOLS="https,sftp"
+export NGET_SECURITY_BLOCKPRIVATENETWORKS=true
+export NGET_SECURITY_BLOCKLOCALHOST=true
+export NGET_SECURITY_CERTIFICATEVALIDATION=true
+export NGET_LOGGING_LEVEL=info
+
+nget https://secure.example.com/sensitive-data.zip
+```
+
+#### AI Agent Integration
+```bash
+# Enable AI features with structured logging
+export NGET_AI_ENABLED=true
+export NGET_AI_MCP_ENABLED=true
+export NGET_AI_MCP_PORT=8080
+export NGET_LOGGING_FORMAT=json
+export NGET_LOGGING_LEVEL=info
+
+nget https://example.com/dataset.zip
+```
+
+#### Development Configuration
+```bash
+# Full debugging and monitoring setup
+export NGET_LOGGING_LEVEL=trace
+export NGET_LOGGING_FORMAT=json
+export NGET_LOGGING_ENABLECOLORS=true
+export NGET_MONITORING_ENABLED=true
+export NGET_DOWNLOADS_PROGRESSREPORTING=true
+export NGET_HTTP_MAXRETRIES=5
+export NODE_ENV=development
+
+nget https://test.example.com/debug-files/*.zip --max-concurrent 2
+```
+
+### Complete Environment Setup Example
+
+```bash
+#!/bin/bash
+# N-Get Enterprise Configuration Script
+
+# Network & Performance
+export NGET_HTTP_TIMEOUT=60000
+export NGET_HTTP_MAXRETRIES=5
+export NGET_HTTP_MAXCONNECTIONS=30
+export NGET_HTTP_KEEPALIVE_ENABLED=true
+export NGET_HTTP_IPV6_ENABLED=true
+
+# Download Settings
+export NGET_DOWNLOADS_MAXCONCURRENT=7
+export NGET_DOWNLOADS_ENABLERESUME=true
+export NGET_DOWNLOADS_PROGRESSREPORTING=true
+
+# Security Configuration
+export NGET_SECURITY_ALLOWEDPROTOCOLS="https,sftp"
+export NGET_SECURITY_CERTIFICATEVALIDATION=true
+export NGET_SECURITY_SANITIZEFILENAMES=true
+
+# Logging Setup
+export NGET_LOGGING_LEVEL=info
+export NGET_LOGGING_FORMAT=json
+export NGET_LOGGING_ENABLECOLORS=true
+
+# AI Integration
+export NGET_AI_ENABLED=true
+export NGET_AI_PROFILES_ENABLED=true
+
+# Monitoring
+export NGET_MONITORING_ENABLED=true
+export NGET_MONITORING_METRICSPORT=9090
+
+echo "N-Get environment configured!"
+echo "Current settings:"
+env | grep NGET_ | sort
+```
+
+### Environment Variable Priority
+
+Configuration is loaded in the following order (later overrides earlier):
+1. **Default configuration** (config/default.yaml)
+2. **Environment-specific config** (config/development.yaml, config/production.yaml)
+3. **Local configuration** (config/local.yaml)
+4. **Environment variables** (NGET_*)
+5. **Command-line arguments**
 
 ## API
 
