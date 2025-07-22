@@ -122,10 +122,16 @@ describe('CSV Logging Format Environment Variable', () => {
                 type: 'application/zip'
             });
             
-            expect(consoleOutput).to.have.length(1);
-            const logOutput = consoleOutput[0];
+            // Should have header + 1 data row
+            expect(consoleOutput).to.have.length(2);
             
-            // Should contain structured data that could be parsed as CSV fields
+            // Check CSV header
+            const headerOutput = consoleOutput[0];
+            expect(headerOutput).to.equal('timestamp,level,message,correlationId,pid,metadata,errorMessage,errorStack');
+            
+            // Check CSV data row
+            const logOutput = consoleOutput[1];
+            expect(logOutput).to.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z,INFO,Download started,/); // CSV format check
             expect(logOutput).to.include('Download started');
             expect(logOutput).to.include('https://example.com/file.zip');
             expect(logOutput).to.include('1048576');
@@ -151,13 +157,18 @@ describe('CSV Logging Format Environment Variable', () => {
                 logger.info(log.message, log.meta);
             });
             
-            expect(consoleOutput).to.have.length(3);
+            // Should have header + 3 data rows
+            expect(consoleOutput).to.have.length(4);
             
-            // Each log entry should contain timestamp, level, message, and metadata
-            consoleOutput.forEach((output, index) => {
-                expect(output).to.include('INFO');
-                expect(output).to.include(testLogs[index].message);
-                expect(output).to.include('file1.zip');
+            // First line should be header
+            expect(consoleOutput[0]).to.equal('timestamp,level,message,correlationId,pid,metadata,errorMessage,errorStack');
+            
+            // Each subsequent log entry should be proper CSV
+            testLogs.forEach((testLog, index) => {
+                const csvLine = consoleOutput[index + 1]; // Skip header
+                expect(csvLine).to.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z,INFO,/); // CSV format
+                expect(csvLine).to.include(testLog.message);
+                expect(csvLine).to.include('file1.zip');
             });
         });
 
@@ -175,16 +186,16 @@ describe('CSV Logging Format Environment Variable', () => {
             logger.warn('Retry attempt', { attempt: 2, maxRetries: 3, delay: 1000 });
             logger.error('Download failed', { error: 'ENOTFOUND', code: 404 });
             
-            expect(consoleOutput).to.have.length(3);
+            expect(consoleOutput).to.have.length(4); // Header + 3 data rows
             
-            // All outputs should have similar structure for CSV consistency
-            consoleOutput.forEach(output => {
-                // Should start with timestamp pattern
-                expect(output).to.match(/^\[.*\]/);
+            // All data outputs (skip header) should have similar structure for CSV consistency
+            consoleOutput.slice(1).forEach(output => { // Skip header
+                // Should start with timestamp pattern (CSV format)
+                expect(output).to.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z,/);
                 // Should have log level
                 expect(output).to.match(/(INFO|WARN|ERROR)/);
-                // Should be structured consistently
-                const parts = output.split(':');
+                // Should be structured consistently as CSV
+                const parts = output.split(',');
                 expect(parts.length).to.be.greaterThan(1);
             });
         });
@@ -237,10 +248,10 @@ describe('CSV Logging Format Environment Variable', () => {
             logger.info('Download queued', { url: 'file1.zip', position: 1 });
             logger.info('Download completed', { url: 'file1.zip', size: 1024000, duration: 2.5 });
             
-            expect(consoleOutput).to.have.length(3);
+            expect(consoleOutput).to.have.length(4); // Header + 3 data rows
             
             // Verify structured output suitable for CSV processing
-            const pipelineLog = consoleOutput[0];
+            const pipelineLog = consoleOutput[1]; // Skip header row
             expect(pipelineLog).to.include('Pipeline started');
             expect(pipelineLog).to.include('file1.zip');
             expect(pipelineLog).to.include('file2.zip');
@@ -266,9 +277,9 @@ describe('CSV Logging Format Environment Variable', () => {
                 maxRetries: 5
             }, testError);
             
-            expect(consoleOutput).to.have.length(1);
+            expect(consoleOutput).to.have.length(2); // Header + 1 data row
             
-            const errorLog = consoleOutput[0];
+            const errorLog = consoleOutput[1]; // Skip header
             expect(errorLog).to.include('Download error');
             expect(errorLog).to.include('Connection timeout');
             expect(errorLog).to.include('slow.example.com');
@@ -294,8 +305,8 @@ describe('CSV Logging Format Environment Variable', () => {
                 field4: true
             });
             
-            expect(consoleOutput).to.have.length(1);
-            const output = consoleOutput[0];
+            expect(consoleOutput).to.have.length(2); // Header + 1 data row
+            const output = consoleOutput[1]; // Skip header
             
             // Should not contain problematic CSV characters without proper escaping
             // Should be parseable by standard CSV processing tools
@@ -315,12 +326,22 @@ describe('CSV Logging Format Environment Variable', () => {
                 newlineField: 'value\nwith\nnewlines'
             });
             
-            expect(consoleOutput).to.have.length(1);
-            const output = consoleOutput[0];
+            // Should have header + 1 data row
+            expect(consoleOutput).to.have.length(2);
+            const output = consoleOutput[1]; // Skip header
             
-            // Should handle special CSV characters
+            // Should handle special CSV characters properly
             expect(output).to.include('Special character test');
-            expect(output).to.be.a('string');
+            expect(output).to.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z,INFO,Special character test,/);
+            
+            // Check that special characters in metadata are properly handled
+            // Metadata is JSON stringified, so it should contain the JSON-escaped values
+            expect(output).to.include('value,with,commas'); // Commas in JSON string
+            expect(output).to.include('value\\""with\\""quotes'); // JSON-escaped quotes
+            expect(output).to.include('value\\nwith\\nnewlines'); // JSON-escaped newlines
+            
+            // The entire metadata field should be CSV-escaped since it contains commas and quotes
+            expect(output).to.include('"{""commaField"":""value,with,commas""'); // CSV-escaped JSON
         });
     });
 });
