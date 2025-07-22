@@ -17,9 +17,12 @@
   },
   "scripts": {
     "start": "node index.js",
-    "test": "NODE_ENV=test mocha test/*.js --timeout 30000",
-    "test:watch": "NODE_ENV=test mocha test/*.js --watch --timeout 30000",
-    "test:coverage": "NODE_ENV=test nyc mocha test/*.js --timeout 30000",
+    "test": "mocha test/configCommandsSpec.js test/configManagerSpec.js test/chdirSpec.js test/getDestinationSpec.js test/historyCommandsSpec.js test/historyManagerSpec.js test/ipv6UtilsSpec.js test/uriManagerIPv6Spec.js test/uriMangerSpec.js test/logging/json-format/jsonLoggingSpec.js test/logging/csv-format/csvLoggingSpec.js test/logging/text-format/textLoggingSpec.js --timeout 10000",
+    "test:unit": "mocha test/configCommandsSpec.js test/configManagerSpec.js test/chdirSpec.js test/getDestinationSpec.js test/historyCommandsSpec.js test/historyManagerSpec.js test/ipv6UtilsSpec.js test/uriManagerIPv6Spec.js test/uriMangerSpec.js test/logging/json-format/jsonLoggingSpec.js test/logging/csv-format/csvLoggingSpec.js test/logging/text-format/textLoggingSpec.js --timeout 10000",
+    "test:integration": "npx cross-env NODE_ENV=test mocha test/downloadSpec.js test/indexSpec.js test/pipeSpec.js test/recursivePipeSpec.js --timeout 60000",
+    "test:all": "npx cross-env NODE_ENV=test mocha test/*.js --timeout 60000",
+    "test:watch": "mocha test/configCommandsSpec.js test/configManagerSpec.js test/chdirSpec.js test/getDestinationSpec.js test/historyCommandsSpec.js test/historyManagerSpec.js test/ipv6UtilsSpec.js test/uriManagerIPv6Spec.js test/uriMangerSpec.js test/logging/json-format/jsonLoggingSpec.js test/logging/csv-format/csvLoggingSpec.js test/logging/text-format/textLoggingSpec.js --watch --timeout 10000",
+    "test:coverage": "npx cross-env NODE_ENV=test nyc mocha test/*.js --timeout 60000",
     "lint": "eslint . && echo '✓ No linting errors found!'",
     "lint:verbose": "eslint . --debug 2>&1 | grep -E 'files found|Processing' && eslint . && echo '✓ No linting errors found!'",
     "lint:fix": "eslint . --fix",
@@ -44,6 +47,7 @@
   },
   "devDependencies": {
     "chai": "^4.3.10",
+    "cross-env": "^7.0.3",
     "eslint": "^9.31.0",
     "mocha": "^10.2.0",
     "nyc": "^15.1.0"
