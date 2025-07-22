@@ -2,6 +2,8 @@ lib-cov
 lcov.info
 .claude/*
 temp/*
+temp_history/*
+temp_history_cli/*
 :4
 CLAUDE.md
 .nget/*
