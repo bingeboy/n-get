@@ -7,7 +7,9 @@
  * @author bingeboy
  */
 
-const fs = require('node:fs').promises;
+const fs = require('node:fs');
+const fsPromises = require('node:fs').promises;
+const path = require('node:path');
 const readline = require('node:readline');
 const minimist = require('minimist');
 const chdir = require('./lib/chdir');
@@ -188,7 +190,7 @@ async function readUrlsFromInput(inputFile) {
     } else {
         // Read from file
         try {
-            const content = await fs.readFile(inputFile, 'utf8');
+            const content = await fsPromises.readFile(inputFile, 'utf8');
             const lines = content.split('\n');
             for (const line of lines) {
                 const trimmedLine = line.trim();
@@ -246,7 +248,22 @@ async function main() {
             const outputToStdout = argv['output-file'] === '-';
             const shouldSuppressLogs = argv.quiet || outputToStdout;
             
+            // Determine config directory - prefer package directory, fallback to current directory
+            let configDir;
+            const packageConfigDir = path.join(__dirname, 'config');
+            const currentConfigDir = path.join(process.cwd(), 'config');
+            
+            // Check if package config directory exists (for npm link/global installs)
+            try {
+                fs.accessSync(packageConfigDir);
+                configDir = packageConfigDir;
+            } catch {
+                // Fallback to current directory (for development/tests)
+                configDir = currentConfigDir;
+            }
+
             const configOptions = {
+                configDir: configDir,
                 environment: argv['config-environment'] || process.env.NODE_ENV || 'development',
                 enableHotReload: process.env.NODE_ENV === 'development' && process.env.NODE_ENV !== 'test',
                 logger: shouldSuppressLogs ? { 
@@ -305,7 +322,7 @@ async function main() {
 
             if (quietMode) {
                 try {
-                    const resolvedPath = await fs.realpath(destination);
+                    const resolvedPath = await fsPromises.realpath(destination);
                     destination = chdir(resolvedPath, true);
                 } catch {
                     process.exit(1);
@@ -315,7 +332,7 @@ async function main() {
                 spinner.spinner.start();
 
                 try {
-                    const resolvedPath = await fs.realpath(destination);
+                    const resolvedPath = await fsPromises.realpath(destination);
                     destination = chdir(resolvedPath, false);
                     spinner.spinner.succeed(`${ui.emojis.folder} Destination set: ${destination}`);
                 } catch {
