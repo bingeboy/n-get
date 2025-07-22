@@ -1,0 +1,58 @@
+# N-Get Test Configuration
+# Overrides for test environment
+
+# Logging optimized for testing - minimal output
+logging:
+  level: "warn"
+  format: "text"
+  enableColors: false
+  outputs:
+    - console
+
+# Security relaxed for testing
+security:
+  blockPrivateNetworks: false
+  blockLocalhost: false
+  rateLimiting:
+    enabled: false
+  ipv6:
+    blockPrivateRanges: false
+    blockDocumentation: false
+    blockMulticast: false
+    strictValidation: false
+    
+# Development features for testing
+development:
+  hotReload: false
+  validateOnChange: false
+  debugMode: false
+  mockExternalServices: true
+
+# AI features disabled for testing
+ai:
+  enabled: false
+  profiles:
+    enabled: true
+    learningEnabled: false
+
+# Monitoring disabled in testing
+monitoring:
+  enabled: false
+  tracingEnabled: false
+  performanceTracking: false
+
+# Conservative limits for testing
+downloads:
+  maxConcurrent: 1
+  chunkUpdateFrequency: 1000
+
+# Fast timeouts for testing
+http:
+  timeout: 10000
+  maxRetries: 1
+  ipv6:
+    enabled: true
+    dualStack: true
+    dnsResolution:
+      timeout: 2000
+      retries: 1
