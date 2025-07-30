@@ -270,8 +270,8 @@ async function main() {
                     info: () => {}, 
                     debug: () => {}, 
                     warn: () => {}, 
-                    error: (...args) => console.error(...args) 
-                } : console
+                    error: (...args) => console.error(...args), 
+                } : console,
             };
             configManager = new ConfigManager(configOptions);
             
@@ -514,6 +514,14 @@ async function main() {
 
         // Check for stdout output mode
         const outputToStdout = argv['output-file'] === '-';
+        
+        // Validate output filename usage
+        if (argv['output-file'] && argv['output-file'] !== '-' && processedUrls.length > 1) {
+            if (!quietMode) {
+                ui.displayError('Cannot use -o with multiple URLs. The -o option is for single file downloads only.');
+            }
+            process.exit(1);
+        }
 
         // Parse concurrency limit - use config value as default
         const configMaxConcurrent = configManager.get('downloads.maxConcurrent', 3);
@@ -527,6 +535,7 @@ async function main() {
             enableResume,
             sshOptions,
             outputToStdout,
+            outputFilename: argv['output-file'] && argv['output-file'] !== '-' ? argv['output-file'] : null,
             quietMode: quietMode || outputToStdout, // Auto-enable quiet mode for stdout
             maxConcurrent,
             configManager, // Pass config manager to download functions

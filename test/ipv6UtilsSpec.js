@@ -196,7 +196,7 @@ describe('IPv6Utils', function() {
             });
 
             it('should merge additional options', function() {
-                const options = IPv6Utils.getIPv6AgentOptions({ keepAlive: true });
+                const options = IPv6Utils.getIPv6AgentOptions({keepAlive: true});
                 expect(options.family).to.equal(6);
                 expect(options.keepAlive).to.equal(true);
             });
@@ -209,7 +209,7 @@ describe('IPv6Utils', function() {
             });
 
             it('should merge additional options', function() {
-                const options = IPv6Utils.getDualStackAgentOptions({ timeout: 5000 });
+                const options = IPv6Utils.getDualStackAgentOptions({timeout: 5000});
                 expect(options.family).to.equal(0);
                 expect(options.timeout).to.equal(5000);
             });
