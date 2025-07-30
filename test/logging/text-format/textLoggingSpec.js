@@ -3,7 +3,7 @@
  * Verifies that setting NGET_LOGGING_FORMAT=text produces human-readable text logs (default format)
  */
 
-const { expect } = require('chai');
+const {expect} = require('chai');
 const Logger = require('../../../lib/services/Logger');
 const LogsCommands = require('../../../lib/cli/logsCommands');
 const path = require('node:path');
@@ -20,7 +20,7 @@ describe('Text Logging Format Environment Variable', () => {
 
     beforeEach(() => {
         // Save original environment
-        originalEnv = { ...process.env };
+        originalEnv = {...process.env};
         
         // Set text format via environment variable (default)
         process.env.NGET_LOGGING_FORMAT = 'text';
@@ -42,7 +42,7 @@ describe('Text Logging Format Environment Variable', () => {
 
     afterEach(() => {
         // Restore environment
-        process.env = { ...originalEnv };
+        process.env = {...originalEnv};
         
         // Restore console.log
         console.log = originalConsoleLog;
@@ -50,7 +50,7 @@ describe('Text Logging Format Environment Variable', () => {
         // Cleanup temporary directory
         if (tempLogDir && fs.existsSync(tempLogDir)) {
             try {
-                fs.rmSync(tempLogDir, { recursive: true, force: true });
+                fs.rmSync(tempLogDir, {recursive: true, force: true});
             } catch (error) {
                 // Ignore cleanup errors
             }
@@ -72,13 +72,13 @@ describe('Text Logging Format Environment Variable', () => {
                 level: 'info',
                 outputs: ['console'],
                 logDir: tempLogDir,
-                enableColors: false // Disable colors for consistent testing
+                enableColors: false, // Disable colors for consistent testing
             });
             
             logger.info('Test text message', { 
                 testData: 'sample data',
                 number: 42,
-                boolean: true
+                boolean: true,
             });
             
             expect(consoleOutput).to.have.length(1);
@@ -96,8 +96,8 @@ describe('Text Logging Format Environment Variable', () => {
             expect(logOutput).to.include('"boolean":true');
         });
 
-        it('should set text format via logs command', async () => {
-            await logsCommands.execute(['format'], { text: true });
+        it('should set text format via logs command', async() => {
+            await logsCommands.execute(['format'], {text: true});
             
             expect(process.env.NGET_LOG_FORMAT).to.equal('text');
             expect(consoleOutput).to.include('Logging format set to: text');
@@ -112,7 +112,7 @@ describe('Text Logging Format Environment Variable', () => {
                 level: 'info',
                 outputs: ['console'],
                 logDir: tempLogDir,
-                enableColors: false
+                enableColors: false,
             });
             
             // Default should be text format
@@ -135,17 +135,17 @@ describe('Text Logging Format Environment Variable', () => {
                 level: 'trace',
                 outputs: ['console'],
                 logDir: tempLogDir,
-                enableColors: false
+                enableColors: false,
             });
         });
 
         it('should produce human-readable text for different log levels', () => {
             // Test different log levels
-            logger.error('Error message', { errorCode: 500 });
-            logger.warn('Warning message', { warningType: 'deprecation' });
-            logger.info('Info message', { operation: 'download' });
-            logger.debug('Debug message', { debugInfo: 'detailed' });
-            logger.trace('Trace message', { traceId: 'trace123' });
+            logger.error('Error message', {errorCode: 500});
+            logger.warn('Warning message', {warningType: 'deprecation'});
+            logger.info('Info message', {operation: 'download'});
+            logger.debug('Debug message', {debugInfo: 'detailed'});
+            logger.trace('Trace message', {traceId: 'trace123'});
             
             expect(consoleOutput).to.have.length(5);
             
@@ -185,9 +185,9 @@ describe('Text Logging Format Environment Variable', () => {
                 progress: {
                     percentage: 75.5,
                     speed: '2.5 MB/s',
-                    eta: '30s'
+                    eta: '30s',
                 },
-                array: ['item1', 'item2', 'item3']
+                array: ['item1', 'item2', 'item3'],
             };
             
             logger.info('Complex metadata test', complexMeta);
@@ -211,7 +211,7 @@ describe('Text Logging Format Environment Variable', () => {
             
             logger.error('Download failed', { 
                 url: 'https://example.com/missing.zip',
-                attempt: 3 
+                attempt: 3, 
             }, testError);
             
             expect(consoleOutput).to.have.length(1);
@@ -242,7 +242,7 @@ describe('Text Logging Format Environment Variable', () => {
                 level: 'trace',
                 outputs: ['console'],
                 logDir: tempLogDir,
-                enableColors: true
+                enableColors: true,
             });
         });
 
@@ -273,7 +273,7 @@ describe('Text Logging Format Environment Variable', () => {
                 level: 'info',
                 outputs: ['console'],
                 logDir: tempLogDir,
-                enableColors: false
+                enableColors: false,
             });
             
             logger.error('Error without color');
@@ -294,12 +294,12 @@ describe('Text Logging Format Environment Variable', () => {
                 level: 'info',
                 outputs: ['console', 'file'],
                 logDir: tempLogDir,
-                enableColors: false
+                enableColors: false,
             });
             
             logger.info('File logging test', { 
                 testType: 'file-output',
-                format: 'text'
+                format: 'text',
             });
             
             // Check console output
@@ -323,13 +323,13 @@ describe('Text Logging Format Environment Variable', () => {
             logger = new Logger({
                 level: 'info',
                 outputs: ['file'],
-                logDir: tempLogDir
+                logDir: tempLogDir,
             });
             
             // Simulate download progress logging
-            logger.info('Download started', { url: 'file1.zip', size: 1024 });
-            logger.info('Download progress', { url: 'file1.zip', percentage: 50 });
-            logger.info('Download completed', { url: 'file1.zip', duration: 2.5 });
+            logger.info('Download started', {url: 'file1.zip', size: 1024});
+            logger.info('Download progress', {url: 'file1.zip', percentage: 50});
+            logger.info('Download completed', {url: 'file1.zip', duration: 2.5});
             
             const logFilePath = path.join(tempLogDir, 'application.log');
             const fileContent = fs.readFileSync(logFilePath, 'utf8');
@@ -357,26 +357,26 @@ describe('Text Logging Format Environment Variable', () => {
                 level: 'info',
                 outputs: ['console'],
                 logDir: tempLogDir,
-                enableColors: false
+                enableColors: false,
             });
             
             // Simulate download pipeline operations
             logger.info('Pipeline initialization', { 
                 urls: ['file1.zip', 'file2.zip'],
                 maxConcurrent: 3,
-                destination: './downloads'
+                destination: './downloads',
             });
             
             logger.info('Download queued', { 
                 url: 'file1.zip',
-                queuePosition: 1
+                queuePosition: 1,
             });
             
             logger.info('Download completed', { 
                 url: 'file1.zip',
                 size: 2048000,
                 duration: 3.2,
-                speed: '640 KB/s'
+                speed: '640 KB/s',
             });
             
             expect(consoleOutput).to.have.length(3);
@@ -399,15 +399,15 @@ describe('Text Logging Format Environment Variable', () => {
                 level: 'debug',
                 outputs: ['console'],
                 logDir: tempLogDir,
-                enableColors: false
+                enableColors: false,
             });
             
             // Simulate various n-get operations
-            logger.info('Configuration loaded', { profile: 'fast', concurrent: 10 });
-            logger.debug('Security validation', { url: 'https://example.com', protocol: 'https' });
-            logger.info('Resume check', { file: 'partial.zip', resumable: true });
-            logger.warn('Retry attempt', { url: 'slow.example.com', attempt: 2 });
-            logger.error('Download failed', { error: 'Network timeout' });
+            logger.info('Configuration loaded', {profile: 'fast', concurrent: 10});
+            logger.debug('Security validation', {url: 'https://example.com', protocol: 'https'});
+            logger.info('Resume check', {file: 'partial.zip', resumable: true});
+            logger.warn('Retry attempt', {url: 'slow.example.com', attempt: 2});
+            logger.error('Download failed', {error: 'Network timeout'});
             
             expect(consoleOutput).to.have.length(5);
             
@@ -417,7 +417,7 @@ describe('Text Logging Format Environment Variable', () => {
                 /DEBUG: Security validation/,
                 /INFO: Resume check/,
                 /WARN: Retry attempt/,
-                /ERROR: Download failed/
+                /ERROR: Download failed/,
             ];
             
             consoleOutput.forEach((output, index) => {
