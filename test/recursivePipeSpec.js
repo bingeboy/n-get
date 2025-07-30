@@ -7,7 +7,7 @@ const download = require('../lib/downloadPipeline');
 describe('Download Pipeline Module', () => {
     const testDir = path.join(__dirname, 'temp');
 
-    before(async () => {
+    before(async() => {
         // Create temp directory for tests
         try {
             await fs.mkdir(testDir, {recursive: true});
@@ -16,7 +16,7 @@ describe('Download Pipeline Module', () => {
         }
     });
 
-    after(async () => {
+    after(async() => {
         // Clean up test files
         try {
             const files = await fs.readdir(testDir);
@@ -31,7 +31,7 @@ describe('Download Pipeline Module', () => {
     });
 
     describe('#download()', () => {
-        it('should download a single file successfully', async function () {
+        it('should download a single file successfully', async function() {
             this.timeout(10000); // Increase timeout for network requests
 
             const urls = ['https://httpbin.org/json'];
@@ -48,7 +48,7 @@ describe('Download Pipeline Module', () => {
             expect(stats.size).to.be.greaterThan(0);
         });
 
-        it('should download multiple files successfully', async function () {
+        it('should download multiple files successfully', async function() {
             this.timeout(15000);
 
             const urls = [
@@ -71,7 +71,7 @@ describe('Download Pipeline Module', () => {
             expect(jsonStats.isFile()).to.be.true;
         });
 
-        it('should handle invalid URLs gracefully', async function () {
+        it('should handle invalid URLs gracefully', async function() {
             this.timeout(10000);
 
             const urls = ['https://invalid-domain-that-should-not-exist.com/file.txt'];
@@ -82,7 +82,7 @@ describe('Download Pipeline Module', () => {
             expect(results[0].error).to.exist;
         });
 
-        it('should handle empty URL array', async () => {
+        it('should handle empty URL array', async() => {
             try {
                 await download([], testDir);
                 expect.fail('Should have thrown an error');
@@ -91,7 +91,7 @@ describe('Download Pipeline Module', () => {
             }
         });
 
-        it('should handle mix of valid and invalid URLs', async function () {
+        it('should handle mix of valid and invalid URLs', async function() {
             this.timeout(15000);
 
             const urls = [
@@ -105,7 +105,7 @@ describe('Download Pipeline Module', () => {
             expect(results[1].success).to.be.false;
         });
 
-        it('should handle 404 errors', async function () {
+        it('should handle 404 errors', async function() {
             this.timeout(10000);
 
             const urls = ['https://httpbin.org/status/404'];
@@ -116,7 +116,7 @@ describe('Download Pipeline Module', () => {
             expect(results[0].error).to.include('404');
         });
 
-        it('should handle duplicate filenames with incremental postfix', async function () {
+        it('should handle duplicate filenames with incremental postfix', async function() {
             this.timeout(15000);
 
             // First, download a file normally
@@ -132,7 +132,7 @@ describe('Download Pipeline Module', () => {
             expect(originalStats.isFile()).to.be.true;
 
             // Download the same file again (should get renamed)
-            const secondResult = await download(urls, testDir, { enableResume: false }); // Disable resume to force duplication
+            const secondResult = await download(urls, testDir, {enableResume: false}); // Disable resume to force duplication
 
             expect(secondResult).to.have.length(1);
             expect(secondResult[0].success).to.be.true;
@@ -143,7 +143,7 @@ describe('Download Pipeline Module', () => {
             expect(duplicateStats.isFile()).to.be.true;
 
             // Download again (should get .2 postfix)
-            const thirdResult = await download(urls, testDir, { enableResume: false });
+            const thirdResult = await download(urls, testDir, {enableResume: false});
 
             expect(thirdResult).to.have.length(1);
             expect(thirdResult[0].success).to.be.true;

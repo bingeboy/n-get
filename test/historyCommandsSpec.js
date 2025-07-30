@@ -11,7 +11,7 @@ describe('HistoryCommands CLI', () => {
     let originalLog;
     let consoleOutput;
 
-    before(async () => {
+    before(async() => {
         // Create temp directory for tests
         try {
             await fs.mkdir(testDir, {recursive: true});
@@ -20,7 +20,7 @@ describe('HistoryCommands CLI', () => {
         }
     });
 
-    beforeEach(async () => {
+    beforeEach(async() => {
         historyCommands = new HistoryCommands();
         historyManager = new HistoryManager();
         
@@ -55,13 +55,13 @@ describe('HistoryCommands CLI', () => {
         }
     });
 
-    after(async () => {
+    after(async() => {
         // Clean up test files
         try {
             const files = await fs.readdir(testDir);
             for (const file of files) {
                 if (file.startsWith('.nget') || file.includes('history')) {
-                    await fs.rm(path.join(testDir, file), { recursive: true, force: true });
+                    await fs.rm(path.join(testDir, file), {recursive: true, force: true});
                 }
             }
             await fs.rmdir(testDir);
@@ -71,7 +71,7 @@ describe('HistoryCommands CLI', () => {
     });
 
     describe('Help Command', () => {
-        it('should show help when no arguments provided', async () => {
+        it('should show help when no arguments provided', async() => {
             await historyCommands.execute([], {});
             
             expect(consoleOutput.join('\n')).to.include('History Commands:');
@@ -84,7 +84,7 @@ describe('HistoryCommands CLI', () => {
     });
 
     describe('Show Command', () => {
-        beforeEach(async () => {
+        beforeEach(async() => {
             // Add test history entries
             const entries = [
                 {
@@ -92,14 +92,14 @@ describe('HistoryCommands CLI', () => {
                     filePath: path.join(testDir, 'file1.zip'),
                     status: 'success',
                     size: 1024,
-                    duration: 2000
+                    duration: 2000,
                 },
                 {
                     url: 'https://example.com/file2.pdf',
                     filePath: path.join(testDir, 'file2.pdf'),
                     status: 'failed',
-                    error: 'HTTP 404 Not Found'
-                }
+                    error: 'HTTP 404 Not Found',
+                },
             ];
 
             for (const entry of entries) {
@@ -108,8 +108,8 @@ describe('HistoryCommands CLI', () => {
             }
         });
 
-        it('should show history entries', async () => {
-            const argv = { destination: testDir };
+        it('should show history entries', async() => {
+            const argv = {destination: testDir};
             await historyCommands.execute(['show'], argv);
 
             const output = consoleOutput.join('\n');
@@ -120,27 +120,27 @@ describe('HistoryCommands CLI', () => {
             expect(output).to.include('HTTP 404 Not Found');
         });
 
-        it('should handle empty history', async () => {
+        it('should handle empty history', async() => {
             const emptyDir = path.join(testDir, 'empty');
-            await fs.mkdir(emptyDir, { recursive: true });
+            await fs.mkdir(emptyDir, {recursive: true});
             
-            const argv = { destination: emptyDir };
+            const argv = {destination: emptyDir};
             await historyCommands.execute(['show'], argv);
 
             const output = consoleOutput.join('\n');
             expect(output).to.include('No download history found');
         });
 
-        it('should respect limit option', async () => {
-            const argv = { destination: testDir, limit: '1' };
+        it('should respect limit option', async() => {
+            const argv = {destination: testDir, limit: '1'};
             await historyCommands.execute(['show'], argv);
 
             const output = consoleOutput.join('\n');
             expect(output).to.include('Download History (1 entries)');
         });
 
-        it('should filter by status', async () => {
-            const argv = { destination: testDir, status: 'success' };
+        it('should filter by status', async() => {
+            const argv = {destination: testDir, status: 'success'};
             await historyCommands.execute(['show'], argv);
 
             const output = consoleOutput.join('\n');
@@ -150,21 +150,21 @@ describe('HistoryCommands CLI', () => {
     });
 
     describe('Search Command', () => {
-        beforeEach(async () => {
+        beforeEach(async() => {
             // Add test history entries
             const entries = [
                 {
                     url: 'https://example.com/document.pdf',
                     filePath: path.join(testDir, 'document.pdf'),
                     status: 'success',
-                    size: 2048
+                    size: 2048,
                 },
                 {
                     url: 'https://test.com/archive.zip',
                     filePath: path.join(testDir, 'archive.zip'),
                     status: 'success',
-                    size: 4096
-                }
+                    size: 4096,
+                },
             ];
 
             for (const entry of entries) {
@@ -172,8 +172,8 @@ describe('HistoryCommands CLI', () => {
             }
         });
 
-        it('should search by URL', async () => {
-            const argv = { destination: testDir };
+        it('should search by URL', async() => {
+            const argv = {destination: testDir};
             await historyCommands.execute(['search', 'example.com'], argv);
 
             const output = consoleOutput.join('\n');
@@ -182,8 +182,8 @@ describe('HistoryCommands CLI', () => {
             expect(output).to.not.include('archive.zip');
         });
 
-        it('should search by filename', async () => {
-            const argv = { destination: testDir };
+        it('should search by filename', async() => {
+            const argv = {destination: testDir};
             await historyCommands.execute(['search', 'archive'], argv);
 
             const output = consoleOutput.join('\n');
@@ -192,16 +192,16 @@ describe('HistoryCommands CLI', () => {
             expect(output).to.not.include('document.pdf');
         });
 
-        it('should handle no search results', async () => {
-            const argv = { destination: testDir };
+        it('should handle no search results', async() => {
+            const argv = {destination: testDir};
             await historyCommands.execute(['search', 'nonexistent'], argv);
 
             const output = consoleOutput.join('\n');
             expect(output).to.include('No downloads found matching: "nonexistent"');
         });
 
-        it('should require search term', async () => {
-            const argv = { destination: testDir };
+        it('should require search term', async() => {
+            const argv = {destination: testDir};
             await historyCommands.execute(['search'], argv);
 
             const output = consoleOutput.join('\n');
@@ -210,13 +210,13 @@ describe('HistoryCommands CLI', () => {
     });
 
     describe('Stats Command', () => {
-        beforeEach(async () => {
+        beforeEach(async() => {
             // Add test history entries with different statuses
             const entries = [
-                { url: 'https://example.com/file1.zip', filePath: path.join(testDir, 'file1.zip'), status: 'success', size: 1024, duration: 2000 },
-                { url: 'https://example.com/file2.zip', filePath: path.join(testDir, 'file2.zip'), status: 'success', size: 2048, duration: 1500 },
-                { url: 'https://example.com/file3.zip', filePath: path.join(testDir, 'file3.zip'), status: 'failed', error: 'HTTP 404' },
-                { url: 'https://example.com/file4.zip', filePath: path.join(testDir, 'file4.zip'), status: 'failed', error: 'Connection timeout' }
+                {url: 'https://example.com/file1.zip', filePath: path.join(testDir, 'file1.zip'), status: 'success', size: 1024, duration: 2000},
+                {url: 'https://example.com/file2.zip', filePath: path.join(testDir, 'file2.zip'), status: 'success', size: 2048, duration: 1500},
+                {url: 'https://example.com/file3.zip', filePath: path.join(testDir, 'file3.zip'), status: 'failed', error: 'HTTP 404'},
+                {url: 'https://example.com/file4.zip', filePath: path.join(testDir, 'file4.zip'), status: 'failed', error: 'Connection timeout'},
             ];
 
             for (const entry of entries) {
@@ -224,8 +224,8 @@ describe('HistoryCommands CLI', () => {
             }
         });
 
-        it('should show download statistics', async () => {
-            const argv = { destination: testDir };
+        it('should show download statistics', async() => {
+            const argv = {destination: testDir};
             await historyCommands.execute(['stats'], argv);
 
             const output = consoleOutput.join('\n');
@@ -239,8 +239,8 @@ describe('HistoryCommands CLI', () => {
             expect(output).to.include('Connection timeout');
         });
 
-        it('should respect days option', async () => {
-            const argv = { destination: testDir, days: '7' };
+        it('should respect days option', async() => {
+            const argv = {destination: testDir, days: '7'};
             await historyCommands.execute(['stats'], argv);
 
             const output = consoleOutput.join('\n');
@@ -249,19 +249,19 @@ describe('HistoryCommands CLI', () => {
     });
 
     describe('Export Command', () => {
-        beforeEach(async () => {
+        beforeEach(async() => {
             // Add test history entry
             await historyManager.logDownload({
                 url: 'https://example.com/file.zip',
                 filePath: path.join(testDir, 'file.zip'),
                 status: 'success',
                 size: 1024,
-                duration: 2000
+                duration: 2000,
             });
         });
 
-        it('should export history as JSON to stdout', async () => {
-            const argv = { destination: testDir, json: true, output: '-' };
+        it('should export history as JSON to stdout', async() => {
+            const argv = {destination: testDir, json: true, output: '-'};
             await historyCommands.execute(['export'], argv);
 
             const output = consoleOutput.join('\n');
@@ -270,8 +270,8 @@ describe('HistoryCommands CLI', () => {
             expect(output).to.include('"size": 1024');
         });
 
-        it('should export history as CSV to stdout', async () => {
-            const argv = { destination: testDir, csv: true, output: '-' };
+        it('should export history as CSV to stdout', async() => {
+            const argv = {destination: testDir, csv: true, output: '-'};
             await historyCommands.execute(['export'], argv);
 
             const output = consoleOutput.join('\n');
@@ -281,9 +281,9 @@ describe('HistoryCommands CLI', () => {
             expect(output).to.include('1024');
         });
 
-        it('should export history to file', async () => {
+        it('should export history to file', async() => {
             const outputFile = path.join(testDir, 'export.json');
-            const argv = { destination: testDir, json: true, output: outputFile };
+            const argv = {destination: testDir, json: true, output: outputFile};
             
             await historyCommands.execute(['export'], argv);
 
@@ -301,8 +301,8 @@ describe('HistoryCommands CLI', () => {
             await fs.unlink(outputFile);
         });
 
-        it('should show export progress message', async () => {
-            const argv = { destination: testDir, json: true, output: '-' };
+        it('should show export progress message', async() => {
+            const argv = {destination: testDir, json: true, output: '-'};
             await historyCommands.execute(['export'], argv);
 
             const output = consoleOutput.join('\n');
@@ -311,18 +311,18 @@ describe('HistoryCommands CLI', () => {
     });
 
     describe('Clear Command', () => {
-        beforeEach(async () => {
+        beforeEach(async() => {
             // Add test history entry
             await historyManager.logDownload({
                 url: 'https://example.com/file.zip',
                 filePath: path.join(testDir, 'file.zip'),
                 status: 'success',
-                size: 1024
+                size: 1024,
             });
         });
 
-        it('should warn when no confirmation flag provided', async () => {
-            const argv = { destination: testDir };
+        it('should warn when no confirmation flag provided', async() => {
+            const argv = {destination: testDir};
             await historyCommands.execute(['clear'], argv);
 
             const output = consoleOutput.join('\n');
@@ -330,8 +330,8 @@ describe('HistoryCommands CLI', () => {
             expect(output).to.include('Use --confirm to proceed');
         });
 
-        it('should clear history with confirm flag', async () => {
-            const argv = { destination: testDir, confirm: true };
+        it('should clear history with confirm flag', async() => {
+            const argv = {destination: testDir, confirm: true};
             await historyCommands.execute(['clear'], argv);
 
             const output = consoleOutput.join('\n');
@@ -342,8 +342,8 @@ describe('HistoryCommands CLI', () => {
             expect(history).to.have.length(0);
         });
 
-        it('should clear history with force flag', async () => {
-            const argv = { destination: testDir, force: true };
+        it('should clear history with force flag', async() => {
+            const argv = {destination: testDir, force: true};
             await historyCommands.execute(['clear'], argv);
 
             const output = consoleOutput.join('\n');
@@ -352,13 +352,13 @@ describe('HistoryCommands CLI', () => {
     });
 
     describe('Error Handling', () => {
-        it('should handle unknown commands', async () => {
+        it('should handle unknown commands', async() => {
             let exitCode;
             const originalExit = process.exit;
             process.exit = (code) => { exitCode = code; };
 
             try {
-                await historyCommands.execute(['unknown'], { destination: testDir });
+                await historyCommands.execute(['unknown'], {destination: testDir});
                 expect(exitCode).to.equal(1);
                 
                 const output = consoleOutput.join('\n');

@@ -4,7 +4,7 @@
  * Note: CSV format may produce structured output that can be parsed as CSV-like data
  */
 
-const { expect } = require('chai');
+const {expect} = require('chai');
 const Logger = require('../../../lib/services/Logger');
 const LogsCommands = require('../../../lib/cli/logsCommands');
 const path = require('node:path');
@@ -21,7 +21,7 @@ describe('CSV Logging Format Environment Variable', () => {
 
     beforeEach(() => {
         // Save original environment
-        originalEnv = { ...process.env };
+        originalEnv = {...process.env};
         
         // Create temporary log directory
         tempLogDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nget-csv-log-test-'));
@@ -39,7 +39,7 @@ describe('CSV Logging Format Environment Variable', () => {
 
     afterEach(() => {
         // Restore environment
-        process.env = { ...originalEnv };
+        process.env = {...originalEnv};
         
         // Restore console.log
         console.log = originalConsoleLog;
@@ -47,7 +47,7 @@ describe('CSV Logging Format Environment Variable', () => {
         // Cleanup temporary directory
         if (tempLogDir && fs.existsSync(tempLogDir)) {
             try {
-                fs.rmSync(tempLogDir, { recursive: true, force: true });
+                fs.rmSync(tempLogDir, {recursive: true, force: true});
             } catch (error) {
                 // Ignore cleanup errors
             }
@@ -64,9 +64,9 @@ describe('CSV Logging Format Environment Variable', () => {
     });
 
     describe('CSV Environment Variable Setting', () => {
-        it('should set NGET_LOG_FORMAT=csv via logs command', async () => {
+        it('should set NGET_LOG_FORMAT=csv via logs command', async() => {
             // Simulate CSV format command
-            await logsCommands.execute(['format'], { csv: true });
+            await logsCommands.execute(['format'], {csv: true});
             
             expect(process.env.NGET_LOG_FORMAT).to.equal('csv');
             expect(consoleOutput).to.include('Logging format set to: csv');
@@ -92,7 +92,7 @@ describe('CSV Logging Format Environment Variable', () => {
                 format: process.env.NGET_LOGGING_FORMAT || 'text',
                 level: 'info',
                 outputs: ['console'],
-                logDir: tempLogDir
+                logDir: tempLogDir,
             });
             
             expect(logger.config.format).to.equal('csv');
@@ -112,14 +112,14 @@ describe('CSV Logging Format Environment Variable', () => {
                 level: 'info',
                 outputs: ['console'],
                 logDir: tempLogDir,
-                enableColors: false // Disable colors for CSV compatibility
+                enableColors: false, // Disable colors for CSV compatibility
             });
             
             // Log test data with structured metadata
             logger.info('Download started', {
                 url: 'https://example.com/file.zip',
                 size: 1048576,
-                type: 'application/zip'
+                type: 'application/zip',
             });
             
             // Should have header + 1 data row
@@ -143,14 +143,14 @@ describe('CSV Logging Format Environment Variable', () => {
                 level: 'info',
                 outputs: ['console'],
                 logDir: tempLogDir,
-                enableColors: false
+                enableColors: false,
             });
             
             // Simulate download progress logs
             const testLogs = [
-                { message: 'Download initiated', meta: { url: 'file1.zip', status: 'starting' } },
-                { message: 'Download progress', meta: { url: 'file1.zip', percentage: 50, speed: '2MB/s' } },
-                { message: 'Download completed', meta: { url: 'file1.zip', status: 'success', duration: 5.2 } }
+                {message: 'Download initiated', meta: {url: 'file1.zip', status: 'starting'}},
+                {message: 'Download progress', meta: {url: 'file1.zip', percentage: 50, speed: '2MB/s'}},
+                {message: 'Download completed', meta: {url: 'file1.zip', status: 'success', duration: 5.2}},
             ];
             
             testLogs.forEach(log => {
@@ -178,13 +178,13 @@ describe('CSV Logging Format Environment Variable', () => {
                 level: 'info',
                 outputs: ['console'],
                 logDir: tempLogDir,
-                enableColors: false
+                enableColors: false,
             });
             
             // Test different types of log data
-            logger.info('Network request', { method: 'GET', status: 200, duration: 120 });
-            logger.warn('Retry attempt', { attempt: 2, maxRetries: 3, delay: 1000 });
-            logger.error('Download failed', { error: 'ENOTFOUND', code: 404 });
+            logger.info('Network request', {method: 'GET', status: 200, duration: 120});
+            logger.warn('Retry attempt', {attempt: 2, maxRetries: 3, delay: 1000});
+            logger.error('Download failed', {error: 'ENOTFOUND', code: 404});
             
             expect(consoleOutput).to.have.length(4); // Header + 3 data rows
             
@@ -206,14 +206,14 @@ describe('CSV Logging Format Environment Variable', () => {
                 level: 'info',
                 outputs: ['file'],
                 logDir: tempLogDir,
-                enableColors: false
+                enableColors: false,
             });
             
             logger.info('File logging test', {
                 operation: 'download',
                 file: 'test.zip',
                 size: 2048,
-                status: 'completed'
+                status: 'completed',
             });
             
             const logFilePath = path.join(tempLogDir, 'application.log');
@@ -240,13 +240,13 @@ describe('CSV Logging Format Environment Variable', () => {
                 level: 'info',
                 outputs: ['console'],
                 logDir: tempLogDir,
-                enableColors: false
+                enableColors: false,
             });
             
             // Simulate download pipeline logging
-            logger.info('Pipeline started', { urls: ['file1.zip', 'file2.zip'], concurrent: 3 });
-            logger.info('Download queued', { url: 'file1.zip', position: 1 });
-            logger.info('Download completed', { url: 'file1.zip', size: 1024000, duration: 2.5 });
+            logger.info('Pipeline started', {urls: ['file1.zip', 'file2.zip'], concurrent: 3});
+            logger.info('Download queued', {url: 'file1.zip', position: 1});
+            logger.info('Download completed', {url: 'file1.zip', size: 1024000, duration: 2.5});
             
             expect(consoleOutput).to.have.length(4); // Header + 3 data rows
             
@@ -265,7 +265,7 @@ describe('CSV Logging Format Environment Variable', () => {
                 level: 'error',
                 outputs: ['console'],
                 logDir: tempLogDir,
-                enableColors: false
+                enableColors: false,
             });
             
             const testError = new Error('Connection timeout');
@@ -274,7 +274,7 @@ describe('CSV Logging Format Environment Variable', () => {
             logger.error('Download error', {
                 url: 'https://slow.example.com/file.zip',
                 attempt: 3,
-                maxRetries: 5
+                maxRetries: 5,
             }, testError);
             
             expect(consoleOutput).to.have.length(2); // Header + 1 data row
@@ -293,7 +293,7 @@ describe('CSV Logging Format Environment Variable', () => {
                 level: 'info',
                 outputs: ['console'],
                 logDir: tempLogDir,
-                enableColors: false
+                enableColors: false,
             });
         });
 
@@ -302,7 +302,7 @@ describe('CSV Logging Format Environment Variable', () => {
                 field1: 'value1',
                 field2: 'value2',
                 field3: 123,
-                field4: true
+                field4: true,
             });
             
             expect(consoleOutput).to.have.length(2); // Header + 1 data row
@@ -323,7 +323,7 @@ describe('CSV Logging Format Environment Variable', () => {
             logger.info('Special character test', {
                 commaField: 'value,with,commas',
                 quoteField: 'value"with"quotes',
-                newlineField: 'value\nwith\nnewlines'
+                newlineField: 'value\nwith\nnewlines',
             });
             
             // Should have header + 1 data row

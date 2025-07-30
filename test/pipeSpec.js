@@ -8,7 +8,7 @@ describe('Pipe Functionality', () => {
     const testDir = path.join(__dirname, 'temp');
     const ngetPath = path.join(__dirname, '..', 'index.js');
 
-    before(async () => {
+    before(async() => {
         // Create temp directory for tests
         try {
             await fs.mkdir(testDir, {recursive: true});
@@ -17,7 +17,7 @@ describe('Pipe Functionality', () => {
         }
     });
 
-    after(async () => {
+    after(async() => {
         // Clean up test files
         try {
             const files = await fs.readdir(testDir);
@@ -32,7 +32,7 @@ describe('Pipe Functionality', () => {
     });
 
     describe('Stdin URL Input (-i -)', () => {
-        it('should read URLs from stdin and download files', function (done) {
+        it('should read URLs from stdin and download files', function(done) {
             this.timeout(15000);
 
             const child = spawn('node', [ngetPath, '-i', '-', '-d', testDir], {
@@ -78,7 +78,7 @@ describe('Pipe Functionality', () => {
             });
         });
 
-        it('should read URLs from file with -i <filename>', function (done) {
+        it('should read URLs from file with -i <filename>', function(done) {
             this.timeout(15000);
 
             // Create a URLs file
@@ -126,7 +126,7 @@ describe('Pipe Functionality', () => {
             }).catch(done);
         });
 
-        it('should ignore comment lines (starting with #) in input', function (done) {
+        it('should ignore comment lines (starting with #) in input', function(done) {
             this.timeout(15000);
 
             const child = spawn('node', [ngetPath, '-i', '-', '-d', testDir], {
@@ -157,7 +157,7 @@ describe('Pipe Functionality', () => {
     });
 
     describe('Stdout Output (-o -)', () => {
-        it('should output downloaded content to stdout', function (done) {
+        it('should output downloaded content to stdout', function(done) {
             this.timeout(15000);
 
             const child = spawn('node', [ngetPath, '-o', '-', 'https://httpbin.org/json'], {
@@ -192,7 +192,7 @@ describe('Pipe Functionality', () => {
             });
         });
 
-        it('should enable quiet mode automatically when using stdout', function (done) {
+        it('should enable quiet mode automatically when using stdout', function(done) {
             this.timeout(15000);
 
             const child = spawn('node', [ngetPath, '-o', '-', 'https://httpbin.org/json'], {
@@ -229,7 +229,7 @@ describe('Pipe Functionality', () => {
             });
         });
 
-        it('should reject multiple URLs when using stdout output', function (done) {
+        it('should reject multiple URLs when using stdout output', function(done) {
             this.timeout(10000);
 
             const child = spawn('node', [ngetPath, '-o', '-', 'https://httpbin.org/json', 'https://httpbin.org/uuid'], {
@@ -244,7 +244,7 @@ describe('Pipe Functionality', () => {
     });
 
     describe('Quiet Mode (-q)', () => {
-        it('should suppress all output except errors when using -q', function (done) {
+        it('should suppress all output except errors when using -q', function(done) {
             this.timeout(15000);
 
             const child = spawn('node', [ngetPath, '-q', 'https://httpbin.org/json', '-d', testDir], {
@@ -285,7 +285,7 @@ describe('Pipe Functionality', () => {
     });
 
     describe('Pipe Chaining', () => {
-        it('should work in a pipeline with other commands', function (done) {
+        it('should work in a pipeline with other commands', function(done) {
             this.timeout(15000);
 
             // Test: echo URL | nget -i - -o - | head -c 10
@@ -318,7 +318,7 @@ describe('Pipe Functionality', () => {
     });
 
     describe('Combined Features', () => {
-        it('should handle stdin input with quiet mode', function (done) {
+        it('should handle stdin input with quiet mode', function(done) {
             this.timeout(15000);
 
             const child = spawn('node', [ngetPath, '-i', '-', '-q', '-d', testDir], {
@@ -358,7 +358,7 @@ describe('Pipe Functionality', () => {
     });
 
     describe('Error Handling', () => {
-        it('should handle invalid URLs gracefully in pipe mode', function (done) {
+        it('should handle invalid URLs gracefully in pipe mode', function(done) {
             this.timeout(10000);
 
             const child = spawn('node', [ngetPath, '-i', '-', '-q'], {
@@ -374,7 +374,7 @@ describe('Pipe Functionality', () => {
             });
         });
 
-        it('should exit gracefully when stdin is not available without TTY error', function (done) {
+        it('should exit gracefully when stdin is not available without TTY error', function(done) {
             this.timeout(5000);
 
             const child = spawn('node', [ngetPath, '-i', '-'], {

@@ -3,7 +3,7 @@
  * Tests configuration loading, validation, profiles, AI integration, and error handling
  */
 
-const { expect } = require('chai');
+const {expect} = require('chai');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
@@ -19,12 +19,12 @@ describe('ConfigManager', () => {
     beforeEach(() => {
         // Save original state
         originalCwd = process.cwd();
-        originalEnv = { ...process.env };
+        originalEnv = {...process.env};
 
         // Create temporary directory for test configs
         tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nget-config-test-'));
         tempConfigDir = path.join(tempDir, 'config');
-        fs.mkdirSync(tempConfigDir, { recursive: true });
+        fs.mkdirSync(tempConfigDir, {recursive: true});
 
         // Clean up environment variables
         Object.keys(process.env).forEach(key => {
@@ -59,7 +59,7 @@ describe('ConfigManager', () => {
 
                 // Clean up temporary directory
                 if (fs.existsSync(tempDir)) {
-                    fs.rmSync(tempDir, { recursive: true, force: true });
+                    fs.rmSync(tempDir, {recursive: true, force: true});
                 }
                 
                 // Clear the instances array
@@ -72,7 +72,7 @@ describe('ConfigManager', () => {
                 process.env = originalEnv;
                 
                 if (fs.existsSync(tempDir)) {
-                    fs.rmSync(tempDir, { recursive: true, force: true });
+                    fs.rmSync(tempDir, {recursive: true, force: true});
                 }
                 
                 configInstances = [];
@@ -106,16 +106,16 @@ describe('ConfigManager', () => {
 
         it('should create ConfigManager with custom options', () => {
             // Create minimal config first
-            const minimalConfig = { version: '2.0.0' };
+            const minimalConfig = {version: '2.0.0'};
             fs.writeFileSync(
                 path.join(tempConfigDir, 'default.yaml'),
-                require('js-yaml').dump(minimalConfig)
+                require('js-yaml').dump(minimalConfig),
             );
 
             const config = createConfigManager({
                 environment: 'production',
                 enableHotReload: false,
-                configDir: tempConfigDir
+                configDir: tempConfigDir,
             });
             
             expect(config.options.environment).to.equal('production');
@@ -140,41 +140,41 @@ describe('ConfigManager', () => {
                 http: {
                     timeout: 30000,
                     maxRetries: 3,
-                    maxConnections: 20
+                    maxConnections: 20,
                 },
                 downloads: {
                     maxConcurrent: 3,
-                    enableResume: true
-                }
+                    enableResume: true,
+                },
             };
 
             const devConfig = {
                 http: {
-                    timeout: 15000
+                    timeout: 15000,
                 },
                 downloads: {
-                    maxConcurrent: 5
+                    maxConcurrent: 5,
                 },
                 logging: {
-                    level: 'debug'
-                }
+                    level: 'debug',
+                },
             };
 
             fs.writeFileSync(
                 path.join(tempConfigDir, 'default.yaml'),
-                require('js-yaml').dump(defaultConfig)
+                require('js-yaml').dump(defaultConfig),
             );
 
             fs.writeFileSync(
                 path.join(tempConfigDir, 'development.yaml'),
-                require('js-yaml').dump(devConfig)
+                require('js-yaml').dump(devConfig),
             );
         });
 
         it('should load and merge default and environment configurations', () => {
             const config = createConfigManager({
                 environment: 'development',
-                configDir: tempConfigDir
+                configDir: tempConfigDir,
             });
 
             const loadedConfig = config.getConfig();
@@ -189,7 +189,7 @@ describe('ConfigManager', () => {
         it('should handle missing environment config gracefully', () => {
             const config = createConfigManager({
                 environment: 'nonexistent',
-                configDir: tempConfigDir
+                configDir: tempConfigDir,
             });
 
             const loadedConfig = config.getConfig();
@@ -203,7 +203,7 @@ describe('ConfigManager', () => {
             
             expect(() => {
                 createConfigManager({
-                    configDir: tempConfigDir
+                    configDir: tempConfigDir,
                 });
             }).to.throw();
         });
@@ -214,13 +214,13 @@ describe('ConfigManager', () => {
             // Create minimal default config
             const defaultConfig = {
                 version: '2.0.0',
-                http: { timeout: 30000 },
-                downloads: { maxConcurrent: 3 }
+                http: {timeout: 30000},
+                downloads: {maxConcurrent: 3},
             };
 
             fs.writeFileSync(
                 path.join(tempConfigDir, 'default.yaml'),
-                require('js-yaml').dump(defaultConfig)
+                require('js-yaml').dump(defaultConfig),
             );
         });
 
@@ -231,7 +231,7 @@ describe('ConfigManager', () => {
 
             const config = createConfigManager({
                 configDir: tempConfigDir,
-                enableHotReload: false
+                enableHotReload: false,
             });
 
             expect(config.get('http.timeout')).to.equal(45000);
@@ -245,7 +245,7 @@ describe('ConfigManager', () => {
 
             const config = createConfigManager({
                 configDir: tempConfigDir,
-                enableHotReload: false
+                enableHotReload: false,
             });
 
             expect(config.get('downloads.enableResume')).to.be.false;
@@ -257,7 +257,7 @@ describe('ConfigManager', () => {
 
             const config = createConfigManager({
                 configDir: tempConfigDir,
-                enableHotReload: false
+                enableHotReload: false,
             });
 
             expect(config.get('security.allowedProtocols')).to.deep.equal(['https', 'sftp']);
@@ -271,22 +271,22 @@ describe('ConfigManager', () => {
                 http: {
                     timeout: 30000,
                     maxRetries: 3,
-                    maxConnections: 20
+                    maxConnections: 20,
                 },
                 downloads: {
                     maxConcurrent: 3,
-                    enableResume: true
-                }
+                    enableResume: true,
+                },
             };
 
             fs.writeFileSync(
                 path.join(tempConfigDir, 'default.yaml'),
-                require('js-yaml').dump(validConfig)
+                require('js-yaml').dump(validConfig),
             );
 
             expect(() => {
                 createConfigManager({
-                    configDir: tempConfigDir
+                    configDir: tempConfigDir,
                 });
             }).to.not.throw();
         });
@@ -296,18 +296,18 @@ describe('ConfigManager', () => {
                 version: '2.0.0',
                 http: {
                     timeout: -1000, // Invalid negative timeout
-                    maxRetries: 15  // Exceeds maximum
-                }
+                    maxRetries: 15,  // Exceeds maximum
+                },
             };
 
             fs.writeFileSync(
                 path.join(tempConfigDir, 'default.yaml'),
-                require('js-yaml').dump(invalidConfig)
+                require('js-yaml').dump(invalidConfig),
             );
 
             expect(() => {
                 createConfigManager({
-                    configDir: tempConfigDir
+                    configDir: tempConfigDir,
                 });
             }).to.throw();
         });
@@ -317,21 +317,21 @@ describe('ConfigManager', () => {
                 version: '2.0.0',
                 http: {
                     timeout: 30000,
-                    unknownProperty: 'should be removed'
+                    unknownProperty: 'should be removed',
                 },
                 unknownSection: {
-                    data: 'should be removed'
-                }
+                    data: 'should be removed',
+                },
             };
 
             fs.writeFileSync(
                 path.join(tempConfigDir, 'default.yaml'),
-                require('js-yaml').dump(configWithUnknown)
+                require('js-yaml').dump(configWithUnknown),
             );
 
             const config = createConfigManager({
                 configDir: tempConfigDir,
-                enableHotReload: false
+                enableHotReload: false,
             });
 
             const loadedConfig = config.getConfig();
@@ -348,20 +348,20 @@ describe('ConfigManager', () => {
                 version: '2.0.0',
                 http: {
                     timeout: 30000,
-                    maxRetries: 3
+                    maxRetries: 3,
                 },
                 downloads: {
-                    maxConcurrent: 3
-                }
+                    maxConcurrent: 3,
+                },
             };
 
             fs.writeFileSync(
                 path.join(tempConfigDir, 'default.yaml'),
-                require('js-yaml').dump(testConfig)
+                require('js-yaml').dump(testConfig),
             );
 
             config = createConfigManager({
-                configDir: tempConfigDir
+                configDir: tempConfigDir,
             });
         });
 
@@ -434,39 +434,39 @@ describe('ConfigManager', () => {
                 version: '2.0.0',
                 http: {
                     timeout: 30000,
-                    maxConnections: 20
+                    maxConnections: 20,
                 },
                 downloads: {
-                    maxConcurrent: 3
+                    maxConcurrent: 3,
                 },
                 profiles: {
                     fast: {
                         description: 'Fast download profile',
                         http: {
                             timeout: 15000,
-                            maxConnections: 50
+                            maxConnections: 50,
                         },
                         downloads: {
-                            maxConcurrent: 10
-                        }
+                            maxConcurrent: 10,
+                        },
                     },
                     secure: {
                         description: 'Secure download profile',
                         security: {
                             allowedProtocols: ['https'],
-                            certificateValidation: true
-                        }
-                    }
-                }
+                            certificateValidation: true,
+                        },
+                    },
+                },
             };
 
             fs.writeFileSync(
                 path.join(tempConfigDir, 'default.yaml'),
-                require('js-yaml').dump(testConfig)
+                require('js-yaml').dump(testConfig),
             );
 
             config = createConfigManager({
-                configDir: tempConfigDir
+                configDir: tempConfigDir,
             });
         });
 
@@ -484,7 +484,7 @@ describe('ConfigManager', () => {
         });
 
         describe('applyProfile()', () => {
-            it('should apply profile configuration correctly', async () => {
+            it('should apply profile configuration correctly', async() => {
                 await config.applyProfile('fast');
                 
                 expect(config.get('http.timeout')).to.equal(15000);
@@ -493,7 +493,7 @@ describe('ConfigManager', () => {
                 expect(config.activeProfile).to.equal('fast');
             });
 
-            it('should merge profile with existing configuration', async () => {
+            it('should merge profile with existing configuration', async() => {
                 await config.applyProfile('secure');
                 
                 // Should have secure profile settings
@@ -505,7 +505,7 @@ describe('ConfigManager', () => {
                 expect(config.get('downloads.maxConcurrent')).to.equal(3);
             });
 
-            it('should throw error for non-existent profile', async () => {
+            it('should throw error for non-existent profile', async() => {
                 try {
                     await config.applyProfile('nonexistent');
                     expect.fail('Should have thrown an error');
@@ -514,12 +514,12 @@ describe('ConfigManager', () => {
                 }
             });
 
-            it('should rollback on validation error', async () => {
+            it('should rollback on validation error', async() => {
                 // Modify the profile to cause validation error
                 config.profiles.set('invalid', {
                     http: {
-                        timeout: -1000 // Invalid value
-                    }
+                        timeout: -1000, // Invalid value
+                    },
                 });
 
                 const originalTimeout = config.get('http.timeout');
@@ -533,7 +533,7 @@ describe('ConfigManager', () => {
                 }
             });
 
-            it('should update metrics on profile application', async () => {
+            it('should update metrics on profile application', async() => {
                 const initialSwitches = config.metrics.profileSwitches;
                 
                 await config.applyProfile('fast');
@@ -552,39 +552,39 @@ describe('ConfigManager', () => {
                 http: {
                     timeout: 30000,
                     maxRetries: 3,
-                    maxConnections: 20
+                    maxConnections: 20,
                 },
                 downloads: {
                     maxConcurrent: 3,
                     enableResume: true,
-                    progressReporting: true
+                    progressReporting: true,
                 },
                 security: {
                     blockPrivateNetworks: false,
-                    certificateValidation: true
+                    certificateValidation: true,
                 },
                 ai: {
                     enabled: true,
                     profiles: {
                         enabled: true,
-                        learningEnabled: true
-                    }
+                        learningEnabled: true,
+                    },
                 },
                 profiles: {
                     fast: {
                         description: 'Fast profile',
-                        downloads: { maxConcurrent: 10 }
-                    }
-                }
+                        downloads: {maxConcurrent: 10},
+                    },
+                },
             };
 
             fs.writeFileSync(
                 path.join(tempConfigDir, 'default.yaml'),
-                require('js-yaml').dump(testConfig)
+                require('js-yaml').dump(testConfig),
             );
 
             config = createConfigManager({
-                configDir: tempConfigDir
+                configDir: tempConfigDir,
             });
         });
 
@@ -628,7 +628,7 @@ describe('ConfigManager', () => {
                     success: true,
                     duration: 30000,
                     throughput: 5242880,
-                    errors: {}
+                    errors: {},
                 });
                 
                 expect(config.configHistory.length).to.be.greaterThan(initialHistoryLength);
@@ -646,7 +646,7 @@ describe('ConfigManager', () => {
                     success: true,
                     duration: 25000,
                     throughput: 8388608, // > 1MB/s threshold
-                    errors: {}
+                    errors: {},
                 });
                 
                 // Should have both LEARNING_DATA and SUCCESSFUL_CONFIG entries
@@ -666,7 +666,7 @@ describe('ConfigManager', () => {
                     success: true,
                     duration: 30000,
                     throughput: 5242880,
-                    errors: {}
+                    errors: {},
                 });
                 
                 expect(config.configHistory.length).to.equal(initialHistoryLength);
@@ -681,7 +681,7 @@ describe('ConfigManager', () => {
                     success: true,
                     duration: 30000,
                     throughput: 5242880,
-                    errors: {}
+                    errors: {},
                 });
 
                 const trainingData = config.exportForAITraining();
@@ -707,17 +707,17 @@ describe('ConfigManager', () => {
         beforeEach(() => {
             const testConfig = {
                 version: '2.0.0',
-                http: { timeout: 30000 },
-                downloads: { maxConcurrent: 3 }
+                http: {timeout: 30000},
+                downloads: {maxConcurrent: 3},
             };
 
             fs.writeFileSync(
                 path.join(tempConfigDir, 'default.yaml'),
-                require('js-yaml').dump(testConfig)
+                require('js-yaml').dump(testConfig),
             );
 
             config = createConfigManager({
-                configDir: tempConfigDir
+                configDir: tempConfigDir,
             });
         });
 
@@ -781,12 +781,12 @@ describe('ConfigManager', () => {
         it('should handle invalid YAML files gracefully', () => {
             fs.writeFileSync(
                 path.join(tempConfigDir, 'default.yaml'),
-                'invalid: yaml: content: ['
+                'invalid: yaml: content: [',
             );
 
             expect(() => {
                 createConfigManager({
-                    configDir: tempConfigDir
+                    configDir: tempConfigDir,
                 });
             }).to.throw();
         });
@@ -796,7 +796,7 @@ describe('ConfigManager', () => {
             
             expect(() => {
                 createConfigManager({
-                    configDir: nonexistentDir
+                    configDir: nonexistentDir,
                 });
             }).to.throw();
         });
@@ -804,17 +804,17 @@ describe('ConfigManager', () => {
         it('should validate nested object structures', () => {
             const configWithInvalidNesting = {
                 version: '2.0.0',
-                http: 'not an object' // Should be object
+                http: 'not an object', // Should be object
             };
 
             fs.writeFileSync(
                 path.join(tempConfigDir, 'default.yaml'),
-                require('js-yaml').dump(configWithInvalidNesting)
+                require('js-yaml').dump(configWithInvalidNesting),
             );
 
             expect(() => {
                 createConfigManager({
-                    configDir: tempConfigDir
+                    configDir: tempConfigDir,
                 });
             }).to.throw();
         });
@@ -827,43 +827,43 @@ describe('ConfigManager', () => {
                 version: '2.0.0',
                 http: {
                     timeout: 30000,
-                    maxRetries: 3
+                    maxRetries: 3,
                 },
                 downloads: {
-                    maxConcurrent: 3
-                }
+                    maxConcurrent: 3,
+                },
             };
 
             // Create environment config
             const devConfig = {
                 http: {
-                    timeout: 20000
+                    timeout: 20000,
                 },
                 downloads: {
-                    maxConcurrent: 5
-                }
+                    maxConcurrent: 5,
+                },
             };
 
             // Create local config
             const localConfig = {
                 http: {
-                    timeout: 10000
-                }
+                    timeout: 10000,
+                },
             };
 
             fs.writeFileSync(
                 path.join(tempConfigDir, 'default.yaml'),
-                require('js-yaml').dump(defaultConfig)
+                require('js-yaml').dump(defaultConfig),
             );
 
             fs.writeFileSync(
                 path.join(tempConfigDir, 'development.yaml'),
-                require('js-yaml').dump(devConfig)
+                require('js-yaml').dump(devConfig),
             );
 
             fs.writeFileSync(
                 path.join(tempConfigDir, 'local.yaml'),
-                require('js-yaml').dump(localConfig)
+                require('js-yaml').dump(localConfig),
             );
         });
 
@@ -873,7 +873,7 @@ describe('ConfigManager', () => {
 
             const config = createConfigManager({
                 environment: 'development',
-                configDir: tempConfigDir
+                configDir: tempConfigDir,
             });
 
             // Check precedence: env var > local.yaml > development.yaml > default.yaml
@@ -886,15 +886,15 @@ describe('ConfigManager', () => {
     describe('Cleanup', () => {
         it('should cleanup resources properly', () => {
             // Create minimal config first
-            const minimalConfig = { version: '2.0.0' };
+            const minimalConfig = {version: '2.0.0'};
             fs.writeFileSync(
                 path.join(tempConfigDir, 'default.yaml'),
-                require('js-yaml').dump(minimalConfig)
+                require('js-yaml').dump(minimalConfig),
             );
 
             const config = createConfigManager({
                 configDir: tempConfigDir,
-                enableHotReload: true
+                enableHotReload: true,
             });
 
             // Should not throw

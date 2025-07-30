@@ -3,7 +3,7 @@
  * Verifies that setting NGET_LOGGING_FORMAT=json produces proper JSON structured logs
  */
 
-const { expect } = require('chai');
+const {expect} = require('chai');
 const Logger = require('../../../lib/services/Logger');
 const path = require('node:path');
 const fs = require('node:fs');
@@ -18,7 +18,7 @@ describe('JSON Logging Format Environment Variable', () => {
 
     beforeEach(() => {
         // Save original environment
-        originalEnv = { ...process.env };
+        originalEnv = {...process.env};
         
         // Set JSON format via environment variable
         process.env.NGET_LOGGING_FORMAT = 'json';
@@ -37,7 +37,7 @@ describe('JSON Logging Format Environment Variable', () => {
 
     afterEach(() => {
         // Restore environment
-        process.env = { ...originalEnv };
+        process.env = {...originalEnv};
         
         // Restore console.log
         console.log = originalConsoleLog;
@@ -45,7 +45,7 @@ describe('JSON Logging Format Environment Variable', () => {
         // Cleanup temporary directory
         if (tempLogDir && fs.existsSync(tempLogDir)) {
             try {
-                fs.rmSync(tempLogDir, { recursive: true, force: true });
+                fs.rmSync(tempLogDir, {recursive: true, force: true});
             } catch (error) {
                 // Ignore cleanup errors
             }
@@ -69,14 +69,14 @@ describe('JSON Logging Format Environment Variable', () => {
                 format: process.env.NGET_LOGGING_FORMAT || 'text',
                 outputs: ['console'],
                 logDir: tempLogDir,
-                enableColors: false // Disable colors for JSON testing
+                enableColors: false, // Disable colors for JSON testing
             });
             
             // Log a test message
             logger.info('Test JSON message', { 
                 testData: 'sample data',
                 number: 42,
-                boolean: true
+                boolean: true,
             });
             
             // Verify console output is JSON
@@ -93,7 +93,7 @@ describe('JSON Logging Format Environment Variable', () => {
             expect(parsedLog.meta).to.deep.equal({
                 testData: 'sample data',
                 number: 42,
-                boolean: true
+                boolean: true,
             });
         });
 
@@ -103,15 +103,15 @@ describe('JSON Logging Format Environment Variable', () => {
                 outputs: ['console'],
                 format: 'json',
                 logDir: tempLogDir,
-                enableColors: false
+                enableColors: false,
             });
             
             // Test different log levels
-            logger.error('Error message', { errorCode: 500 });
-            logger.warn('Warning message', { warningType: 'deprecation' });
-            logger.info('Info message', { operation: 'download' });
-            logger.debug('Debug message', { debugInfo: 'detailed' });
-            logger.trace('Trace message', { traceId: 'trace123' });
+            logger.error('Error message', {errorCode: 500});
+            logger.warn('Warning message', {warningType: 'deprecation'});
+            logger.info('Info message', {operation: 'download'});
+            logger.debug('Debug message', {debugInfo: 'detailed'});
+            logger.trace('Trace message', {traceId: 'trace123'});
             
             expect(consoleOutput).to.have.length(5);
             
@@ -145,7 +145,7 @@ describe('JSON Logging Format Environment Variable', () => {
                 outputs: ['console'],
                 logDir: tempLogDir,
                 includeStackTrace: true,
-                enableColors: false
+                enableColors: false,
             });
             
             const complexMeta = {
@@ -154,12 +154,12 @@ describe('JSON Logging Format Environment Variable', () => {
                 progress: {
                     percentage: 75.5,
                     speed: '2.5 MB/s',
-                    eta: '30s'
+                    eta: '30s',
                 },
                 headers: {
                     'content-type': 'application/zip',
-                    'content-length': '1048576'
-                }
+                    'content-length': '1048576',
+                },
             };
             
             logger.info('Download progress update', complexMeta);
@@ -178,7 +178,7 @@ describe('JSON Logging Format Environment Variable', () => {
                 format: 'json',
                 outputs: ['console'],
                 logDir: tempLogDir,
-                enableColors: false
+                enableColors: false,
             });
             
             const testError = new Error('Test download error');
@@ -187,7 +187,7 @@ describe('JSON Logging Format Environment Variable', () => {
             
             logger.error('Download failed', { 
                 url: 'https://example.com/missing.zip',
-                attempt: 3 
+                attempt: 3, 
             }, testError);
             
             expect(consoleOutput).to.have.length(1);
@@ -207,12 +207,12 @@ describe('JSON Logging Format Environment Variable', () => {
                 format: 'json',
                 outputs: ['console', 'file'],
                 logDir: tempLogDir,
-                enableColors: false
+                enableColors: false,
             });
             
             logger.info('File logging test', { 
                 testType: 'file-output',
-                format: 'json'
+                format: 'json',
             });
             
             // Check console output
@@ -239,12 +239,12 @@ describe('JSON Logging Format Environment Variable', () => {
                 format: 'json',
                 outputs: ['console'],
                 logDir: tempLogDir,
-                enableColors: false
+                enableColors: false,
             });
         });
 
         it('should include all required JSON log fields', () => {
-            logger.info('Structure validation test', { validation: true });
+            logger.info('Structure validation test', {validation: true});
             
             const parsedLog = JSON.parse(consoleOutput[0]);
             
@@ -274,9 +274,9 @@ describe('JSON Logging Format Environment Variable', () => {
 
         it('should maintain JSON format consistency across different operations', () => {
             // Simulate various n-get operations
-            logger.info('Download started', { url: 'https://example.com/file1.zip' });
-            logger.info('Download progress', { percentage: 50, speed: '1.5 MB/s' });
-            logger.info('Download completed', { size: 1024000, duration: 5.2 });
+            logger.info('Download started', {url: 'https://example.com/file1.zip'});
+            logger.info('Download progress', {percentage: 50, speed: '1.5 MB/s'});
+            logger.info('Download completed', {size: 1024000, duration: 5.2});
             
             expect(consoleOutput).to.have.length(3);
             

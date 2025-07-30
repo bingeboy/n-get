@@ -3,7 +3,7 @@
  * Tests all config commands: show, set, profiles, profile, validate, debug
  */
 
-const { expect } = require('chai');
+const {expect} = require('chai');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
@@ -21,12 +21,12 @@ describe('ConfigCommands CLI', () => {
     beforeEach(() => {
         // Save original state
         originalCwd = process.cwd();
-        originalEnv = { ...process.env };
+        originalEnv = {...process.env};
         
         // Create temporary directory for test configs
         tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nget-config-cli-test-'));
         tempConfigDir = path.join(tempDir, 'config');
-        fs.mkdirSync(tempConfigDir, { recursive: true });
+        fs.mkdirSync(tempConfigDir, {recursive: true});
 
         // Clean up environment variables
         Object.keys(process.env).forEach(key => {
@@ -53,7 +53,7 @@ describe('ConfigCommands CLI', () => {
 
         // Clean up temporary directory
         if (fs.existsSync(tempDir)) {
-            fs.rmSync(tempDir, { recursive: true, force: true });
+            fs.rmSync(tempDir, {recursive: true, force: true});
         }
     });
 
@@ -64,27 +64,27 @@ describe('ConfigCommands CLI', () => {
             http: {
                 timeout: 30000,
                 maxRetries: 3,
-                maxConnections: 20
+                maxConnections: 20,
             },
             downloads: {
                 maxConcurrent: 3,
-                enableResume: true
+                enableResume: true,
             },
             profiles: {
                 fast: {
                     description: 'Fast downloads',
-                    downloads: { maxConcurrent: 10 }
+                    downloads: {maxConcurrent: 10},
                 },
                 secure: {
                     description: 'Secure downloads',
-                    security: { allowedProtocols: ['https'] }
-                }
-            }
+                    security: {allowedProtocols: ['https']},
+                },
+            },
         };
 
         fs.writeFileSync(
             path.join(tempConfigDir, 'default.yaml'),
-            require('js-yaml').dump(defaultConfig)
+            require('js-yaml').dump(defaultConfig),
         );
     }
 
@@ -92,16 +92,16 @@ describe('ConfigCommands CLI', () => {
         return {
             getConfig: () => ({
                 version: '2.0.0',
-                http: { timeout: 30000 },
-                downloads: { maxConcurrent: 3 },
-                ...overrides.config
+                http: {timeout: 30000},
+                downloads: {maxConcurrent: 3},
+                ...overrides.config,
             }),
             get: (path, defaultValue) => {
                 const paths = {
-                    'http': { timeout: 30000, maxRetries: 3 },
+                    'http': {timeout: 30000, maxRetries: 3},
                     'http.timeout': 30000,
                     'downloads.maxConcurrent': 3,
-                    'logging.level': 'info'
+                    'logging.level': 'info',
                 };
                 return paths[path] ?? defaultValue;
             },
@@ -110,17 +110,17 @@ describe('ConfigCommands CLI', () => {
                 if (overrides.throwOnSet) {
                     throw new Error('Validation failed');
                 }
-                overrides.lastSet = { path, value };
+                overrides.lastSet = {path, value};
             },
             getAvailableProfiles: () => overrides.profiles || {
                 fast: {
                     name: 'fast',
                     description: 'Fast downloads',
                     active: false,
-                    config: { downloads: { maxConcurrent: 10 } }
-                }
+                    config: {downloads: {maxConcurrent: 10}},
+                },
             },
-            applyProfile: async (name) => {
+            applyProfile: async(name) => {
                 if (!overrides.profiles || !overrides.profiles[name]) {
                     throw new Error(`Profile '${name}' not found`);
                 }
@@ -134,14 +134,14 @@ describe('ConfigCommands CLI', () => {
                 errors: overrides.errors || [],
                 configSections: ['http', 'downloads'],
                 profileCount: Object.keys(overrides.profiles || {}).length,
-                historyLength: 0
+                historyLength: 0,
             }),
             options: {
                 environment: 'test',
                 configDir: tempConfigDir,
-                enableHotReload: false
+                enableHotReload: false,
             },
-            activeProfile: overrides.activeProfile || null
+            activeProfile: overrides.activeProfile || null,
         };
     }
 
@@ -174,18 +174,18 @@ describe('ConfigCommands CLI', () => {
         
         return {
             getExitCode: () => exitCode,
-            restore: () => { process.exit = originalExit; }
+            restore: () => { process.exit = originalExit; },
         };
     }
 
     describe('Config Show Command', () => {
-        it('should show full configuration', async () => {
+        it('should show full configuration', async() => {
             const restoreConsole = mockConsoleOutput();
             const mockManager = createMockConfigManager();
             configCommands.initializeConfigManager = () => mockManager;
             
             try {
-                await configCommands.show([], { quiet: true });
+                await configCommands.show([], {quiet: true});
                 
                 const output = capturedOutput.join('\n');
                 expect(output).to.include('Environment: test');
@@ -196,13 +196,13 @@ describe('ConfigCommands CLI', () => {
             }
         });
 
-        it('should show specific configuration section', async () => {
+        it('should show specific configuration section', async() => {
             const restoreConsole = mockConsoleOutput();
             const mockManager = createMockConfigManager();
             configCommands.initializeConfigManager = () => mockManager;
             
             try {
-                await configCommands.show(['http'], { quiet: true });
+                await configCommands.show(['http'], {quiet: true});
                 
                 const output = capturedOutput.join('\n');
                 expect(output).to.include('Section: http');
@@ -212,7 +212,7 @@ describe('ConfigCommands CLI', () => {
             }
         });
 
-        it('should handle non-existent section', async () => {
+        it('should handle non-existent section', async() => {
             const restoreConsole = mockConsoleOutput();
             const exitMock = mockProcessExit();
             const mockManager = createMockConfigManager();
@@ -220,7 +220,7 @@ describe('ConfigCommands CLI', () => {
             configCommands.initializeConfigManager = () => mockManager;
             
             try {
-                await configCommands.show(['nonexistent'], { quiet: true });
+                await configCommands.show(['nonexistent'], {quiet: true});
                 expect.fail('Should have exited');
             } catch (error) {
                 expect(error.message).to.include('Process exit 1');
@@ -235,14 +235,14 @@ describe('ConfigCommands CLI', () => {
     });
 
     describe('Config Set Command', () => {
-        it('should set configuration values', async () => {
+        it('should set configuration values', async() => {
             const restoreConsole = mockConsoleOutput();
             const overrides = {};
             const mockManager = createMockConfigManager(overrides);
             configCommands.initializeConfigManager = () => mockManager;
             
             try {
-                await configCommands.set(['http.timeout', '45000'], { quiet: false });
+                await configCommands.set(['http.timeout', '45000'], {quiet: false});
                 
                 expect(overrides.lastSet.path).to.equal('http.timeout');
                 expect(overrides.lastSet.value).to.equal(45000);
@@ -254,14 +254,14 @@ describe('ConfigCommands CLI', () => {
             }
         });
 
-        it('should parse boolean values', async () => {
+        it('should parse boolean values', async() => {
             const restoreConsole = mockConsoleOutput();
             const overrides = {};
             const mockManager = createMockConfigManager(overrides);
             configCommands.initializeConfigManager = () => mockManager;
             
             try {
-                await configCommands.set(['downloads.enableResume', 'false'], { quiet: true });
+                await configCommands.set(['downloads.enableResume', 'false'], {quiet: true});
                 
                 expect(overrides.lastSet.value).to.equal(false);
             } finally {
@@ -269,14 +269,14 @@ describe('ConfigCommands CLI', () => {
             }
         });
 
-        it('should require both arguments', async () => {
+        it('should require both arguments', async() => {
             const restoreConsole = mockConsoleOutput();
             const exitMock = mockProcessExit();
             const mockManager = createMockConfigManager();
             configCommands.initializeConfigManager = () => mockManager;
             
             try {
-                await configCommands.set(['http.timeout'], { quiet: true });
+                await configCommands.set(['http.timeout'], {quiet: true});
                 expect.fail('Should have exited');
             } catch (error) {
                 expect(error.message).to.include('Process exit 1');
@@ -290,21 +290,21 @@ describe('ConfigCommands CLI', () => {
     });
 
     describe('Config Profiles Command', () => {
-        it('should list available profiles', async () => {
+        it('should list available profiles', async() => {
             const restoreConsole = mockConsoleOutput();
             const profiles = {
                 fast: {
                     name: 'fast',
                     description: 'Fast downloads',
                     active: false,
-                    config: {}
-                }
+                    config: {},
+                },
             };
-            const mockManager = createMockConfigManager({ profiles });
+            const mockManager = createMockConfigManager({profiles});
             configCommands.initializeConfigManager = () => mockManager;
             
             try {
-                await configCommands.profiles([], { quiet: true });
+                await configCommands.profiles([], {quiet: true});
                 
                 const output = capturedOutput.join('\n');
                 expect(output).to.include('fast');
@@ -314,13 +314,13 @@ describe('ConfigCommands CLI', () => {
             }
         });
 
-        it('should handle no profiles', async () => {
+        it('should handle no profiles', async() => {
             const restoreConsole = mockConsoleOutput();
-            const mockManager = createMockConfigManager({ profiles: {} });
+            const mockManager = createMockConfigManager({profiles: {}});
             configCommands.initializeConfigManager = () => mockManager;
             
             try {
-                await configCommands.profiles([], { quiet: true });
+                await configCommands.profiles([], {quiet: true});
                 
                 const output = capturedOutput.join('\n');
                 expect(output).to.include('No profiles configured');
@@ -331,22 +331,22 @@ describe('ConfigCommands CLI', () => {
     });
 
     describe('Config Profile Switch Command', () => {
-        it('should switch to existing profile', async () => {
+        it('should switch to existing profile', async() => {
             const restoreConsole = mockConsoleOutput();
             const overrides = {
                 profiles: {
                     fast: {
                         name: 'fast',
                         description: 'Fast downloads',
-                        config: {}
-                    }
-                }
+                        config: {},
+                    },
+                },
             };
             const mockManager = createMockConfigManager(overrides);
             configCommands.initializeConfigManager = () => mockManager;
             
             try {
-                await configCommands.profile(['fast'], { quiet: false });
+                await configCommands.profile(['fast'], {quiet: false});
                 
                 expect(overrides.appliedProfile).to.equal('fast');
                 const output = capturedOutput.join('\n');
@@ -356,14 +356,14 @@ describe('ConfigCommands CLI', () => {
             }
         });
 
-        it('should require profile name', async () => {
+        it('should require profile name', async() => {
             const restoreConsole = mockConsoleOutput();
             const exitMock = mockProcessExit();
             const mockManager = createMockConfigManager();
             configCommands.initializeConfigManager = () => mockManager;
             
             try {
-                await configCommands.profile([], { quiet: true });
+                await configCommands.profile([], {quiet: true});
                 expect.fail('Should have exited');
             } catch (error) {
                 expect(error.message).to.include('Process exit 1');
@@ -377,13 +377,13 @@ describe('ConfigCommands CLI', () => {
     });
 
     describe('Config Validate Command', () => {
-        it('should validate configuration successfully', async () => {
+        it('should validate configuration successfully', async() => {
             const restoreConsole = mockConsoleOutput();
-            const mockManager = createMockConfigManager({ activeProfile: 'fast' });
+            const mockManager = createMockConfigManager({activeProfile: 'fast'});
             configCommands.initializeConfigManager = () => mockManager;
             
             try {
-                await configCommands.validate([], { quiet: true });
+                await configCommands.validate([], {quiet: true});
                 
                 const output = capturedOutput.join('\n');
                 expect(output).to.include('Configuration is valid');
@@ -394,16 +394,16 @@ describe('ConfigCommands CLI', () => {
             }
         });
 
-        it('should show validation errors', async () => {
+        it('should show validation errors', async() => {
             const restoreConsole = mockConsoleOutput();
             const errors = [
-                { type: 'VALIDATION_ERROR', message: 'Invalid timeout' }
+                {type: 'VALIDATION_ERROR', message: 'Invalid timeout'},
             ];
-            const mockManager = createMockConfigManager({ errors });
+            const mockManager = createMockConfigManager({errors});
             configCommands.initializeConfigManager = () => mockManager;
             
             try {
-                await configCommands.validate([], { quiet: true });
+                await configCommands.validate([], {quiet: true});
                 
                 const output = capturedOutput.join('\n');
                 expect(output).to.include('Recent Errors: 1');
@@ -415,13 +415,13 @@ describe('ConfigCommands CLI', () => {
     });
 
     describe('Config Debug Command', () => {
-        it('should show debug information', async () => {
+        it('should show debug information', async() => {
             const restoreConsole = mockConsoleOutput();
             const mockManager = createMockConfigManager();
             configCommands.initializeConfigManager = () => mockManager;
             
             try {
-                await configCommands.debug([], { quiet: true });
+                await configCommands.debug([], {quiet: true});
                 
                 const output = capturedOutput.join('\n');
                 expect(output).to.include('Environment: test');
@@ -433,15 +433,15 @@ describe('ConfigCommands CLI', () => {
             }
         });
 
-        it('should show verbose configuration', async () => {
+        it('should show verbose configuration', async() => {
             const restoreConsole = mockConsoleOutput();
             const mockManager = createMockConfigManager({
-                config: { version: '2.0.0', http: { timeout: 30000 } }
+                config: {version: '2.0.0', http: {timeout: 30000}},
             });
             configCommands.initializeConfigManager = () => mockManager;
             
             try {
-                await configCommands.debug(['--verbose'], { quiet: true });
+                await configCommands.debug(['--verbose'], {quiet: true});
                 
                 const output = capturedOutput.join('\n');
                 expect(output).to.include('Configuration Structure:');
@@ -453,20 +453,20 @@ describe('ConfigCommands CLI', () => {
     });
 
     describe('Command Router', () => {
-        it('should route to correct commands', async () => {
+        it('should route to correct commands', async() => {
             const restoreConsole = mockConsoleOutput();
             const mockManager = createMockConfigManager();
             configCommands.initializeConfigManager = () => mockManager;
             
             try {
                 // Test show command
-                await configCommands.execute(['show'], { quiet: true });
+                await configCommands.execute(['show'], {quiet: true});
                 let output = capturedOutput.join('\n');
                 expect(output).to.include('Environment: test');
                 
                 // Clear and test profiles command
                 capturedOutput = [];
-                await configCommands.execute(['profiles'], { quiet: true });
+                await configCommands.execute(['profiles'], {quiet: true});
                 output = capturedOutput.join('\n');
                 expect(output).to.include('fast');
             } finally {
@@ -474,7 +474,7 @@ describe('ConfigCommands CLI', () => {
             }
         });
 
-        it('should show help for unknown commands', async () => {
+        it('should show help for unknown commands', async() => {
             const restoreConsole = mockConsoleOutput();
             const exitMock = mockProcessExit();
             
@@ -482,7 +482,7 @@ describe('ConfigCommands CLI', () => {
             configCommands.showConfigHelp = () => { helpShown = true; };
             
             try {
-                await configCommands.execute(['unknown'], { quiet: true });
+                await configCommands.execute(['unknown'], {quiet: true});
                 expect.fail('Should have exited');
             } catch (error) {
                 expect(error.message).to.include('Process exit 1');
@@ -495,7 +495,7 @@ describe('ConfigCommands CLI', () => {
     });
 
     describe('Integration Tests', () => {
-        it('should work with real ConfigManager', async () => {
+        it('should work with real ConfigManager', async() => {
             const restoreConsole = mockConsoleOutput();
             
             // Use real ConfigManager with test config directory
@@ -508,12 +508,12 @@ describe('ConfigCommands CLI', () => {
                     environment: 'development',
                     configDir: tempConfigDir,
                     enableHotReload: false,
-                    logger: { info: () => {}, debug: () => {}, warn: () => {}, error: () => {} }
+                    logger: {info: () => {}, debug: () => {}, warn: () => {}, error: () => {}},
                 });
             };
             
             try {
-                await configCommands.show(['http'], { quiet: true });
+                await configCommands.show(['http'], {quiet: true});
                 
                 const output = capturedOutput.join('\n');
                 expect(output).to.include('Section: http');
@@ -521,7 +521,7 @@ describe('ConfigCommands CLI', () => {
                 
                 // Test profiles
                 capturedOutput = [];
-                await configCommands.profiles([], { quiet: true });
+                await configCommands.profiles([], {quiet: true});
                 const profilesOutput = capturedOutput.join('\n');
                 expect(profilesOutput).to.include('fast');
                 expect(profilesOutput).to.include('secure');

@@ -12,19 +12,19 @@ describe('URI Manager IPv6 Support', function() {
             const testCases = [
                 {
                     input: 'http://[::1]/',
-                    expected: 'http://[::1]/'
+                    expected: 'http://[::1]/',
                 },
                 {
                     input: 'https://[2001:db8::1]/path',
-                    expected: 'https://[2001:db8::1]/path'
+                    expected: 'https://[2001:db8::1]/path',
                 },
                 {
                     input: 'ftp://[fe80::1]/file.txt',
-                    expected: 'ftp://[fe80::1]/file.txt'
-                }
+                    expected: 'ftp://[fe80::1]/file.txt',
+                },
             ];
 
-            testCases.forEach(({ input, expected }) => {
+            testCases.forEach(({input, expected}) => {
                 const result = requestUri(input);
                 expect(result).to.equal(expected);
             });
@@ -34,19 +34,19 @@ describe('URI Manager IPv6 Support', function() {
             const testCases = [
                 {
                     input: '[::1]',
-                    expected: 'http://[::1]/'
+                    expected: 'http://[::1]/',
                 },
                 {
                     input: '[2001:db8::1]',
-                    expected: 'http://[2001:db8::1]/'
+                    expected: 'http://[2001:db8::1]/',
                 },
                 {
                     input: '[fe80::1]',
-                    expected: 'http://[fe80::1]/'
-                }
+                    expected: 'http://[fe80::1]/',
+                },
             ];
 
-            testCases.forEach(({ input, expected }) => {
+            testCases.forEach(({input, expected}) => {
                 const result = requestUri(input);
                 expect(result).to.equal(expected);
             });
@@ -56,19 +56,19 @@ describe('URI Manager IPv6 Support', function() {
             const testCases = [
                 {
                     input: '::1',
-                    expected: 'http://[::1]/'
+                    expected: 'http://[::1]/',
                 },
                 {
                     input: '2001:db8::1',
-                    expected: 'http://[2001:db8::1]/'
+                    expected: 'http://[2001:db8::1]/',
                 },
                 {
                     input: 'fe80::1',
-                    expected: 'http://[fe80::1]/'
-                }
+                    expected: 'http://[fe80::1]/',
+                },
             ];
 
-            testCases.forEach(({ input, expected }) => {
+            testCases.forEach(({input, expected}) => {
                 const result = requestUri(input);
                 expect(result).to.equal(expected);
             });
@@ -78,15 +78,15 @@ describe('URI Manager IPv6 Support', function() {
             const testCases = [
                 {
                     input: 'http://[::1]:8080/',
-                    expected: 'http://[::1]:8080/'
+                    expected: 'http://[::1]:8080/',
                 },
                 {
                     input: 'https://[2001:db8::1]:3000/api',
-                    expected: 'https://[2001:db8::1]:3000/api'
-                }
+                    expected: 'https://[2001:db8::1]:3000/api',
+                },
             ];
 
-            testCases.forEach(({ input, expected }) => {
+            testCases.forEach(({input, expected}) => {
                 const result = requestUri(input);
                 expect(result).to.equal(expected);
             });
@@ -123,7 +123,7 @@ describe('URI Manager IPv6 Support', function() {
             const malformedAddresses = [
                 'invalid::ipv6',
                 '::g1',
-                '2001:db8:::1'
+                '2001:db8:::1',
             ];
 
             malformedAddresses.forEach(address => {
@@ -138,7 +138,7 @@ describe('URI Manager IPv6 Support', function() {
                 '2001:db8::',
                 '::ffff:0:0',
                 '::1',
-                'fc00::'
+                'fc00::',
             ];
 
             compressedAddresses.forEach(address => {
@@ -150,11 +150,11 @@ describe('URI Manager IPv6 Support', function() {
         it('should handle IPv4-mapped IPv6 addresses', function() {
             const testCases = [
                 // Node.js normalizes IPv4-mapped addresses to hexadecimal format
-                { input: '::ffff:192.168.1.1', expectedContains: '::ffff:' },
-                { input: '::ffff:127.0.0.1', expectedContains: '::ffff:' }
+                {input: '::ffff:192.168.1.1', expectedContains: '::ffff:'},
+                {input: '::ffff:127.0.0.1', expectedContains: '::ffff:'},
             ];
 
-            testCases.forEach(({ input, expectedContains }) => {
+            testCases.forEach(({input, expectedContains}) => {
                 const result = requestUri(input);
                 expect(result).to.contain('http://[');
                 expect(result).to.contain(expectedContains);
