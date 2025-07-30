@@ -1,6 +1,6 @@
 {
   "name": "n-get",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "homepage": "https://bingeboy.github.io/n-get/",
   "description": "Wget like CLI Tool done with Node.js",
   "repository": {
