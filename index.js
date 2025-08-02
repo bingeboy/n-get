@@ -24,8 +24,8 @@ const LogsCommands = require('./lib/cli/logsCommands');
 const HistoryCommands = require('./lib/cli/historyCommands');
 
 const argv = minimist(process.argv.slice(2), {
-    boolean: ['resume', 'no-resume', 'list-resume', 'help', 'version', 'recursive', 'no-parent', 'quiet', 'verbose', 'json', 'csv', 'text', 'confirm', 'force'],
-    string: ['d', 'destination', 'ssh-key', 'ssh-password', 'ssh-passphrase', 'level', 'accept', 'reject', 'user-agent', 'i', 'input-file', 'o', 'output-file', 'max-concurrent', 'config-environment', 'config-ai-profile', 'limit', 'status', 'since', 'until', 'output', 'days'],
+    boolean: ['resume', 'no-resume', 'list-resume', 'help', 'version', 'recursive', 'no-parent', 'quiet', 'verbose', 'json', 'csv', 'text', 'confirm', 'force', 'metadata', 'checksums', 'no-checksums', 'capabilities'],
+    string: ['d', 'destination', 'ssh-key', 'ssh-password', 'ssh-passphrase', 'level', 'accept', 'reject', 'user-agent', 'i', 'input-file', 'o', 'output-file', 'max-concurrent', 'config-environment', 'config-ai-profile', 'limit', 'status', 'since', 'until', 'output', 'days', 'session-id', 'request-id', 'conversation-id', 'output-format'],
     alias: {
         d: 'destination',
         r: 'resume',
@@ -74,6 +74,7 @@ ${ui.emojis.gear} General Options:
   -l, --list-resume          List resumable downloads in destination
   -c, --max-concurrent <num> Maximum concurrent downloads (default: 3)
   -h, --help                 Show this help message
+  --capabilities             Show tool capabilities for AI agents (JSON/YAML)
 
 ${ui.emojis.network} Pipe Options:
   -i, --input-file <file>    Read URLs from file (use '-' for stdin)
@@ -92,6 +93,15 @@ ${ui.emojis.network} SSH/SFTP Options:
   --ssh-key <path>           Path to SSH private key file
   --ssh-password <password>  SSH password (use with caution)
   --ssh-passphrase <phrase>  Passphrase for encrypted SSH key
+
+${ui.emojis.gear} AI Agent Integration Options:
+  --metadata                 Include enhanced metadata in output
+  --checksums                Generate file checksums (default: true)
+  --no-checksums             Disable checksum generation
+  --output-format <format>   Output format: json, yaml, csv, text (default: text)
+  --session-id <id>          Session identifier for tracking
+  --request-id <id>          Request identifier for correlation
+  --conversation-id <id>     Conversation identifier for AI agents
 
 ${ui.emojis.rocket} Examples:
   nget https://example.com/file.zip
@@ -112,6 +122,13 @@ ${ui.emojis.network} Pipe Examples:
   nget -o - https://example.com/file.txt
   nget -o - --quiet https://example.com/data.json | jq .
   nget -o - https://example.com/archive.tar.gz | tar -xz
+
+${ui.emojis.gear} AI Agent Integration Examples:
+  nget --capabilities                                        # Show tool capabilities
+  nget --capabilities --output-format yaml --quiet          # YAML format, compact
+  nget https://example.com/data.csv --metadata --output-format json
+  nget https://example.com/files.zip --session-id sess123 --request-id req456
+  nget https://api.example.com/report.pdf --conversation-id conv789 --checksums
 
 ${ui.emojis.partial} Resume Features:
   • Automatically resumes interrupted downloads (HTTP & SFTP)
@@ -313,6 +330,32 @@ async function main() {
             const packageJson = require('./package.json');
             console.log(packageJson.version);
             process.exit(0);
+        }
+
+        // Handle capabilities
+        if (argv.capabilities) {
+            const CapabilitiesService = require('./lib/services/CapabilitiesService');
+            const capabilitiesService = new CapabilitiesService({
+                configManager,
+                logger: console
+            });
+
+            const format = argv['output-format'] || 'json';
+            const detailed = !argv.quiet;
+            
+            try {
+                const capabilities = capabilitiesService.getCapabilities({ 
+                    format, 
+                    detailed 
+                });
+                
+                const output = capabilitiesService.formatOutput(capabilities, format);
+                console.log(output);
+                process.exit(0);
+            } catch (error) {
+                console.error('Error generating capabilities:', error.message);
+                process.exit(1);
+            }
         }
 
         // Handle destination
@@ -539,6 +582,15 @@ async function main() {
             quietMode: quietMode || outputToStdout, // Auto-enable quiet mode for stdout
             maxConcurrent,
             configManager, // Pass config manager to download functions
+            // AI Agent Integration options
+            sessionId: argv['session-id'],
+            requestId: argv['request-id'],
+            conversationId: argv['conversation-id'],
+            enableMetadata: argv.metadata,
+            enableChecksums: argv.checksums && !argv['no-checksums'],
+            outputFormat: argv['output-format'] || 'text',
+            requestedBy: 'cli',
+            metadata: {} // Custom metadata can be added here
         };
 
         // Check if recursive mode is enabled
