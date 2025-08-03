@@ -24,7 +24,7 @@ const LogsCommands = require('./lib/cli/logsCommands');
 const HistoryCommands = require('./lib/cli/historyCommands');
 
 const argv = minimist(process.argv.slice(2), {
-    boolean: ['resume', 'no-resume', 'list-resume', 'help', 'version', 'recursive', 'no-parent', 'quiet', 'verbose', 'json', 'csv', 'text', 'confirm', 'force', 'metadata', 'checksums', 'no-checksums', 'capabilities'],
+    boolean: ['resume', 'no-resume', 'list-resume', 'help', 'version', 'recursive', 'no-parent', 'quiet', 'verbose', 'json', 'csv', 'text', 'confirm', 'force', 'metadata', 'checksums', 'no-checksums', 'capabilities', 'openapi-spec'],
     string: ['d', 'destination', 'ssh-key', 'ssh-password', 'ssh-passphrase', 'level', 'accept', 'reject', 'user-agent', 'i', 'input-file', 'o', 'output-file', 'max-concurrent', 'config-environment', 'config-ai-profile', 'limit', 'status', 'since', 'until', 'output', 'days', 'session-id', 'request-id', 'conversation-id', 'output-format'],
     alias: {
         d: 'destination',
@@ -75,6 +75,7 @@ ${ui.emojis.gear} General Options:
   -c, --max-concurrent <num> Maximum concurrent downloads (default: 3)
   -h, --help                 Show this help message
   --capabilities             Show tool capabilities for AI agents (JSON/YAML)
+  --openapi-spec             Generate OpenAPI 3.0.3 specification for AI agents
 
 ${ui.emojis.network} Pipe Options:
   -i, --input-file <file>    Read URLs from file (use '-' for stdin)
@@ -354,6 +355,41 @@ async function main() {
                 process.exit(0);
             } catch (error) {
                 console.error('Error generating capabilities:', error.message);
+                process.exit(1);
+            }
+        }
+
+        // Handle OpenAPI specification generation
+        if (argv['openapi-spec']) {
+            const OpenAPIService = require('./lib/services/OpenAPIService');
+            const CapabilitiesService = require('./lib/services/CapabilitiesService');
+            
+            const capabilitiesService = new CapabilitiesService({
+                configManager,
+                logger: console
+            });
+            
+            const openAPIService = new OpenAPIService({
+                configManager,
+                capabilitiesService,
+                logger: console
+            });
+
+            const format = argv['output-format'] || 'json';
+            const includeExamples = !argv.quiet;
+            const includeSchemas = !argv.quiet;
+            
+            try {
+                const spec = openAPIService.generateAndFormat({
+                    format,
+                    includeExamples,
+                    includeSchemas
+                });
+                
+                console.log(spec);
+                process.exit(0);
+            } catch (error) {
+                console.error('Error generating OpenAPI specification:', error.message);
                 process.exit(1);
             }
         }
