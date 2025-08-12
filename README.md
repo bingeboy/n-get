@@ -483,11 +483,9 @@ N-Get supports extensive configuration through environment variables using the `
 - `NGET_SECURITY_SANITIZEFILENAMES=true` - Sanitize downloaded filenames
 
 #### Logging Configuration
-- `NGET_LOGGING_LEVEL=info` - Log level (trace, debug, info, warn, error)
-- `NGET_LOGGING_FORMAT=json` - Output format (json, csv, text)
-- `NGET_LOGGING_ENABLECOLORS=true` - Enable colored console output
-- `NGET_LOG_FORMAT=json` - Alternative format setting (same as above)
-- `NGET_LOG_LEVEL=info` - Alternative level setting (same as above)
+- `NGET_LOG_LEVEL=info` - Log level (trace, debug, info, warn, error)
+- `NGET_LOG_FORMAT=json` - Output format (json, csv, text)
+- `NGET_LOG_ENABLECOLORS=true` - Enable colored console output
 
 #### SSH/SFTP Settings  
 - `NGET_SSH_TIMEOUT=30000` - SSH connection timeout in milliseconds
@@ -510,7 +508,7 @@ N-Get supports extensive configuration through environment variables using the `
 # Set basic download configuration
 export NGET_DOWNLOADS_MAXCONCURRENT=5
 export NGET_HTTP_TIMEOUT=45000
-export NGET_LOGGING_LEVEL=debug
+export NGET_LOG_LEVEL=debug
 
 # Download with environment settings
 nget https://example.com/file.zip
@@ -522,7 +520,7 @@ nget https://example.com/file.zip
 export NGET_HTTP_MAXCONNECTIONS=50
 export NGET_DOWNLOADS_MAXCONCURRENT=10
 export NGET_HTTP_IPV6_PREFERIPV6=true
-export NGET_LOGGING_LEVEL=warn
+export NGET_LOG_LEVEL=warn
 
 nget https://cdn.example.com/large-files/*.zip
 ```
@@ -534,7 +532,7 @@ export NGET_SECURITY_ALLOWEDPROTOCOLS="https,sftp"
 export NGET_SECURITY_BLOCKPRIVATENETWORKS=true
 export NGET_SECURITY_BLOCKLOCALHOST=true
 export NGET_SECURITY_CERTIFICATEVALIDATION=true
-export NGET_LOGGING_LEVEL=info
+export NGET_LOG_LEVEL=info
 
 nget https://secure.example.com/sensitive-data.zip
 ```
@@ -545,8 +543,8 @@ nget https://secure.example.com/sensitive-data.zip
 export NGET_AI_ENABLED=true
 export NGET_AI_MCP_ENABLED=true
 export NGET_AI_MCP_PORT=8080
-export NGET_LOGGING_FORMAT=json
-export NGET_LOGGING_LEVEL=info
+export NGET_LOG_FORMAT=json
+export NGET_LOG_LEVEL=info
 
 nget https://example.com/dataset.zip
 ```
@@ -554,9 +552,9 @@ nget https://example.com/dataset.zip
 #### Development Configuration
 ```bash
 # Full debugging and monitoring setup
-export NGET_LOGGING_LEVEL=trace
-export NGET_LOGGING_FORMAT=json
-export NGET_LOGGING_ENABLECOLORS=true
+export NGET_LOG_LEVEL=trace
+export NGET_LOG_FORMAT=json
+export NGET_LOG_ENABLECOLORS=true
 export NGET_MONITORING_ENABLED=true
 export NGET_DOWNLOADS_PROGRESSREPORTING=true
 export NGET_HTTP_MAXRETRIES=5
@@ -589,9 +587,9 @@ export NGET_SECURITY_CERTIFICATEVALIDATION=true
 export NGET_SECURITY_SANITIZEFILENAMES=true
 
 # Logging Setup
-export NGET_LOGGING_LEVEL=info
-export NGET_LOGGING_FORMAT=json
-export NGET_LOGGING_ENABLECOLORS=true
+export NGET_LOG_LEVEL=info
+export NGET_LOG_FORMAT=json
+export NGET_LOG_ENABLECOLORS=true
 
 # AI Integration
 export NGET_AI_ENABLED=true

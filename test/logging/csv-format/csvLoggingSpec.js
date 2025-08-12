@@ -1,6 +1,6 @@
 /**
- * @fileoverview Test suite for CSV logging format via NGET_LOGGING_FORMAT environment variable
- * Verifies that setting NGET_LOGGING_FORMAT=csv or NGET_LOG_FORMAT=csv behaves correctly
+ * @fileoverview Test suite for CSV logging format via NGET_LOG_FORMAT environment variable
+ * Verifies that setting NGET_LOG_FORMAT=csv behaves correctly
  * Note: CSV format may produce structured output that can be parsed as CSV-like data
  */
 
@@ -84,12 +84,12 @@ describe('CSV Logging Format Environment Variable', () => {
             expect(format).to.equal('csv');
         });
 
-        it('should handle NGET_LOGGING_FORMAT=csv as alternative', () => {
-            process.env.NGET_LOGGING_FORMAT = 'csv';
+        it('should handle NGET_LOG_FORMAT=csv', () => {
+            process.env.NGET_LOG_FORMAT = 'csv';
             
             // Create logger that should respect this setting
             logger = new Logger({
-                format: process.env.NGET_LOGGING_FORMAT || 'text',
+                format: process.env.NGET_LOG_FORMAT || 'text',
                 level: 'info',
                 outputs: ['console'],
                 logDir: tempLogDir,
@@ -103,7 +103,6 @@ describe('CSV Logging Format Environment Variable', () => {
         beforeEach(() => {
             // Set CSV format
             process.env.NGET_LOG_FORMAT = 'csv';
-            process.env.NGET_LOGGING_FORMAT = 'csv';
         });
 
         it('should produce structured output suitable for CSV processing', () => {

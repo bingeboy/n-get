@@ -1,6 +1,6 @@
 /**
- * @fileoverview Test suite for JSON logging format via NGET_LOGGING_FORMAT environment variable
- * Verifies that setting NGET_LOGGING_FORMAT=json produces proper JSON structured logs
+ * @fileoverview Test suite for JSON logging format via NGET_LOG_FORMAT environment variable
+ * Verifies that setting NGET_LOG_FORMAT=json produces proper JSON structured logs
  */
 
 const {expect} = require('chai');
@@ -21,8 +21,7 @@ describe('JSON Logging Format Environment Variable', () => {
         originalEnv = {...process.env};
         
         // Set JSON format via environment variable
-        process.env.NGET_LOGGING_FORMAT = 'json';
-        process.env.NGET_LOG_FORMAT = 'json'; // Alternative format
+        process.env.NGET_LOG_FORMAT = 'json';
         
         // Create temporary log directory
         tempLogDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nget-json-log-test-'));
@@ -62,11 +61,11 @@ describe('JSON Logging Format Environment Variable', () => {
     });
 
     describe('Environment Variable Integration', () => {
-        it('should respect NGET_LOGGING_FORMAT=json environment variable', () => {
+        it('should respect NGET_LOG_FORMAT=json environment variable', () => {
             // Create logger - should pick up format from environment
             logger = new Logger({
                 level: 'info',
-                format: process.env.NGET_LOGGING_FORMAT || 'text',
+                format: process.env.NGET_LOG_FORMAT || 'text',
                 outputs: ['console'],
                 logDir: tempLogDir,
                 enableColors: false, // Disable colors for JSON testing

@@ -1,6 +1,6 @@
 /**
- * @fileoverview Test suite for text logging format via NGET_LOGGING_FORMAT environment variable
- * Verifies that setting NGET_LOGGING_FORMAT=text produces human-readable text logs (default format)
+ * @fileoverview Test suite for text logging format via NGET_LOG_FORMAT environment variable
+ * Verifies that setting NGET_LOG_FORMAT=text produces human-readable text logs (default format)
  */
 
 const {expect} = require('chai');
@@ -23,7 +23,6 @@ describe('Text Logging Format Environment Variable', () => {
         originalEnv = {...process.env};
         
         // Set text format via environment variable (default)
-        process.env.NGET_LOGGING_FORMAT = 'text';
         process.env.NGET_LOG_FORMAT = 'text';
         
         // Create temporary log directory
@@ -67,7 +66,7 @@ describe('Text Logging Format Environment Variable', () => {
     });
 
     describe('Environment Variable Integration', () => {
-        it('should respect NGET_LOGGING_FORMAT=text environment variable', () => {
+        it('should respect NGET_LOG_FORMAT=text environment variable', () => {
             logger = new Logger({
                 level: 'info',
                 outputs: ['console'],
@@ -106,7 +105,6 @@ describe('Text Logging Format Environment Variable', () => {
         it('should default to text format when no environment variable is set', () => {
             // Clear format environment variables
             delete process.env.NGET_LOG_FORMAT;
-            delete process.env.NGET_LOGGING_FORMAT;
             
             logger = new Logger({
                 level: 'info',
