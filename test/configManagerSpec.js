@@ -227,7 +227,7 @@ describe('ConfigManager', () => {
         it('should load configuration from environment variables', () => {
             process.env.NGET_HTTP_TIMEOUT = '45000';
             process.env.NGET_DOWNLOADS_MAXCONCURRENT = '7';
-            process.env.NGET_LOGGING_LEVEL = 'warn';
+            process.env.NGET_LOG_LEVEL = 'warn';
 
             const config = createConfigManager({
                 configDir: tempConfigDir,
@@ -237,6 +237,21 @@ describe('ConfigManager', () => {
             expect(config.get('http.timeout')).to.equal(45000);
             expect(config.get('downloads.maxConcurrent')).to.equal(7);
             expect(config.get('logging.level')).to.equal('warn');
+        });
+
+        it('should map NGET_LOG_* variables to logging.* configuration', () => {
+            process.env.NGET_LOG_LEVEL = 'debug';
+            process.env.NGET_LOG_FORMAT = 'json';
+            process.env.NGET_LOG_ENABLECOLORS = 'false';
+
+            const config = createConfigManager({
+                configDir: tempConfigDir,
+                enableHotReload: false,
+            });
+
+            expect(config.get('logging.level')).to.equal('debug');
+            expect(config.get('logging.format')).to.equal('json');
+            expect(config.get('logging.enableColors')).to.be.false;
         });
 
         it('should parse boolean environment variables correctly', () => {
