@@ -29,6 +29,7 @@ downloads:
   progressReporting: true     # Show progress bars and status
   chunkUpdateFrequency: 1000  # Progress update frequency in milliseconds
   chunkSize: 50              # Number of chunks before forced update
+  enableStdout: false         # Enable stdout mode for fetch-like behavior
 
 # Security Configuration
 security:
@@ -173,6 +174,22 @@ profiles:
       level: "debug"
       structured:
         includePerformance: true
+
+  fetch:
+    description: "Optimized for fetch-like behavior and API requests"
+    http:
+      timeout: 30000
+      maxRetries: 3
+      maxConnections: 10
+    downloads:
+      enableStdout: true
+      maxConcurrent: 1
+      progressReporting: false
+      enableResume: false
+    logging:
+      level: "warn"
+      format: "text"
+      enableColors: false
 
 # Development and Debugging
 development:
