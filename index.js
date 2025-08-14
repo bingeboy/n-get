@@ -720,12 +720,23 @@ async function main() {
     }
 }
 
-main().catch(error => {
-    // Handle broken pipe errors gracefully
-    if (error.code === 'EPIPE' || error.errno === 'EPIPE') {
-        process.exit(0);
-    }
+// Export the fetch function for programmatic usage
+const fetch = require('./lib/fetch');
 
-    console.error('Error:', error.message);
-    process.exit(1);
-});
+// Export for programmatic usage
+module.exports = {
+    fetch
+};
+
+// Only run main() if this file is executed directly (not required as a module)
+if (require.main === module) {
+    main().catch(error => {
+        // Handle broken pipe errors gracefully
+        if (error.code === 'EPIPE' || error.errno === 'EPIPE') {
+            process.exit(0);
+        }
+
+        console.error('Error:', error.message);
+        process.exit(1);
+    });
+}

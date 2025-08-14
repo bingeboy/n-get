@@ -18,6 +18,7 @@ A modern, intelligent download manager with agent support and tooling + comprehe
 - [Installation](#installation)
 - [Basic Usage](#usage)
 - [Fetch Mode (Stdout)](#fetch-mode-stdout)
+- [Programmatic API](#programmatic-api)
 - [Parallel Downloads](#parallel-downloads)
 - [SSH/SFTP Support](#sshsftp-usage)
 - [Configuration Management](#configuration-management)
@@ -137,6 +138,133 @@ The fetch profile automatically configures:
 - `maxConcurrent: 1` - Single request processing
 - `progressReporting: false` - No visual progress
 - `enableResume: false` - Direct streaming to stdout
+
+## Programmatic API
+
+N-Get provides a programmatic `fetch()` API that works as a drop-in replacement for axios or native fetch, with n-get's advanced features built-in.
+
+### Basic Usage
+
+```javascript
+const nget = require('n-get');
+
+// Simple GET request
+const response = await nget.fetch('https://api.example.com/users');
+console.log(response.data);        // Parsed JSON object
+console.log(response.status);      // 200
+console.log(response.headers);     // Response headers
+
+// POST request with JSON data
+const postResponse = await nget.fetch('https://api.example.com/users', {
+    method: 'POST',
+    body: { name: 'John Doe', email: 'john@example.com' },
+    headers: { 'Authorization': 'Bearer token123' }
+});
+```
+
+### Response Format
+
+The response object is axios-compatible with additional n-get features:
+
+```javascript
+{
+    data: {...},           // Parsed response (JSON object or string)
+    text: '...',          // Raw response text
+    status: 200,          // HTTP status code
+    statusText: 'OK',     // HTTP status text
+    headers: {...},       // Response headers as object
+    url: '...',           // Final URL (after redirects)
+    ok: true,            // true if status 200-299
+    config: {            // Request configuration used
+        method: 'GET',
+        url: '...',
+        headers: {...},
+        timeout: 30000
+    }
+}
+```
+
+### HTTP Methods
+
+```javascript
+// GET request (default)
+const users = await nget.fetch('https://api.example.com/users');
+
+// POST with JSON body
+const newUser = await nget.fetch('https://api.example.com/users', {
+    method: 'POST',
+    body: { name: 'Alice', role: 'admin' }
+});
+
+// PUT request
+const updatedUser = await nget.fetch('https://api.example.com/users/123', {
+    method: 'PUT',
+    body: { name: 'Alice Updated' }
+});
+
+// DELETE request
+const result = await nget.fetch('https://api.example.com/users/123', {
+    method: 'DELETE'
+});
+
+// Custom headers and content types
+const response = await nget.fetch('https://api.example.com/data', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'text/plain',
+        'X-API-Key': 'your-api-key'
+    },
+    body: 'Plain text data'
+});
+```
+
+### Configuration Integration
+
+The fetch API integrates with n-get's configuration system:
+
+```javascript
+// Use configuration profiles
+const response = await nget.fetch('https://api.example.com/data', {
+    configProfile: 'fetch'    // Applies the fetch profile settings
+});
+
+// Custom timeout
+const response = await nget.fetch('https://slow-api.example.com/data', {
+    timeout: 60000  // 60 second timeout
+});
+```
+
+### Error Handling
+
+```javascript
+try {
+    const response = await nget.fetch('https://api.example.com/protected');
+    console.log(response.data);
+} catch (error) {
+    console.error('Request failed:', error.message);
+    console.log('Request config:', error.config);
+    console.log('HTTP status:', error.response?.status);
+}
+```
+
+### Axios Migration
+
+N-Get's fetch API is designed to be a drop-in replacement for axios:
+
+```javascript
+// Before (axios)
+const axios = require('axios');
+const response = await axios.get('https://api.example.com/users');
+
+// After (n-get)
+const nget = require('n-get');
+const response = await nget.fetch('https://api.example.com/users');
+
+// Both return similar response objects
+console.log(response.data);
+console.log(response.status);
+console.log(response.headers);
+```
 
 ### Examples
 
