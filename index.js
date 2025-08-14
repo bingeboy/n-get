@@ -24,7 +24,7 @@ const LogsCommands = require('./lib/cli/logsCommands');
 const HistoryCommands = require('./lib/cli/historyCommands');
 
 const argv = minimist(process.argv.slice(2), {
-    boolean: ['resume', 'no-resume', 'list-resume', 'help', 'version', 'recursive', 'no-parent', 'quiet', 'verbose', 'json', 'csv', 'text', 'confirm', 'force', 'metadata', 'checksums', 'no-checksums', 'capabilities', 'openapi-spec'],
+    boolean: ['resume', 'no-resume', 'list-resume', 'help', 'version', 'recursive', 'no-parent', 'quiet', 'verbose', 'json', 'csv', 'text', 'confirm', 'force', 'metadata', 'checksums', 'no-checksums', 'capabilities', 'openapi-spec', 'stdout'],
     string: ['d', 'destination', 'ssh-key', 'ssh-password', 'ssh-passphrase', 'level', 'accept', 'reject', 'user-agent', 'i', 'input-file', 'o', 'output-file', 'max-concurrent', 'config-environment', 'config-ai-profile', 'limit', 'status', 'since', 'until', 'output', 'days', 'session-id', 'request-id', 'conversation-id', 'output-format'],
     alias: {
         d: 'destination',
@@ -73,6 +73,7 @@ ${ui.emojis.gear} General Options:
   --no-resume                Disable resume functionality
   -l, --list-resume          List resumable downloads in destination
   -c, --max-concurrent <num> Maximum concurrent downloads (default: 3)
+  --stdout                   Output response content to stdout (fetch mode, single URL only)
   -h, --help                 Show this help message
   --capabilities             Show tool capabilities for AI agents (JSON/YAML)
   --openapi-spec             Generate OpenAPI 3.0.3 specification for AI agents
@@ -116,6 +117,12 @@ ${ui.emojis.rocket} Examples:
   nget resume 1                        # Resume download #1 from list
   nget resume all                      # Resume all downloads from list
   nget resume -d ./downloads      # Resume from specific directory
+
+${ui.emojis.network} Fetch/Stdout Examples:
+  nget --stdout https://api.example.com/data.json
+  nget --stdout https://httpbin.org/ip | jq .
+  nget --stdout https://example.com/api/users | jq '.[0]'
+  nget --stdout https://raw.githubusercontent.com/user/repo/main/file.txt
 
 ${ui.emojis.network} Pipe Examples:
   echo "https://example.com/file.zip" | nget -i -
@@ -264,7 +271,9 @@ async function main() {
         try {
             // Check if we're outputting to stdout (which should suppress logs)
             const outputToStdout = argv['output-file'] === '-';
-            const shouldSuppressLogs = argv.quiet || outputToStdout;
+            const stdoutModeEnabled = argv.stdout;
+            const envStdoutEnabled = process.env.NGET_DOWNLOADS_ENABLESTDOUT === 'true';
+            const shouldSuppressLogs = argv.quiet || outputToStdout || stdoutModeEnabled || envStdoutEnabled;
             
             // Determine config directory - prefer package directory, fallback to current directory
             let configDir;
@@ -546,25 +555,27 @@ async function main() {
             }
         }
 
-        // Process URLs with spinner (unless in quiet mode)
+        // Process URLs with spinner (unless in quiet mode or stdout mode)
         const quietMode = argv.quiet || argv['output-file'] === '-';
         let urlSpinner = null;
-
-        if (!quietMode) {
-            urlSpinner = ui.createSpinner('Processing URLs...', ui.emojis.network);
-            urlSpinner.spinner.start();
-        }
 
         // Process URLs - keep synchronous since uriManager is sync
         const processedUrls = reqUrls.map(uriManager);
 
-        if (!quietMode && urlSpinner) {
+        // Check for stdout output mode early
+        const configStdoutEnabled = configManager.get('downloads.enableStdout', false);
+        const envStdoutEnabled = process.env.NGET_DOWNLOADS_ENABLESTDOUT === 'true';
+        const isStdoutMode = argv.stdout || configStdoutEnabled || envStdoutEnabled;
+
+        if (!quietMode && !isStdoutMode) {
+            urlSpinner = ui.createSpinner('Processing URLs...', ui.emojis.network);
+            urlSpinner.spinner.start();
             urlSpinner.spinner.succeed(`${ui.emojis.network} ${processedUrls.length} URL(s) processed`);
         }
 
         // Determine resume setting
         const enableResume = argv.resume && !argv['no-resume'];
-        if (!enableResume && !quietMode) {
+        if (!enableResume && !quietMode && !isStdoutMode) {
             ui.displayWarning('Resume functionality disabled');
         }
 
@@ -572,27 +583,45 @@ async function main() {
         const sshOptions = {};
         if (argv['ssh-key']) {
             sshOptions.keyPath = argv['ssh-key'];
-            if (!quietMode) {
+            if (!quietMode && !isStdoutMode) {
                 ui.displayInfo(`Using SSH key: ${argv['ssh-key']}`);
             }
         }
 
         if (argv['ssh-password']) {
             sshOptions.password = argv['ssh-password'];
-            if (!quietMode) {
+            if (!quietMode && !isStdoutMode) {
                 ui.displayWarning('SSH password provided via command line (consider using key authentication)');
             }
         }
 
         if (argv['ssh-passphrase']) {
             sshOptions.passphrase = argv['ssh-passphrase'];
-            if (!quietMode) {
+            if (!quietMode && !isStdoutMode) {
                 ui.displayInfo('SSH key passphrase provided');
             }
         }
 
         // Check for stdout output mode
-        const outputToStdout = argv['output-file'] === '-';
+        const outputToStdout = argv['output-file'] === '-' || argv.stdout || configStdoutEnabled || envStdoutEnabled;
+        
+        // Validate stdout usage - only allow single URLs
+        if (isStdoutMode && processedUrls.length > 1) {
+            if (!quietMode) {
+                const modeDesc = argv.stdout ? '--stdout flag' : 
+                                configStdoutEnabled ? 'stdout enabled in config' : 'stdout mode';
+                ui.displayError(`Cannot use ${modeDesc} with multiple URLs. Stdout mode is for single URL requests only.`);
+            }
+            process.exit(1);
+        }
+        
+        // Validate conflicting options with stdout
+        if (argv.stdout && argv['output-file'] && argv['output-file'] !== '-') {
+            if (!quietMode) {
+                ui.displayError('Cannot use --stdout with -o option. Choose one output method.');
+            }
+            process.exit(1);
+        }
         
         // Validate output filename usage
         if (argv['output-file'] && argv['output-file'] !== '-' && processedUrls.length > 1) {
@@ -605,18 +634,19 @@ async function main() {
         // Parse concurrency limit - use config value as default
         const configMaxConcurrent = configManager.get('downloads.maxConcurrent', 3);
         const maxConcurrent = Math.max(1, Number.parseInt(argv['max-concurrent']) || configMaxConcurrent);
-        if (!quietMode && maxConcurrent !== configMaxConcurrent) {
+        if (!quietMode && !isStdoutMode && maxConcurrent !== configMaxConcurrent) {
             ui.displayInfo(`Using ${maxConcurrent} concurrent downloads`);
         }
 
         // Build download options
         const downloadOptions = {
-            enableResume,
+            enableResume: isStdoutMode ? false : enableResume, // Disable resume for stdout mode
             sshOptions,
             outputToStdout,
+            stdoutMode: isStdoutMode, // Flag to distinguish stdout mode from file output mode
             outputFilename: argv['output-file'] && argv['output-file'] !== '-' ? argv['output-file'] : null,
             quietMode: quietMode || outputToStdout, // Auto-enable quiet mode for stdout
-            maxConcurrent,
+            maxConcurrent: isStdoutMode ? 1 : maxConcurrent, // Force single concurrent for stdout mode
             configManager, // Pass config manager to download functions
             // AI Agent Integration options
             sessionId: argv['session-id'],
@@ -632,7 +662,8 @@ async function main() {
         // Check if recursive mode is enabled
         if (argv.recursive) {
             if (outputToStdout) {
-                ui.displayError('Recursive mode is not compatible with stdout output (-o -)');
+                const stdoutMethod = argv.stdout ? '--stdout' : 'stdout output (-o -)';
+                ui.displayError(`Recursive mode is not compatible with ${stdoutMethod}`);
                 process.exit(1);
             }
 
@@ -654,7 +685,7 @@ async function main() {
                 configManager, // Pass config manager to recursive downloader
             };
 
-            if (!quietMode) {
+            if (!quietMode && !isStdoutMode) {
                 ui.displayInfo(`Recursive mode enabled (depth: ${recursiveOptions.level})`);
                 if (recursiveOptions.noParent) {
                     ui.displayInfo('Parent directory restriction enabled');
@@ -689,12 +720,23 @@ async function main() {
     }
 }
 
-main().catch(error => {
-    // Handle broken pipe errors gracefully
-    if (error.code === 'EPIPE' || error.errno === 'EPIPE') {
-        process.exit(0);
-    }
+// Export the fetch function for programmatic usage
+const fetch = require('./lib/fetch');
 
-    console.error('Error:', error.message);
-    process.exit(1);
-});
+// Export for programmatic usage
+module.exports = {
+    fetch
+};
+
+// Only run main() if this file is executed directly (not required as a module)
+if (require.main === module) {
+    main().catch(error => {
+        // Handle broken pipe errors gracefully
+        if (error.code === 'EPIPE' || error.errno === 'EPIPE') {
+            process.exit(0);
+        }
+
+        console.error('Error:', error.message);
+        process.exit(1);
+    });
+}
