@@ -46,6 +46,7 @@
     "lib/core/**/*.ts",
     "lib/workers/**/*.ts",
     "lib/cli/jobsCommands.ts",
+    "lib/mcp/**/*.ts",
     "lib/utils/**/*.ts",
     "lib/errors/**/*.ts",
     "lib/services/**/*.ts",
