@@ -1,34 +1,109 @@
-"use strict";
 /**
  * @fileoverview Enterprise security service for input validation and threat prevention
  * Implements comprehensive security checks, path traversal prevention, and protocol validation
  * @module SecurityService
  */
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-const node_url_1 = require("node:url");
-const node_path_1 = __importDefault(require("node:path"));
-const node_fs_1 = __importDefault(require("node:fs"));
-const DownloadError_js_1 = __importDefault(require("../errors/DownloadError.js"));
-const ipv6Utils_js_1 = __importDefault(require("../utils/ipv6Utils.js"));
+
+import { URL } from 'node:url';
+import path from 'node:path';
+import fs from 'node:fs';
+import { isIP } from 'node:net';
+import DownloadError from '../errors/DownloadError.js';
+import IPv6Utils from '../utils/ipv6Utils.js';
+
+// ─── Interfaces ───────────────────────────────────────────────────────────────
+
+interface SecurityConfig {
+    allowedProtocols: string[];
+    maxFileSize: number;
+    maxUrlLength: number;
+    maxPathLength: number;
+    blockedDomains: string[];
+    allowedDomains: string[];
+    blockPrivateNetworks: boolean;
+    blockLocalhost: boolean;
+    enablePathTraversalProtection: boolean;
+    maxConcurrentDownloads: number;
+    rateLimitRequests: number;
+    sanitizeFilenames: boolean;
+}
+
+interface RateLimiter {
+    requests: Map<string, number[]>;
+    windowMs: number;
+}
+
+interface ValidationError {
+    field: string;
+    code: string;
+    message: string;
+}
+
+interface ValidationWarning {
+    field: string;
+    code: string;
+    message: string;
+}
+
+interface ValidationResult {
+    isValid: boolean;
+    errors: ValidationError[];
+    warnings: ValidationWarning[];
+}
+
+interface DownloadRequestValidationResult extends ValidationResult {
+    sanitizedRequest?: DownloadRequest;
+}
+
+interface RateLimitResult {
+    isValid: boolean;
+    errors: ValidationError[];
+    requestCount: number;
+    resetTime: number;
+}
+
+interface DownloadRequest {
+    url: string;
+    destination?: string;
+    headers?: Record<string, string>;
+    clientIp?: string;
+    [key: string]: unknown;
+}
+
+interface RateLimitStats {
+    totalClients: number;
+    activeRequests: number;
+    limitPerMinute: number;
+}
+
+interface SecurityServiceDeps {
+    config: Record<string, any>;
+    logger: {
+        warn(message: string, context?: Record<string, unknown>): void;
+        error(message: string, context?: Record<string, unknown>): void;
+    };
+}
+
 // ─── Class ────────────────────────────────────────────────────────────────────
+
 /**
  * Enterprise security service for validating download requests and preventing security threats
  * Provides comprehensive input validation, path traversal prevention, and protocol enforcement
  */
 class SecurityService {
-    config;
-    logger;
-    securityConfig;
-    rateLimiter;
+    private config: Record<string, any>;
+    private logger: SecurityServiceDeps['logger'];
+    private securityConfig: SecurityConfig;
+    private rateLimiter: RateLimiter;
+
     /**
      * Creates a security service instance
      * @param dependencies - Service dependencies
      */
-    constructor({ config, logger }) {
+    constructor({ config, logger }: SecurityServiceDeps) {
         this.config = config;
         this.logger = logger;
+
         // Security configuration with secure defaults
         this.securityConfig = {
             allowedProtocols: config?.security?.allowedProtocols || ['https', 'http', 'sftp'],
@@ -44,20 +119,23 @@ class SecurityService {
             rateLimitRequests: config?.security?.rateLimitRequests || 100, // per minute
             sanitizeFilenames: config?.security?.sanitizeFilenames !== false,
         };
+
         // Rate limiting state
         this.rateLimiter = {
             requests: new Map(), // IP -> [timestamps]
             windowMs: 60000, // 1 minute window
         };
     }
+
     /**
      * Validates a complete download request for security compliance
      * @param request - Download request to validate
      * @returns Validation result with isValid flag and errors array
      */
-    validateDownloadRequest(request) {
-        const errors = [];
-        const warnings = [];
+    validateDownloadRequest(request: DownloadRequest): DownloadRequestValidationResult {
+        const errors: ValidationError[] = [];
+        const warnings: ValidationWarning[] = [];
+
         try {
             // URL validation
             const urlValidation = this.validateUrl(request.url);
@@ -65,6 +143,7 @@ class SecurityService {
                 errors.push(...urlValidation.errors);
             }
             warnings.push(...(urlValidation.warnings || []));
+
             // Destination path validation
             if (request.destination) {
                 const pathValidation = this.validateDestinationPath(request.destination);
@@ -73,6 +152,7 @@ class SecurityService {
                 }
                 warnings.push(...(pathValidation.warnings || []));
             }
+
             // Headers validation
             if (request.headers) {
                 const headerValidation = this.validateHeaders(request.headers);
@@ -80,6 +160,7 @@ class SecurityService {
                     errors.push(...headerValidation.errors);
                 }
             }
+
             // Rate limiting check
             if (request.clientIp) {
                 const rateLimitValidation = this.checkRateLimit(request.clientIp);
@@ -87,7 +168,9 @@ class SecurityService {
                     errors.push(...rateLimitValidation.errors);
                 }
             }
+
             const isValid = errors.length === 0;
+
             if (!isValid) {
                 this.logger.warn('Download request failed security validation', {
                     url: request.url,
@@ -96,38 +179,42 @@ class SecurityService {
                     clientIp: request.clientIp,
                 });
             }
+
             return {
                 isValid,
                 errors,
                 warnings,
                 sanitizedRequest: this.sanitizeRequest(request),
             };
-        }
-        catch (error) {
+
+        } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : String(error);
             this.logger.error('Security validation error', {
                 error: msg,
                 request: { url: request.url, destination: request.destination },
             });
+
             return {
                 isValid: false,
                 errors: [{
-                        field: 'general',
-                        code: 'VALIDATION_SYSTEM_ERROR',
-                        message: 'Security validation system error',
-                    }],
+                    field: 'general',
+                    code: 'VALIDATION_SYSTEM_ERROR',
+                    message: 'Security validation system error',
+                }],
                 warnings: [],
             };
         }
     }
+
     /**
      * Validates URL for security compliance
      * @param url - URL to validate
      * @returns Validation result
      */
-    validateUrl(url) {
-        const errors = [];
-        const warnings = [];
+    validateUrl(url: string): ValidationResult {
+        const errors: ValidationError[] = [];
+        const warnings: ValidationWarning[] = [];
+
         // Basic URL length check
         if (!url || typeof url !== 'string') {
             errors.push({
@@ -137,6 +224,7 @@ class SecurityService {
             });
             return { isValid: false, errors, warnings };
         }
+
         if (url.length > this.securityConfig.maxUrlLength) {
             errors.push({
                 field: 'url',
@@ -144,8 +232,10 @@ class SecurityService {
                 message: `URL exceeds maximum length of ${this.securityConfig.maxUrlLength} characters`,
             });
         }
+
         try {
-            const urlObj = new node_url_1.URL(url);
+            const urlObj = new URL(url);
+
             // Protocol validation
             const protocol = urlObj.protocol.slice(0, -1); // Remove trailing ':'
             if (!this.securityConfig.allowedProtocols.includes(protocol)) {
@@ -155,25 +245,31 @@ class SecurityService {
                     message: `Protocol '${protocol}' not allowed. Allowed protocols: ${this.securityConfig.allowedProtocols.join(', ')}`,
                 });
             }
+
             // Domain validation
             const hostname = urlObj.hostname.toLowerCase();
+
             // Check blocked domains
-            if (this.securityConfig.blockedDomains.some(domain => hostname === domain || hostname.endsWith('.' + domain))) {
+            if (this.securityConfig.blockedDomains.some(domain =>
+                hostname === domain || hostname.endsWith('.' + domain))) {
                 errors.push({
                     field: 'url',
                     code: 'BLOCKED_DOMAIN',
                     message: `Domain '${hostname}' is blocked by security policy`,
                 });
             }
+
             // Check allowed domains (if whitelist is configured)
             if (this.securityConfig.allowedDomains.length > 0 &&
-                !this.securityConfig.allowedDomains.some(domain => hostname === domain || hostname.endsWith('.' + domain))) {
+                !this.securityConfig.allowedDomains.some(domain =>
+                    hostname === domain || hostname.endsWith('.' + domain))) {
                 errors.push({
                     field: 'url',
                     code: 'DOMAIN_NOT_ALLOWED',
                     message: `Domain '${hostname}' is not in the allowed domains list`,
                 });
             }
+
             // Private network and localhost checks
             if (this.securityConfig.blockLocalhost && this.isLocalhost(hostname)) {
                 errors.push({
@@ -182,6 +278,7 @@ class SecurityService {
                     message: 'Access to localhost addresses is not allowed',
                 });
             }
+
             if (this.securityConfig.blockPrivateNetworks && this.isPrivateNetwork(hostname)) {
                 errors.push({
                     field: 'url',
@@ -189,6 +286,7 @@ class SecurityService {
                     message: 'Access to private network addresses is not allowed',
                 });
             }
+
             // Warn about HTTP vs HTTPS
             if (protocol === 'http' && !hostname.startsWith('localhost') && !this.isPrivateNetwork(hostname)) {
                 warnings.push({
@@ -197,6 +295,7 @@ class SecurityService {
                     message: 'Using HTTP instead of HTTPS may expose data to interception',
                 });
             }
+
             // Check for suspicious URL patterns
             const suspiciousPatterns = [
                 /[<>"\s]/, // HTML characters or whitespace
@@ -207,6 +306,7 @@ class SecurityService {
                 /%2e%2e/i, // URL-encoded path traversal
                 /%00/, // Null byte injection
             ];
+
             for (const pattern of suspiciousPatterns) {
                 if (pattern.test(url)) {
                     errors.push({
@@ -217,28 +317,31 @@ class SecurityService {
                     break;
                 }
             }
-        }
-        catch (urlError) {
+
+        } catch (urlError) {
             errors.push({
                 field: 'url',
                 code: 'MALFORMED_URL',
                 message: 'Invalid URL format',
             });
         }
+
         return {
             isValid: errors.length === 0,
             errors,
             warnings,
         };
     }
+
     /**
      * Validates destination path for security compliance
      * @param destinationPath - Destination path to validate
      * @returns Validation result
      */
-    validateDestinationPath(destinationPath) {
-        const errors = [];
-        const warnings = [];
+    validateDestinationPath(destinationPath: string): ValidationResult {
+        const errors: ValidationError[] = [];
+        const warnings: ValidationWarning[] = [];
+
         if (!destinationPath || typeof destinationPath !== 'string') {
             errors.push({
                 field: 'destination',
@@ -247,6 +350,7 @@ class SecurityService {
             });
             return { isValid: false, errors, warnings };
         }
+
         // Path length check
         if (destinationPath.length > this.securityConfig.maxPathLength) {
             errors.push({
@@ -255,6 +359,7 @@ class SecurityService {
                 message: `Path exceeds maximum length of ${this.securityConfig.maxPathLength} characters`,
             });
         }
+
         // Path traversal protection
         if (this.securityConfig.enablePathTraversalProtection) {
             const sanitizedPath = this.sanitizePath(destinationPath);
@@ -265,20 +370,22 @@ class SecurityService {
                     message: 'Path traversal attempt detected in destination path',
                 });
             }
+
             // Additional path traversal checks
             const dangerousPatterns = [
-                /\.\./, // Parent directory references
-                /~\//, // Home directory references
-                /^\/etc\//, // System directory access
-                /^\/proc\//, // Process filesystem access
-                /^\/sys\//, // System filesystem access
-                /^\/dev\//, // Device filesystem access
-                /\0/, // Null byte injection
-                /%2e%2e/i, // URL-encoded path traversal
-                /%00/, // URL-encoded null byte
-                /\$\{.*\}/, // Variable expansion attempts
-                /`.*`/, // Command substitution attempts
+                /\.\./,           // Parent directory references
+                /~\//,            // Home directory references
+                /^\/etc\//,       // System directory access
+                /^\/proc\//,      // Process filesystem access
+                /^\/sys\//,       // System filesystem access
+                /^\/dev\//,       // Device filesystem access
+                /\0/,             // Null byte injection
+                /%2e%2e/i,        // URL-encoded path traversal
+                /%00/,            // URL-encoded null byte
+                /\$\{.*\}/,       // Variable expansion attempts
+                /`.*`/,           // Command substitution attempts
             ];
+
             for (const pattern of dangerousPatterns) {
                 if (pattern.test(destinationPath)) {
                     errors.push({
@@ -290,28 +397,28 @@ class SecurityService {
                 }
             }
         }
+
         // Check if path is absolute and warn about potential security implications
-        if (node_path_1.default.isAbsolute(destinationPath)) {
+        if (path.isAbsolute(destinationPath)) {
             warnings.push({
                 field: 'destination',
                 code: 'ABSOLUTE_PATH_WARNING',
                 message: 'Using absolute paths may have security implications',
             });
         }
+
         // Check for write permissions (if path exists)
         try {
-            const parentDir = node_path_1.default.dirname(node_path_1.default.resolve(destinationPath));
-            node_fs_1.default.accessSync(parentDir, node_fs_1.default.constants.W_OK);
-        }
-        catch (permissionError) {
+            const parentDir = path.dirname(path.resolve(destinationPath));
+            fs.accessSync(parentDir, fs.constants.W_OK);
+        } catch (permissionError: any) {
             if (permissionError.code === 'ENOENT') {
                 warnings.push({
                     field: 'destination',
                     code: 'PARENT_DIRECTORY_MISSING',
                     message: 'Parent directory does not exist and will need to be created',
                 });
-            }
-            else if (permissionError.code === 'EACCES') {
+            } else if (permissionError.code === 'EACCES') {
                 errors.push({
                     field: 'destination',
                     code: 'PERMISSION_DENIED',
@@ -319,20 +426,23 @@ class SecurityService {
                 });
             }
         }
+
         return {
             isValid: errors.length === 0,
             errors,
             warnings,
         };
     }
+
     /**
      * Validates HTTP headers for security compliance
      * @param headers - Headers object to validate
      * @returns Validation result
      */
-    validateHeaders(headers) {
-        const errors = [];
-        const warnings = [];
+    validateHeaders(headers: Record<string, unknown>): ValidationResult {
+        const errors: ValidationError[] = [];
+        const warnings: ValidationWarning[] = [];
+
         if (typeof headers !== 'object' || headers === null) {
             errors.push({
                 field: 'headers',
@@ -341,6 +451,7 @@ class SecurityService {
             });
             return { isValid: false, errors, warnings };
         }
+
         // Check for dangerous headers
         const dangerousHeaders = [
             'x-forwarded-for',
@@ -350,6 +461,7 @@ class SecurityService {
             'x-forwarded-host',
             'host',
         ];
+
         for (const [key, value] of Object.entries(headers)) {
             if (typeof key !== 'string' || typeof value !== 'string') {
                 errors.push({
@@ -359,7 +471,9 @@ class SecurityService {
                 });
                 continue;
             }
+
             const lowerKey = key.toLowerCase();
+
             if (dangerousHeaders.includes(lowerKey)) {
                 warnings.push({
                     field: 'headers',
@@ -367,6 +481,7 @@ class SecurityService {
                     message: `Header '${key}' may have security implications`,
                 });
             }
+
             // Check for header injection attempts
             if (/[\r\n]/.test(key) || /[\r\n]/.test(value)) {
                 errors.push({
@@ -375,6 +490,7 @@ class SecurityService {
                     message: 'Header injection attempt detected',
                 });
             }
+
             // Check header value length
             if (value.length > 8192) { // 8KB limit
                 errors.push({
@@ -384,41 +500,46 @@ class SecurityService {
                 });
             }
         }
+
         return {
             isValid: errors.length === 0,
             errors,
             warnings,
         };
     }
+
     /**
      * Checks rate limiting for client IP
      * @param clientIp - Client IP address
      * @returns Rate limit validation result
      */
-    checkRateLimit(clientIp) {
-        const errors = [];
+    checkRateLimit(clientIp: string): RateLimitResult {
+        const errors: ValidationError[] = [];
         const now = Date.now();
         const windowStart = now - this.rateLimiter.windowMs;
+
         // Clean old requests
         if (this.rateLimiter.requests.has(clientIp)) {
-            const requests = this.rateLimiter.requests.get(clientIp)
+            const requests = this.rateLimiter.requests.get(clientIp)!
                 .filter(timestamp => timestamp > windowStart);
             this.rateLimiter.requests.set(clientIp, requests);
         }
+
         // Check current request count
         const currentRequests = this.rateLimiter.requests.get(clientIp) || [];
+
         if (currentRequests.length >= this.securityConfig.rateLimitRequests) {
             errors.push({
                 field: 'rateLimit',
                 code: 'RATE_LIMIT_EXCEEDED',
                 message: `Rate limit exceeded: ${this.securityConfig.rateLimitRequests} requests per minute`,
             });
-        }
-        else {
+        } else {
             // Record this request
             currentRequests.push(now);
             this.rateLimiter.requests.set(clientIp, currentRequests);
         }
+
         return {
             isValid: errors.length === 0,
             errors,
@@ -426,43 +547,53 @@ class SecurityService {
             resetTime: windowStart + this.rateLimiter.windowMs,
         };
     }
+
     /**
      * Validates file size against security limits
      * @param contentLength - Content length in bytes
      * @param url - URL for context
      * @throws DownloadError When file exceeds size limits
      */
-    validateFileSize(contentLength, url) {
+    validateFileSize(contentLength: number, url: string): void {
         if (contentLength > this.securityConfig.maxFileSize) {
             this.logger.warn('File size exceeds security limit', {
                 url,
                 contentLength,
                 maxFileSize: this.securityConfig.maxFileSize,
             });
-            throw new DownloadError_js_1.default('FILE_TOO_LARGE', `File size ${contentLength} bytes exceeds maximum allowed ${this.securityConfig.maxFileSize} bytes`, {
-                contentLength,
-                maxFileSize: this.securityConfig.maxFileSize,
-                url,
-            });
+
+            throw new DownloadError(
+                'FILE_TOO_LARGE',
+                `File size ${contentLength} bytes exceeds maximum allowed ${this.securityConfig.maxFileSize} bytes`,
+                {
+                    contentLength,
+                    maxFileSize: this.securityConfig.maxFileSize,
+                    url,
+                },
+            );
         }
     }
+
     /**
      * Sanitizes a download request by removing/fixing dangerous elements
      * @param request - Request to sanitize
      * @returns Sanitized request
      */
-    sanitizeRequest(request) {
+    sanitizeRequest(request: DownloadRequest): DownloadRequest {
         const sanitized = { ...request };
+
         // Sanitize destination path
         if (sanitized.destination) {
             sanitized.destination = this.sanitizePath(sanitized.destination);
+
             if (this.securityConfig.sanitizeFilenames) {
                 sanitized.destination = this.sanitizeFilename(sanitized.destination);
             }
         }
+
         // Remove dangerous headers
         if (sanitized.headers) {
-            const cleanHeaders = {};
+            const cleanHeaders: Record<string, string> = {};
             for (const [key, value] of Object.entries(sanitized.headers)) {
                 if (typeof key === 'string' && typeof value === 'string' &&
                     !/[\r\n]/.test(key) && !/[\r\n]/.test(value)) {
@@ -471,143 +602,171 @@ class SecurityService {
             }
             sanitized.headers = cleanHeaders;
         }
+
         return sanitized;
     }
+
     /**
      * Sanitizes a file path to prevent path traversal attacks
      * @param inputPath - Path to sanitize
      * @returns Sanitized path
      */
-    sanitizePath(inputPath) {
-        if (!inputPath) {
-            return inputPath;
-        }
+    sanitizePath(inputPath: string): string {
+        if (!inputPath) { return inputPath; }
+
         // Resolve and normalize the path
-        const resolved = node_path_1.default.resolve(node_path_1.default.normalize(inputPath));
+        const resolved = path.resolve(path.normalize(inputPath));
+
         // Ensure the path doesn't escape the current working directory
         const cwd = process.cwd();
         if (!resolved.startsWith(cwd)) {
-            return node_path_1.default.join(cwd, node_path_1.default.basename(inputPath));
+            return path.join(cwd, path.basename(inputPath));
         }
+
         return resolved;
     }
+
     /**
      * Sanitizes a filename to remove dangerous characters
      * @param filename - Filename to sanitize
      * @returns Sanitized filename
      */
-    sanitizeFilename(filename) {
-        if (!filename) {
-            return filename;
-        }
-        const dir = node_path_1.default.dirname(filename);
-        const base = node_path_1.default.basename(filename);
+    sanitizeFilename(filename: string): string {
+        if (!filename) { return filename; }
+
+        const dir = path.dirname(filename);
+        const base = path.basename(filename);
+
         // Remove or replace dangerous characters
         const sanitized = base
-            .replace(/[<>:"/\\|?*\x00-\x1f]/g, '_') // Replace dangerous chars with underscore
-            .replace(/^\.+/, '_') // Don't allow leading dots
-            .replace(/\s+/g, '_') // Replace spaces with underscores
-            .slice(0, 255); // Limit filename length
-        return node_path_1.default.join(dir, sanitized || 'download');
+            .replace(/[<>:"/\\|?*\x00-\x1f]/g, '_')  // Replace dangerous chars with underscore
+            .replace(/^\.+/, '_')                     // Don't allow leading dots
+            .replace(/\s+/g, '_')                     // Replace spaces with underscores
+            .slice(0, 255);                           // Limit filename length
+
+        return path.join(dir, sanitized || 'download');
     }
+
     /**
      * Checks if hostname is in private network range (IPv4 and IPv6)
      * @param hostname - Hostname to check
      * @returns True if private network
      */
-    isPrivateNetwork(hostname) {
+    private isPrivateNetwork(hostname: string): boolean {
         // First, detect and extract the actual IP address
-        const addressInfo = ipv6Utils_js_1.default.detectAddressType(hostname);
+        const addressInfo = IPv6Utils.detectAddressType(hostname);
         let targetAddress = hostname;
+
         // Extract IPv6 address from brackets if present
         if (addressInfo.type === 'ipv6-bracketed') {
             targetAddress = addressInfo.address;
         }
+
         const lowerAddress = targetAddress.toLowerCase();
+
         // IPv4 private ranges
         const ipv4Patterns = [
-            /^10\./, // 10.0.0.0/8 (Class A private)
+            /^10\./,                          // 10.0.0.0/8 (Class A private)
             /^172\.(1[6-9]|2[0-9]|3[01])\./, // 172.16.0.0/12 (Class B private)
-            /^192\.168\./, // 192.168.0.0/16 (Class C private)
-            /^169\.254\./, // 169.254.0.0/16 (Link-local)
-            /^127\./, // 127.0.0.0/8 (Loopback)
-            /^0\./, // 0.0.0.0/8 (This network)
+            /^192\.168\./,                   // 192.168.0.0/16 (Class C private)
+            /^169\.254\./,                   // 169.254.0.0/16 (Link-local)
+            /^127\./,                        // 127.0.0.0/8 (Loopback)
+            /^0\./,                           // 0.0.0.0/8 (This network)
         ];
+
         // IPv6 private and special ranges
         const ipv6Patterns = [
             // Private/Local ranges
-            /^fc00:/i, // fc00::/7 (Unique local unicast)
-            /^fd00:/i, // fd00::/8 (Unique local unicast - specific)
-            /^fe80:/i, // fe80::/10 (Link-local unicast)
-            /^fec0:/i, // fec0::/10 (Site-local - deprecated)
+            /^fc00:/i,                       // fc00::/7 (Unique local unicast)
+            /^fd00:/i,                       // fd00::/8 (Unique local unicast - specific)
+            /^fe80:/i,                       // fe80::/10 (Link-local unicast)
+            /^fec0:/i,                       // fec0::/10 (Site-local - deprecated)
+
             // Loopback and special addresses
-            /^::1$/, // ::1 (Loopback)
-            /^::$/, // :: (Unspecified)
+            /^::1$/,                         // ::1 (Loopback)
+            /^::$/,                          // :: (Unspecified)
+
             // IPv4-mapped and compatible
-            /^::ffff:/i, // ::ffff:0:0/96 (IPv4-mapped)
-            /^2001:0*10:/i, // 2001:10::/28 (ORCHID v1)
-            /^2001:0*20:/i, // 2001:20::/28 (ORCHID v2)
+            /^::ffff:/i,                     // ::ffff:0:0/96 (IPv4-mapped)
+            /^2001:0*10:/i,                  // 2001:10::/28 (ORCHID v1)
+            /^2001:0*20:/i,                  // 2001:20::/28 (ORCHID v2)
+
             // Documentation and testing
-            /^2001:0*db8:/i, // 2001:db8::/32 (Documentation)
+            /^2001:0*db8:/i,                 // 2001:db8::/32 (Documentation)
+
             // Multicast
-            /^ff[0-9a-f][0-9a-f]:/i, // ff00::/8 (Multicast)
+            /^ff[0-9a-f][0-9a-f]:/i,         // ff00::/8 (Multicast)
         ];
+
         // Check against patterns
         const isPrivateIPv4 = ipv4Patterns.some(pattern => pattern.test(lowerAddress));
         const isPrivateIPv6 = ipv6Patterns.some(pattern => pattern.test(lowerAddress));
+
         return isPrivateIPv4 || isPrivateIPv6;
     }
+
     /**
      * Enhanced localhost detection for both IPv4 and IPv6
      * @param hostname - Hostname to check
      * @returns True if localhost
      */
-    isLocalhost(hostname) {
-        const addressInfo = ipv6Utils_js_1.default.detectAddressType(hostname);
+    private isLocalhost(hostname: string): boolean {
+        const addressInfo = IPv6Utils.detectAddressType(hostname);
         let targetAddress = hostname.toLowerCase();
+
         // Extract IPv6 address from brackets if present
         if (addressInfo.type === 'ipv6-bracketed') {
             targetAddress = addressInfo.address.toLowerCase();
         }
+
         // Localhost patterns
         const localhostPatterns = [
             // IPv4 localhost
             /^127\.0\.0\.1$/,
             /^localhost$/,
+
             // IPv6 localhost
             /^::1$/,
             /^0000:0000:0000:0000:0000:0000:0000:0001$/,
+
             // Variations of localhost
             /^localhost\.localdomain$/,
             /^ip6-localhost$/,
             /^ip6-loopback$/,
         ];
+
         return localhostPatterns.some(pattern => pattern.test(targetAddress));
     }
+
     /**
      * Gets current security configuration
      * @returns Current security configuration
      */
-    getSecurityConfig() {
+    getSecurityConfig(): SecurityConfig {
         return { ...this.securityConfig };
     }
+
     /**
      * Gets rate limiting statistics
      * @returns Rate limiting statistics
      */
-    getRateLimitStats() {
+    getRateLimitStats(): RateLimitStats {
         const now = Date.now();
         const windowStart = now - this.rateLimiter.windowMs;
-        const stats = {
+
+        const stats: RateLimitStats = {
             totalClients: this.rateLimiter.requests.size,
             activeRequests: 0,
             limitPerMinute: this.securityConfig.rateLimitRequests,
         };
+
         for (const [ip, requests] of this.rateLimiter.requests.entries()) {
             const activeRequests = requests.filter(timestamp => timestamp > windowStart);
             stats.activeRequests += activeRequests.length;
         }
+
         return stats;
     }
 }
-module.exports = SecurityService;
+
+export = SecurityService;

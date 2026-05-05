@@ -23,11 +23,13 @@ A modern, intelligent download manager with agent support and tooling + comprehe
 - [SSH/SFTP Support](#sshsftp-usage)
 - [Configuration Management](#configuration-management)
 - [Download History](#download-history)
+- [Output Modes and NDJSON Event Stream](#output-modes-and-ndjson-event-stream)
 - [AI Integration](#ai-integration)
 - [Command Line Options](#command-line-options)
 - [Resume Commands](#resume-commands)
 - [Environment Variables](#environment-variables)
 - [API](#api)
+- [Development](#development)
 
 ## Requirements
 
@@ -300,6 +302,12 @@ nget resume 1
 
 # Resume all downloads
 nget resume all
+
+# List active download sessions across all agents
+nget jobs
+
+# List active sessions with human-readable table
+nget jobs --human
 ```
 
 ### Parallel Downloads
@@ -577,6 +585,46 @@ nget https://example.com/batch-files/*.zip
 - **JSON Format**: AI agent processing, log aggregation systems, structured analysis
 - **CSV Format**: Spreadsheet import, data analysis, reporting dashboards
 
+## Output Modes and NDJSON Event Stream
+
+n-get automatically selects its output mode based on whether stdout is a TTY:
+
+| Context | Behavior |
+|---|---|
+| Interactive terminal (TTY) | Progress bars and banners printed to stderr |
+| Subprocess / pipe (non-TTY) | NDJSON event stream written to stdout |
+| `--human` flag present | Forces progress bars and banners regardless of TTY |
+
+### NDJSON Event Stream
+
+When stdout is not a TTY (the default for agent subprocesses), n-get writes one JSON object per line to stdout. Each line is a self-contained event:
+
+| Event | Description |
+|---|---|
+| `session_start` | Emitted once when the download session is created |
+| `download_queued` | A URL has been queued for download |
+| `download_start` | A download has begun |
+| `progress` | Periodic byte-count and speed update |
+| `checksum_start` | Checksum calculation started |
+| `checksum_complete` | Checksum result (algorithm + hex digest) |
+| `download_complete` | A single file finished successfully |
+| `download_error` | A single file failed |
+| `session_end` | Final summary for the session |
+
+Example output (one line per event):
+```
+{"event":"session_start","ts":1714000000000,"sessionId":"s_abc123","agent":"my-agent"}
+{"event":"download_start","ts":1714000000050,"url":"https://example.com/file.zip"}
+{"event":"progress","ts":1714000001000,"url":"https://example.com/file.zip","bytes":524288,"total":1048576,"speed":"512KB/s"}
+{"event":"download_complete","ts":1714000002100,"url":"https://example.com/file.zip","path":"./file.zip","size":1048576}
+{"event":"session_end","ts":1714000002200,"sessionId":"s_abc123","success":1,"errors":0}
+```
+
+Parse and filter events in a shell pipeline:
+```bash
+nget https://example.com/data.zip | jq 'select(.event == "download_complete")'
+```
+
 ## AI Integration
 
 N-Get includes enterprise-grade AI integration capabilities for intelligent download automation and configuration management. The AI system enables dynamic optimization, profile management, and integration with popular AI frameworks.
@@ -612,6 +660,9 @@ N-Get includes four AI-optimized profiles:
 ### Key AI Features
 
 - **Agent Control**: AI agents have complete control over all configuration settings
+- **NDJSON Event Stream**: Structured per-event JSON lines to stdout when not in a TTY — parse with `jq` or any JSON library
+- **Session Tracking**: Pass `--agent-id <id>` so the calling agent is identified in every event and in `nget jobs` output
+- **Active Session Visibility**: `nget jobs` lists all running sessions across agents; use `nget jobs --human` for a formatted table
 - **Performance Monitoring**: Real-time metrics and status reporting for agent decision-making
 - **Profile Selection**: Agents can choose and apply optimal profiles for different scenarios
 - **Learning Data Collection**: Optional outcome tracking for agent training and improvement
@@ -625,10 +676,13 @@ N-Get includes four AI-optimized profiles:
 - `--no-resume`: Disable resume functionality
 - `-l, --list-resume`: List resumable downloads in destination
 - `-c, --max-concurrent <num>`: Maximum concurrent downloads (default: 3)
+- `--human`: Force human-readable output (progress bars and banners) even when stdout is not a TTY
 - `--ssh-key <path>`: Path to SSH private key file for SFTP authentication
 - `--ssh-password <password>`: SSH password for SFTP authentication
 - `--ssh-passphrase <passphrase>`: Passphrase for encrypted SSH private keys
 - `-h, --help`: Show help information
+
+> **Output mode**: When stdout is a TTY, progress bars are shown automatically. When stdout is not a TTY (agent subprocess, pipe), NDJSON events are written to stdout instead. Use `--human` to force the interactive display. See [Output Modes and NDJSON Event Stream](#output-modes-and-ndjson-event-stream).
 
 > **Environment Variables**: Many download settings can be controlled via environment variables like `NGET_DOWNLOADS_MAXCONCURRENT`, `NGET_DOWNLOADS_ENABLERESUME`. See [Environment Variables](#environment-variables).
 
@@ -646,6 +700,21 @@ N-Get includes four AI-optimized profiles:
 - `nget history stats`: Show download statistics
 - `nget history export`: Export history data
 - `nget history clear --confirm`: Clear all download history
+
+### Jobs Commands
+- `nget jobs`: List all currently active download sessions (NDJSON to stdout)
+- `nget jobs --human`: Same, but formatted as a human-readable table to stderr
+
+### AI Agent Integration Options
+- `--agent-id <id>`: Identifies the calling agent in session tracking and NDJSON output
+- `--session-id <id>`: Session identifier for request correlation
+- `--request-id <id>`: Request identifier for correlation
+- `--conversation-id <id>`: Conversation identifier for multi-turn agent workflows
+- `--metadata`: Include enhanced file metadata in output
+- `--checksums` / `--no-checksums`: Enable or disable checksum generation (default: enabled)
+- `--output-format <format>`: Output format for capabilities/metadata: `json`, `yaml`, `csv`, `text`
+- `--capabilities`: Emit tool capabilities document for AI agents (JSON/YAML)
+- `--openapi-spec`: Emit an OpenAPI 3.0 specification for this tool
 
 ## Resume Commands
 
@@ -832,6 +901,16 @@ download(['https://example.com/file.zip'], './downloads')
         console.error('Download failed:', error);
     });
 ```
+
+## Development
+
+The core library (`lib/`) is written in TypeScript. The compiled JavaScript is committed alongside the source so the package works without a build step for end users.
+
+When contributing:
+- Source files live in `lib/**/*.ts`
+- Run `npm run build` to compile TypeScript to JavaScript
+- Tests run against the compiled output: `npm test`
+- The entry point (`index.js`) is the compiled output of the TypeScript source
 
 ## License
 
