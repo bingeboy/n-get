@@ -1,0 +1,61 @@
+{
+  "compilerOptions": {
+    // Target Node 18+ — we can use all modern JS features
+    "target": "ES2022",
+    "module": "commonjs",
+    "lib": ["ES2022"],
+    "moduleResolution": "node10",
+    "ignoreDeprecations": "6.0",
+
+    // Compile .ts files in-place: lib/core/Foo.ts → lib/core/Foo.js
+    // This keeps require('./core/Foo') working in .js files unchanged.
+    "outDir": ".",
+    "rootDir": ".",
+
+    // Allow .js files to coexist during gradual migration.
+    // checkJs: false means old .js files get no type errors.
+    // Flip to true per-file by adding // @ts-check at the top.
+    "allowJs": true,
+    "checkJs": false,
+
+    // Strictness — start loose, tighten file-by-file as we migrate
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+
+    // Quality checks that don't require strict mode
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+
+    // Module interop
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+
+    // Output — no declarations or source maps yet
+    "declaration": false,
+    "sourceMap": false
+  },
+
+  // Only compile .ts files; .js files are left to Node directly
+  "include": [
+    "types/**/*.ts",
+    "index.ts",
+    "lib/*.ts",
+    "lib/core/**/*.ts",
+    "lib/workers/**/*.ts",
+    "lib/cli/jobsCommands.ts",
+    "lib/utils/**/*.ts",
+    "lib/errors/**/*.ts",
+    "lib/services/**/*.ts",
+    "lib/config/**/*.ts"
+  ],
+
+  "exclude": [
+    "node_modules",
+    "test",
+    "examples",
+    "dist"
+  ]
+}
