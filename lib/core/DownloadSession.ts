@@ -20,6 +20,9 @@ import type {
 
 import { NgetEmitter } from './NgetEmitter.js';
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const NGET_VERSION = require('../../package.json').version as string;
+
 // These services are still .js — loosely typed until they migrate
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const Logger          = require('../services/Logger');
@@ -102,6 +105,7 @@ export class DownloadSession {
             startTime: new Date(this.startTime).toISOString(),
             agent:     this.agentId,
             pid:       process.pid,
+            version:   NGET_VERSION,
             downloads: {},
         };
     }
@@ -117,6 +121,7 @@ export class DownloadSession {
             startTime: this._status.startTime,
             agent:     this.agentId,
             pid:       process.pid,
+            version:   NGET_VERSION,
         });
         return this;
     }

@@ -7,6 +7,8 @@
  *         readActiveSessions(), pruneDeadSessions().
  */
 
+const EXPECTED_VERSION = require('../package.json').version;
+
 const { expect } = require('chai');
 const fs   = require('node:fs');
 const path = require('node:path');
@@ -173,6 +175,32 @@ describe('DownloadSession', () => {
             const sessionStart = events.find(e => e.event === 'session_start');
             expect(sessionStart).to.exist;
             expect(sessionStart.session).to.equal('start-event');
+        });
+
+        it('writes version to the status file on disk', async () => {
+            const s = makeSession({ sessionId: 'start-version-file', quietMode: true });
+            s.start();
+            await flushIO();
+            const data = readStatusFile('start-version-file');
+            expect(data.version).to.equal(EXPECTED_VERSION);
+            await s.end();
+        });
+
+        it('includes version in the session_start NDJSON event', async () => {
+            const s = makeSession({ sessionId: 'start-version-event', quietMode: false, humanMode: false });
+            const chunks = [];
+            const orig = process.stdout.write.bind(process.stdout);
+            process.stdout.write = (chunk, ...rest) => { chunks.push(String(chunk)); return orig(chunk, ...rest); };
+            try {
+                s.start();
+                await s.end();
+            } finally {
+                process.stdout.write = orig;
+            }
+            const events = chunks.map(c => { try { return JSON.parse(c); } catch { return null; } }).filter(Boolean);
+            const sessionStart = events.find(e => e.event === 'session_start');
+            expect(sessionStart).to.exist;
+            expect(sessionStart.version).to.equal(EXPECTED_VERSION);
         });
     });
 
