@@ -100,6 +100,7 @@ export interface SessionStartEvent extends NgetEventBase {
     startTime: string;
     agent: string | null;
     pid: number;
+    version?: string;
 }
 
 export interface SessionEndEvent extends NgetEventBase {
@@ -212,6 +213,7 @@ export interface SessionStatus {
     startTime: string;
     agent: string | null;
     pid: number;
+    version?: string;
     downloads: Record<string, DownloadStatus>;
     endTime?: string;
     summary?: SessionSummary;
