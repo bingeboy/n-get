@@ -703,7 +703,6 @@ async function download(urls: string[], destination: string, options: DownloadOp
     const historyManager = new HistoryManager();
     const outputFormatter = new OutputFormatterService({ logger: session.logger, defaultFormat: 'text' });
 
-    session.emitter.sessionStart({ sessionId: session.id, startTime: new Date().toISOString(), agent: (options as DownloadOptions).agentId ?? null, pid: process.pid });
     if (!quietMode) {
         const resumeText = enableResume ? ' with resume support' : '';
         const concurrencyText = urls.length > 1 ? ` (max ${maxConcurrent} concurrent)` : '';

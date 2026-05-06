@@ -202,6 +202,22 @@ describe('DownloadSession', () => {
             expect(sessionStart).to.exist;
             expect(sessionStart.version).to.equal(EXPECTED_VERSION);
         });
+
+        it('emits exactly one session_start event per session (regression: QA-2026-0506-010)', async () => {
+            const s = makeSession({ sessionId: 'start-once', quietMode: false, humanMode: false });
+            const chunks = [];
+            const orig = process.stdout.write.bind(process.stdout);
+            process.stdout.write = (chunk, ...rest) => { chunks.push(String(chunk)); return orig(chunk, ...rest); };
+            try {
+                s.start();
+                await s.end();
+            } finally {
+                process.stdout.write = orig;
+            }
+            const events = chunks.map(c => { try { return JSON.parse(c); } catch { return null; } }).filter(Boolean);
+            const startEvents = events.filter(e => e.event === 'session_start');
+            expect(startEvents).to.have.length(1);
+        });
     });
 
     // ─── end() ────────────────────────────────────────────────────────────────
