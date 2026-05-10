@@ -123,8 +123,10 @@ ${ui.emojis.info} Usage: nget [options] <url1> [url2] ...
 ${ui.emojis.info} Usage: nget resume [options]
 ${ui.emojis.info} Usage: nget config <command> [options]
 ${ui.emojis.info} Usage: nget jobs
+${ui.emojis.info} Usage: nget instructions
 
 ${ui.emojis.gear} AI agents — start here:
+  nget instructions               Full one-page agent guide (AGENTS.md, auto-generated)
   nget --capabilities             Machine-readable JSON spec of every flag, event, and config key
   nget --openapi-spec             OpenAPI 3.0.3 contract
   nget-mcp                        MCP server entry point (download_file, batch_download, get_jobs, get_capabilities)
@@ -300,6 +302,14 @@ async function main() {
             // eslint-disable-next-line @typescript-eslint/no-require-imports
             const packageJson = require('./package.json');
             console.log(packageJson.version);
+            process.exit(0);
+        }
+        // instructions — print AGENTS.md (auto-generated). No config init needed.
+        if (argv._.length > 0 && argv._[0] === 'instructions') {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const nodeFs = require('node:fs');
+            const file = path.join(__dirname, 'AGENTS.md');
+            process.stdout.write(nodeFs.readFileSync(file, 'utf8'));
             process.exit(0);
         }
         // Initialize ConfigManager
