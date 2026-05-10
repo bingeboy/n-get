@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 "use strict";
 /**
- * @fileoverview n-get - A wget-like CLI tool for Node.js with enhanced features
- * Supports HTTP/HTTPS and SFTP downloads, resume capability, recursive downloading,
- * and concurrent downloads with progress tracking.
+ * @fileoverview n-get — Observable downloads for AI agents. NDJSON event stream,
+ * MCP server, OpenAPI spec, cross-process session visibility, HTTP/HTTPS + SFTP
+ * with resume, and concurrent download orchestration.
  * @author bingeboy
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
@@ -123,6 +123,14 @@ ${ui.emojis.info} Usage: nget [options] <url1> [url2] ...
 ${ui.emojis.info} Usage: nget resume [options]
 ${ui.emojis.info} Usage: nget config <command> [options]
 ${ui.emojis.info} Usage: nget jobs
+${ui.emojis.info} Usage: nget instructions
+
+${ui.emojis.gear} AI agents — start here:
+  nget instructions               Full one-page agent guide (AGENTS.md, auto-generated)
+  nget --capabilities             Machine-readable JSON spec of every flag, event, and config key
+  nget --openapi-spec             OpenAPI 3.0.3 contract
+  nget-mcp                        MCP server entry point (download_file, batch_download, get_jobs, get_capabilities)
+  Output is NDJSON to stdout when not running in a TTY — parse with jq.
 
 ${ui.emojis.gear} General Options:
   -d, --destination <path>    Destination directory for downloads
@@ -130,7 +138,6 @@ ${ui.emojis.gear} General Options:
   --no-resume                Disable resume functionality
   -l, --list-resume          List resumable downloads in destination
   -c, --max-concurrent <num> Maximum concurrent downloads (default: 3)
-  --stdout                   Output response content to stdout (fetch mode, single URL only)
   -h, --help                 Show this help message
   --human                    Force human-readable output (progress bars + banners)
   --capabilities             Show tool capabilities for AI agents (JSON/YAML)
@@ -177,12 +184,6 @@ ${ui.emojis.rocket} Examples:
   nget resume all                      # Resume all downloads from list
   nget resume -d ./downloads           # Resume from specific directory
   nget jobs                            # List active download sessions
-
-${ui.emojis.network} Fetch/Stdout Examples:
-  nget --stdout https://api.example.com/data.json
-  nget --stdout https://httpbin.org/ip | jq .
-  nget --stdout https://example.com/api/users | jq '.[0]'
-  nget --stdout https://raw.githubusercontent.com/user/repo/main/file.txt
 
 ${ui.emojis.network} Pipe Examples:
   echo "https://example.com/file.zip" | nget -i -
@@ -289,10 +290,35 @@ async function listResumableDownloads() {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
     try {
+        // ─── Info-only flags (short-circuit before config init) ───────────────
+        // Help and version don't need config — exit immediately so an agent's
+        // first introspection command produces clean stdout with no config-load
+        // logging on stderr.
+        if (argv.help) {
+            showHelp();
+            process.exit(0);
+        }
+        if (argv.version) {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const packageJson = require('./package.json');
+            console.log(packageJson.version);
+            process.exit(0);
+        }
+        // instructions — print AGENTS.md (auto-generated). No config init needed.
+        if (argv._.length > 0 && argv._[0] === 'instructions') {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const nodeFs = require('node:fs');
+            const file = path.join(__dirname, 'AGENTS.md');
+            process.stdout.write(nodeFs.readFileSync(file, 'utf8'));
+            process.exit(0);
+        }
         // Initialize ConfigManager
         try {
             const outputToStdout = argv['output-file'] === '-';
-            const shouldSuppressLogs = argv.quiet || outputToStdout;
+            // --capabilities and --openapi-spec need config to read live values
+            // but their output should be clean machine-readable spec only.
+            const isInfoOnlyFlag = !!(argv.capabilities || argv['openapi-spec']);
+            const shouldSuppressLogs = argv.quiet || outputToStdout || isInfoOnlyFlag;
             let configDir;
             const packageConfigDir = path.join(__dirname, 'config');
             const currentConfigDir = path.join(process.cwd(), 'config');
@@ -339,16 +365,6 @@ async function main() {
             process.exit(1);
         }
         // ─── Subcommands ──────────────────────────────────────────────────────
-        if (argv.help) {
-            showHelp();
-            process.exit(0);
-        }
-        if (argv.version) {
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
-            const packageJson = require('./package.json');
-            console.log(packageJson.version);
-            process.exit(0);
-        }
         if (argv.capabilities) {
             // eslint-disable-next-line @typescript-eslint/no-require-imports
             const CapabilitiesService = require('./lib/services/CapabilitiesService');
@@ -522,7 +538,7 @@ async function main() {
             urlSpinner.spinner.succeed(`${ui.emojis.network} ${processedUrls.length} URL(s) processed`);
         }
         const enableResume = argv.resume && !argv['no-resume'];
-        if (!enableResume && !quietMode && !isStdoutMode) {
+        if (!enableResume && !quietMode) {
             ui.displayWarning('Resume functionality disabled');
         }
         // SSH options
@@ -553,14 +569,13 @@ async function main() {
         }
         const configMaxConcurrent = configManager.get('downloads.maxConcurrent', 3);
         const maxConcurrent = Math.max(1, Number.parseInt(argv['max-concurrent']) || configMaxConcurrent);
-        if (!quietMode && !isStdoutMode && maxConcurrent !== configMaxConcurrent) {
+        if (!quietMode && maxConcurrent !== configMaxConcurrent) {
             ui.displayInfo(`Using ${maxConcurrent} concurrent downloads`);
         }
         const downloadOptions = {
-            enableResume: isStdoutMode ? false : enableResume, // Disable resume for stdout mode
+            enableResume,
             sshOptions,
             outputToStdout,
-            stdoutMode: isStdoutMode, // Flag to distinguish stdout mode from file output mode
             outputFilename: argv['output-file'] && argv['output-file'] !== '-' ? argv['output-file'] : null,
             quietMode: quietMode || outputToStdout,
             humanMode,
@@ -580,8 +595,7 @@ async function main() {
         // ─── Recursive mode ───────────────────────────────────────────────────
         if (argv.recursive) {
             if (outputToStdout) {
-                const stdoutMethod = argv.stdout ? '--stdout' : 'stdout output (-o -)';
-                ui.displayError(`Recursive mode is not compatible with ${stdoutMethod}`);
+                ui.displayError('Recursive mode is not compatible with stdout output (-o -)');
                 process.exit(1);
             }
             const acceptPatterns = argv.accept ? argv.accept.split(',').map((p) => p.trim()) : [];

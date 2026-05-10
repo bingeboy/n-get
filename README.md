@@ -2,7 +2,7 @@
 
 # n-get
 
-A CLI download tool built for AI agents. n-get emits a structured NDJSON event stream to stdout when run as a subprocess, supports HTTP/HTTPS and SFTP (with resume), and ships an MCP server (`nget-mcp`) for direct integration with Claude and other MCP-compatible assistants.
+Observable downloads for AI agents. n-get streams NDJSON events for every fetch, exposes itself via `--capabilities` and `--openapi-spec`, surfaces every active session across processes through `nget jobs`, and ships an MCP server (`nget-mcp`) for direct integration with Claude and other MCP-compatible assistants. HTTP/HTTPS and SFTP, with resume.
 
 ## Install
 
