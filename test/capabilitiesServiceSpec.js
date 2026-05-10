@@ -167,4 +167,69 @@ describe('CapabilitiesService', () => {
             expect(agentIntegration.discovery).to.have.property('openapi', 'supported');
         });
     });
+
+    // ── toMarkdown ────────────────────────────────────────────────────────────
+
+    describe('toMarkdown()', () => {
+
+        let md;
+        before(() => {
+            md = makeService().toMarkdown();
+        });
+
+        it('returns a non-empty string', () => {
+            expect(md).to.be.a('string').and.not.empty;
+        });
+
+        it('starts with the n-get header and includes version + license', () => {
+            expect(md).to.match(/^# n-get/);
+            expect(md).to.include('**Version:**');
+            expect(md).to.include('**License:**');
+        });
+
+        it('renders the Quick start section with canonical examples', () => {
+            expect(md).to.include('## Quick start');
+            expect(md).to.include('Download a single file');
+            expect(md).to.include('nget https://example.com/file.zip');
+        });
+
+        it('renders the Discovery surfaces table with all four entries', () => {
+            expect(md).to.include('## Discovery surfaces');
+            expect(md).to.include('nget --help');
+            expect(md).to.include('nget --capabilities');
+            expect(md).to.include('nget --openapi-spec');
+            expect(md).to.include('nget-mcp');
+        });
+
+        it('lists all 9 NDJSON event types in the event stream section', () => {
+            expect(md).to.include('## NDJSON event stream');
+            const events = [
+                'session_start', 'download_queued', 'download_start', 'progress',
+                'checksum_start', 'checksum_complete', 'download_complete',
+                'download_error', 'session_end'
+            ];
+            events.forEach(e => {
+                expect(md, `missing event: ${e}`).to.include('`' + e + '`');
+            });
+        });
+
+        it('documents the programmatic API exports', () => {
+            expect(md).to.include('## Programmatic API');
+            expect(md).to.include('nget.capabilities');
+            expect(md).to.include('nget.openapi');
+            expect(md).to.include('nget.instructions');
+            expect(md).to.include('nget.fetch');
+        });
+
+        it('includes the MCP integration section with the Claude Desktop snippet', () => {
+            expect(md).to.include('## MCP integration');
+            expect(md).to.include('"command": "nget-mcp"');
+        });
+
+        it('output is deterministic (same input → same output)', () => {
+            const a = makeService().toMarkdown();
+            const b = makeService().toMarkdown();
+            expect(a).to.equal(b);
+        });
+    });
 });
