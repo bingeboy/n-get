@@ -2,7 +2,7 @@
   "name": "n-get",
   "version": "1.6.0",
   "homepage": "https://bingeboy.github.io/n-get/",
-  "description": "Wget like CLI Tool done with Node.js",
+  "description": "Observable downloads for AI agents. NDJSON event stream, MCP server, OpenAPI spec, session visibility, HTTP + SFTP with resume.",
   "repository": {
     "type": "git",
     "url": "git://github.com/bingeboy/n-get.git"

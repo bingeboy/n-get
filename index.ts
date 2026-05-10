@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 /**
- * @fileoverview n-get - A wget-like CLI tool for Node.js with enhanced features
- * Supports HTTP/HTTPS and SFTP downloads, resume capability, recursive downloading,
- * and concurrent downloads with progress tracking.
+ * @fileoverview n-get — Observable downloads for AI agents. NDJSON event stream,
+ * MCP server, OpenAPI spec, cross-process session visibility, HTTP/HTTPS + SFTP
+ * with resume, and concurrent download orchestration.
  * @author bingeboy
  */
 
@@ -97,6 +97,12 @@ ${ui.emojis.info} Usage: nget [options] <url1> [url2] ...
 ${ui.emojis.info} Usage: nget resume [options]
 ${ui.emojis.info} Usage: nget config <command> [options]
 ${ui.emojis.info} Usage: nget jobs
+
+${ui.emojis.gear} AI agents — start here:
+  nget --capabilities             Machine-readable JSON spec of every flag, event, and config key
+  nget --openapi-spec             OpenAPI 3.0.3 contract
+  nget-mcp                        MCP server entry point (download_file, batch_download, get_jobs, get_capabilities)
+  Output is NDJSON to stdout when not running in a TTY — parse with jq.
 
 ${ui.emojis.gear} General Options:
   -d, --destination <path>    Destination directory for downloads
@@ -262,10 +268,25 @@ async function listResumableDownloads(): Promise<void> {
 
 async function main(): Promise<void> {
     try {
+        // ─── Info-only flags (short-circuit before config init) ───────────────
+        // Help and version don't need config — exit immediately so an agent's
+        // first introspection command produces clean stdout with no config-load
+        // logging on stderr.
+        if (argv.help) { showHelp(); process.exit(0); }
+        if (argv.version) {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const packageJson = require('./package.json') as { version: string };
+            console.log(packageJson.version);
+            process.exit(0);
+        }
+
         // Initialize ConfigManager
         try {
             const outputToStdout = argv['output-file'] === '-';
-            const shouldSuppressLogs = argv.quiet || outputToStdout;
+            // --capabilities and --openapi-spec need config to read live values
+            // but their output should be clean machine-readable spec only.
+            const isInfoOnlyFlag = !!(argv.capabilities || argv['openapi-spec']);
+            const shouldSuppressLogs = argv.quiet || outputToStdout || isInfoOnlyFlag;
 
             let configDir: string;
             const packageConfigDir = path.join(__dirname, 'config');
@@ -315,15 +336,6 @@ async function main(): Promise<void> {
         }
 
         // ─── Subcommands ──────────────────────────────────────────────────────
-
-        if (argv.help) { showHelp(); process.exit(0); }
-
-        if (argv.version) {
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
-            const packageJson = require('./package.json') as { version: string };
-            console.log(packageJson.version);
-            process.exit(0);
-        }
 
         if (argv.capabilities) {
             // eslint-disable-next-line @typescript-eslint/no-require-imports
