@@ -1,3 +1,29 @@
+# Release Notes - v1.8.0
+
+## Overview
+Closes out the TypeScript migration for `lib/services/` started in 1.6.0, and locks down the public CLI contract (`--help`, `--capabilities`, `--openapi-spec`) with structural tests. Internal-only refactor — no public-surface changes.
+
+## 🚀 New Features
+- **`lib/services/` TypeScript migration complete** — `MetadataService`, `ResilientDownloadService`, `OutputFormatterService`, `CapabilitiesService`, `OpenAPIService` all ported to `.ts` in dependency order. Pure migration, no logic changes. Every service in the directory is now TS-sourced.
+- **CLI contract tests** (`test/cliOutputContractSpec.js`) — 20 structural assertions on `--help`, `--capabilities`, and `--openapi-spec` output. Strong-patterns approach: catches real regressions (missing flag, malformed JSON, version mismatch); tolerates cosmetic edits (spacing, emoji, copy tweaks).
+- **AGENTS.md freshness test** is now line-ending tolerant (Windows checkouts with `core.autocrlf=true` no longer fail the drift guard for cosmetic reasons).
+
+## 🔧 Developer Experience
+- 5 service files now type-checked (loosely — project-wide `strict: false` remains; per-file tightening is a separate future concern).
+- Test count: 420 passing (was 400 in 1.7.0; +20 new CLI contract assertions).
+
+## 💔 Breaking Changes
+None. CLI surface, library exports, NDJSON event names, and all flag contracts unchanged. `require('n-get')` still returns `{ fetch, capabilities, openapi, instructions, version }`.
+
+## Versioned surface (per SemVer)
+No public-surface changes. SemVer minor bump for the new test infrastructure (additive) and the internal refactor.
+
+---
+
+**Full Changelog**: [Compare v1.7.0...v1.8.0](https://github.com/bingeboy/n-get/compare/v1.7.0...v1.8.0)
+
+---
+
 # Release Notes - v1.7.0
 
 ## Overview
