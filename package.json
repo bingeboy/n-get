@@ -1,6 +1,6 @@
 {
   "name": "n-get",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "homepage": "https://bingeboy.github.io/n-get/",
   "description": "Observable downloads for AI agents. NDJSON event stream, MCP server, OpenAPI spec, session visibility, HTTP + SFTP with resume.",
   "repository": {
