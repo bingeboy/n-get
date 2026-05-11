@@ -1,88 +1,84 @@
-"use strict";
 /**
  * @fileoverview Enhanced Metadata Service for AI Agent Integration
  * Collects comprehensive file and download metadata for better agent understanding
  * @module MetadataService
  */
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-const path = __importStar(require("node:path"));
-const node_stream_1 = require("node:stream");
-const node_util_1 = require("node:util");
-const streamPipeline = (0, node_util_1.promisify)(node_stream_1.pipeline);
+
+import { promises as fs } from 'node:fs';
+import * as path from 'node:path';
+import { pipeline } from 'node:stream';
+import { promisify } from 'node:util';
+
+const streamPipeline = promisify(pipeline);
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { checksumPool } = require('../workers/ChecksumPool');
+
 // Load package.json to get version dynamically
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const packageJson = require('../../package.json');
-const NGET_VERSION = packageJson.version;
+const NGET_VERSION: string = packageJson.version;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyObj = Record<string, any>;
+
+interface MetadataServiceOptions {
+    logger?: AnyObj;
+    config?: AnyObj;
+    enableIntegrityChecks?: boolean;
+    enableTimingMetrics?: boolean;
+}
+
+interface DownloadContext {
+    url: string;
+    filePath: string;
+    response: AnyObj;
+    options?: AnyObj;
+}
+
 /**
  * Enhanced Metadata Service for comprehensive download information
  * Extends basic download tracking with rich metadata collection
  */
 class MetadataService {
-    logger;
-    config;
-    enableIntegrityChecks;
-    enableTimingMetrics;
-    version;
-    constructor(options = {}) {
+    logger: AnyObj;
+    config: AnyObj;
+    enableIntegrityChecks: boolean;
+    enableTimingMetrics: boolean;
+    version: string;
+
+    constructor(options: MetadataServiceOptions = {}) {
         this.logger = options.logger || console;
         this.config = options.config || {};
         this.enableIntegrityChecks = options.enableIntegrityChecks !== false;
         this.enableTimingMetrics = options.enableTimingMetrics !== false;
         this.version = NGET_VERSION;
     }
+
     /**
      * Collect comprehensive metadata during download
      */
-    async collectDownloadMetadata(downloadContext) {
+    async collectDownloadMetadata(downloadContext: DownloadContext): Promise<AnyObj> {
         const { url, filePath, response, options = {} } = downloadContext;
         const startTime = process.hrtime.bigint();
+
         try {
-            const metadata = {
+            const metadata: AnyObj = {
                 // Basic information
                 url,
                 filePath,
                 timestamp: new Date().toISOString(),
                 version: this.version,
+
                 // Source information
                 source: await this.extractSourceMetadata(url, response),
+
                 // File information
                 file: await this.extractFileMetadata(filePath, response),
+
                 // HTTP metadata
                 http: this.extractHttpMetadata(response),
+
                 // Download context
                 download: {
                     sessionId: options.sessionId || this.generateSessionId(),
@@ -95,6 +91,7 @@ class MetadataService {
                         previousAttempts: options.previousAttempts || 0
                     }
                 },
+
                 // Performance metrics
                 performance: {
                     startTime: Number(startTime),
@@ -104,14 +101,17 @@ class MetadataService {
                     downloadDuration: null, // Will be calculated on completion
                     bytesPerSecond: null
                 },
+
                 // Integrity verification
                 integrity: {
                     checksums: {}, // Will be calculated during download
                     verified: false,
                     method: this.enableIntegrityChecks ? 'sha256' : null
                 },
+
                 // Custom metadata
                 custom: options.metadata || {},
+
                 // Agent context
                 agent: {
                     toolName: 'n-get',
@@ -120,21 +120,23 @@ class MetadataService {
                     requestedBy: options.requestedBy || 'cli'
                 }
             };
+
             return metadata;
-        }
-        catch (error) {
+        } catch (error) {
             this.logger.error('Failed to collect download metadata', {
                 url,
-                error: error.message
+                error: (error as Error).message
             });
             throw error;
         }
     }
+
     /**
      * Extract source-related metadata
      */
-    async extractSourceMetadata(url, response) {
+    async extractSourceMetadata(url: string, response: AnyObj): Promise<AnyObj> {
         const urlObj = new URL(url);
+
         return {
             originalUrl: url,
             finalUrl: response?.url || url, // After redirects
@@ -151,12 +153,14 @@ class MetadataService {
             server: response?.headers?.get('server') || null
         };
     }
+
     /**
      * Extract file-related metadata
      */
-    async extractFileMetadata(filePath, response) {
+    async extractFileMetadata(filePath: string, response: AnyObj): Promise<AnyObj> {
         const fileName = path.basename(filePath);
         const fileExt = path.extname(fileName).toLowerCase();
+
         return {
             name: fileName,
             basename: path.basename(fileName, fileExt),
@@ -177,10 +181,11 @@ class MetadataService {
             }
         };
     }
+
     /**
      * Extract HTTP-related metadata
      */
-    extractHttpMetadata(response) {
+    extractHttpMetadata(response: AnyObj): AnyObj {
         if (!response) {
             return {
                 status: null,
@@ -189,6 +194,7 @@ class MetadataService {
                 cache: {}
             };
         }
+
         return {
             status: {
                 code: response.status,
@@ -214,51 +220,56 @@ class MetadataService {
             }
         };
     }
+
     /**
      * Generate checksums for file integrity verification
      */
-    async generateChecksums(filePath, algorithms = ['md5', 'sha256']) {
+    async generateChecksums(filePath: string, algorithms: string[] = ['md5', 'sha256']): Promise<AnyObj> {
         try {
             return await checksumPool.compute(filePath, algorithms);
-        }
-        catch (error) {
-            this.logger.error('Failed to generate checksums', { filePath, error: error.message });
+        } catch (error) {
+            this.logger.error('Failed to generate checksums', { filePath, error: (error as Error).message });
             return {};
         }
     }
+
     /**
      * Finalize metadata after download completion
      */
-    async finalizeMetadata(metadata, downloadResult) {
+    async finalizeMetadata(metadata: AnyObj, downloadResult: AnyObj): Promise<AnyObj> {
         const endTime = process.hrtime.bigint();
         const durationNs = Number(endTime - BigInt(metadata.performance.startTime));
         const durationMs = durationNs / 1000000;
         const durationSeconds = durationMs / 1000;
+
         // Update file size
         if (downloadResult.actualSize !== undefined) {
             metadata.file.size.actual = downloadResult.actualSize;
         }
+
         // Update performance metrics
         metadata.performance.downloadDuration = durationMs;
         metadata.performance.endTime = Number(endTime);
+
         if (downloadResult.actualSize > 0 && durationSeconds > 0) {
             metadata.performance.bytesPerSecond = Math.round(downloadResult.actualSize / durationSeconds);
             metadata.performance.megabytesPerSecond = Number((downloadResult.actualSize / 1048576 / durationSeconds).toFixed(2));
         }
+
         // Generate checksums if enabled
         if (this.enableIntegrityChecks && downloadResult.success && metadata.filePath !== 'stdout') {
             try {
                 metadata.integrity.checksums = await this.generateChecksums(metadata.filePath);
                 metadata.integrity.verified = true;
                 metadata.integrity.verifiedAt = new Date().toISOString();
-            }
-            catch (error) {
+            } catch (error) {
                 this.logger.warn('Failed to generate checksums', {
                     filePath: metadata.filePath,
-                    error: error.message
+                    error: (error as Error).message
                 });
             }
         }
+
         // Add completion status
         metadata.completion = {
             success: downloadResult.success,
@@ -267,19 +278,24 @@ class MetadataService {
             resumed: downloadResult.resumed || false,
             resumeFromByte: downloadResult.resumeFromByte || 0
         };
+
         // Add agent-friendly summary
         metadata.summary = this.generateAgentSummary(metadata);
+
         return metadata;
     }
+
     /**
      * Generate agent-friendly summary
      */
-    generateAgentSummary(metadata) {
+    generateAgentSummary(metadata: AnyObj): AnyObj {
         const fileSizeMB = metadata.file.size.actual ?
             Number((metadata.file.size.actual / 1048576).toFixed(2)) : null;
+
         const speedMBps = metadata.performance.megabytesPerSecond || null;
         const durationSec = metadata.performance.downloadDuration ?
             Number((metadata.performance.downloadDuration / 1000).toFixed(2)) : null;
+
         return {
             // Essential info for agents
             url: metadata.url,
@@ -313,10 +329,11 @@ class MetadataService {
             }
         };
     }
+
     /**
      * Get tool capabilities for agent discovery
      */
-    getToolCapabilities() {
+    getToolCapabilities(): AnyObj {
         return {
             protocols: ['http', 'https', 'sftp'],
             features: [
@@ -335,21 +352,25 @@ class MetadataService {
             outputFormats: ['json', 'yaml', 'csv', 'text']
         };
     }
+
     // Utility methods
-    generateSessionId() {
+    generateSessionId(): string {
         return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     }
-    generateRequestId() {
+
+    generateRequestId(): string {
         return `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     }
-    extractMimeType(response, fileExt) {
+
+    extractMimeType(response: AnyObj, fileExt: string): string {
         // Try to get from Content-Type header first
         const contentType = response?.headers?.get('content-type');
         if (contentType) {
             return contentType.split(';')[0].trim();
         }
+
         // Fallback to file extension mapping
-        const mimeTypes = {
+        const mimeTypes: Record<string, string> = {
             '.html': 'text/html',
             '.css': 'text/css',
             '.js': 'application/javascript',
@@ -368,13 +389,16 @@ class MetadataService {
             '.mp4': 'video/mp4',
             '.txt': 'text/plain'
         };
+
         return mimeTypes[fileExt] || 'application/octet-stream';
     }
-    extractContentLength(response) {
+
+    extractContentLength(response: AnyObj): number | null {
         const contentLength = response?.headers?.get('content-length');
         return contentLength ? parseInt(contentLength, 10) : null;
     }
-    extractEncoding(response) {
+
+    extractEncoding(response: AnyObj): string | null {
         const contentType = response?.headers?.get('content-type');
         if (contentType) {
             const match = contentType.match(/charset=([^;]+)/i);
@@ -382,11 +406,13 @@ class MetadataService {
         }
         return null;
     }
-    isCompressed(response) {
+
+    isCompressed(response: AnyObj): boolean {
         const contentEncoding = response?.headers?.get('content-encoding');
         return !!(contentEncoding && ['gzip', 'deflate', 'br'].includes(contentEncoding));
     }
-    detectIpVersion(hostname) {
+
+    detectIpVersion(hostname: string): string {
         if (hostname.includes(':')) {
             return 'ipv6';
         }
@@ -395,11 +421,13 @@ class MetadataService {
         }
         return 'domain';
     }
-    detectCdn(response) {
+
+    detectCdn(response: AnyObj): string | null {
         const server = response?.headers?.get('server') || '';
         const via = response?.headers?.get('via') || '';
         const xCache = response?.headers?.get('x-cache') || '';
-        const cdnPatterns = {
+
+        const cdnPatterns: Record<string, RegExp> = {
             'cloudflare': /cloudflare/i,
             'amazonaws': /amazonaws/i,
             'fastly': /fastly/i,
@@ -407,29 +435,34 @@ class MetadataService {
             'akamai': /akamai/i,
             'maxcdn': /maxcdn/i
         };
+
         const combinedHeaders = `${server} ${via} ${xCache}`.toLowerCase();
+
         for (const [cdn, pattern] of Object.entries(cdnPatterns)) {
             if (pattern.test(combinedHeaders)) {
                 return cdn;
             }
         }
+
         return null;
     }
-    extractMaxAge(cacheControl) {
-        if (!cacheControl)
-            return null;
+
+    extractMaxAge(cacheControl: string | null | undefined): number | null {
+        if (!cacheControl) return null;
         const match = cacheControl.match(/max-age=(\d+)/i);
         return match ? parseInt(match[1], 10) : null;
     }
-    extractRedirectChain(response) {
+
+    extractRedirectChain(response: AnyObj): AnyObj[] {
         // This would need to be tracked during the fetch process
         // For now, return basic info
         return response.redirected ? [{ from: 'unknown', to: response.url }] : [];
     }
-    sanitizeHeaders(headers) {
-        const sanitized = {};
+
+    sanitizeHeaders(headers: AnyObj): AnyObj {
+        const sanitized: AnyObj = {};
         if (headers && headers.forEach) {
-            headers.forEach((value, key) => {
+            headers.forEach((value: string, key: string) => {
                 // Exclude sensitive headers
                 if (!key.toLowerCase().includes('authorization') &&
                     !key.toLowerCase().includes('cookie')) {
@@ -439,20 +472,20 @@ class MetadataService {
         }
         return sanitized;
     }
-    formatDuration(seconds) {
+
+    formatDuration(seconds: number): string {
         if (seconds < 60) {
             return `${seconds}s`;
-        }
-        else if (seconds < 3600) {
+        } else if (seconds < 3600) {
             const minutes = Math.floor(seconds / 60);
             const remainingSeconds = Math.floor(seconds % 60);
             return `${minutes}m ${remainingSeconds}s`;
-        }
-        else {
+        } else {
             const hours = Math.floor(seconds / 3600);
             const minutes = Math.floor((seconds % 3600) / 60);
             return `${hours}h ${minutes}m`;
         }
     }
 }
-module.exports = MetadataService;
+
+export = MetadataService;

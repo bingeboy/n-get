@@ -1,58 +1,90 @@
-"use strict";
 /**
  * @fileoverview Capabilities Service for AI Agent Discovery
  * Provides comprehensive information about n-get's features and capabilities
  * @module CapabilitiesService
  */
+
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
 // Load package.json to get version and dependencies
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const packageJson = require('../../package.json');
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyObj = Record<string, any>;
+
+interface CapabilitiesServiceOptions {
+    configManager?: AnyObj;
+    logger?: AnyObj;
+}
+
+interface GetCapabilitiesOptions {
+    format?: string;
+    detailed?: boolean;
+}
+
 /**
  * Capabilities Service for exposing n-get features to AI agents
  * Provides machine-readable information about what n-get can do
  */
 class CapabilitiesService {
-    configManager;
-    logger;
-    version;
-    constructor(options = {}) {
+    configManager: AnyObj | undefined;
+    logger: AnyObj;
+    version: string;
+
+    constructor(options: CapabilitiesServiceOptions = {}) {
         this.configManager = options.configManager;
         this.logger = options.logger || console;
         this.version = packageJson.version;
     }
+
     /**
      * Get comprehensive capabilities information
      */
-    getCapabilities(options = {}) {
+    getCapabilities(options: GetCapabilitiesOptions = {}): AnyObj {
         const { format = 'json', detailed = true } = options;
-        const capabilities = {
+
+        const capabilities: AnyObj = {
             // Basic tool information
             tool: this.getToolInfo(),
+
             // Protocol and network capabilities
             protocols: this.getProtocolCapabilities(),
+
             // Download and file handling features
             features: this.getFeatureCapabilities(),
+
             // Authentication methods
             authentication: this.getAuthenticationCapabilities(),
+
             // Output and integration options
             output: this.getOutputCapabilities(),
+
             // Configuration and profiles
             configuration: this.getConfigurationCapabilities(),
+
             // Performance and limits
             limits: this.getLimitsCapabilities(),
+
             // Agent integration specific features
             agentIntegration: this.getAgentIntegrationCapabilities(),
+
             // Error handling and reliability
             reliability: this.getReliabilityCapabilities(),
+
             // CLI interface details
             cli: this.getCliCapabilities(),
+
             // Discovery surfaces and event contract
             discovery: this.getDiscoveryInfo()
         };
+
         if (detailed) {
             capabilities.examples = this.getUsageExamples();
             capabilities.schemas = this.getSchemas();
         }
+
         // Add metadata about this capability report
         capabilities._metadata = {
             generatedAt: new Date().toISOString(),
@@ -60,12 +92,14 @@ class CapabilitiesService {
             detailed,
             reportVersion: '1.0.0'
         };
+
         return capabilities;
     }
+
     /**
      * Get basic tool information
      */
-    getToolInfo() {
+    getToolInfo(): AnyObj {
         return {
             name: 'n-get',
             version: this.version,
@@ -79,10 +113,11 @@ class CapabilitiesService {
             dependencies: this.getKeyDependencies()
         };
     }
+
     /**
      * Get protocol capabilities
      */
-    getProtocolCapabilities() {
+    getProtocolCapabilities(): AnyObj {
         return {
             supported: ['http', 'https', 'sftp'],
             http: {
@@ -127,10 +162,11 @@ class CapabilitiesService {
             }
         };
     }
+
     /**
      * Get feature capabilities
      */
-    getFeatureCapabilities() {
+    getFeatureCapabilities(): AnyObj {
         return {
             download: {
                 singleFile: true,
@@ -173,10 +209,11 @@ class CapabilitiesService {
             }
         };
     }
+
     /**
      * Get authentication capabilities
      */
-    getAuthenticationCapabilities() {
+    getAuthenticationCapabilities(): AnyObj {
         return {
             http: {
                 methods: ['none'],
@@ -201,10 +238,11 @@ class CapabilitiesService {
             }
         };
     }
+
     /**
      * Get output capabilities
      */
-    getOutputCapabilities() {
+    getOutputCapabilities(): AnyObj {
         return {
             formats: ['text', 'json', 'yaml', 'csv'],
             destinations: ['file', 'stdout', 'directory'],
@@ -225,11 +263,13 @@ class CapabilitiesService {
             }
         };
     }
+
     /**
      * Get configuration capabilities
      */
-    getConfigurationCapabilities() {
+    getConfigurationCapabilities(): AnyObj {
         const config = this.configManager ? this.configManager.getConfig() : {};
+
         return {
             sources: ['file', 'environment', 'cli'],
             formats: ['yaml'],
@@ -261,11 +301,13 @@ class CapabilitiesService {
             }
         };
     }
+
     /**
      * Get limits and constraints
      */
-    getLimitsCapabilities() {
+    getLimitsCapabilities(): AnyObj {
         const config = this.configManager ? this.configManager.getConfig() : {};
+
         return {
             files: {
                 maxFileSize: config.security?.maxFileSize || '10GB',
@@ -298,10 +340,11 @@ class CapabilitiesService {
             }
         };
     }
+
     /**
      * Get AI agent integration capabilities
      */
-    getAgentIntegrationCapabilities() {
+    getAgentIntegrationCapabilities(): AnyObj {
         return {
             contextTracking: {
                 sessionId: true,
@@ -341,10 +384,11 @@ class CapabilitiesService {
             }
         };
     }
+
     /**
      * Get reliability capabilities
      */
-    getReliabilityCapabilities() {
+    getReliabilityCapabilities(): AnyObj {
         return {
             retryLogic: {
                 exponentialBackoff: true,
@@ -372,10 +416,11 @@ class CapabilitiesService {
             }
         };
     }
+
     /**
      * Get CLI interface capabilities
      */
-    getCliCapabilities() {
+    getCliCapabilities(): AnyObj {
         return {
             interface: {
                 posix: true,
@@ -398,8 +443,8 @@ class CapabilitiesService {
             },
             completion: {
                 bash: false, // TODO: implement
-                zsh: false, // TODO: implement
-                fish: false // TODO: implement
+                zsh: false,  // TODO: implement
+                fish: false  // TODO: implement
             },
             colors: {
                 automatic: true,
@@ -408,15 +453,16 @@ class CapabilitiesService {
             }
         };
     }
+
     /**
      * Get discovery surface information for AI agents
      */
-    getDiscoveryInfo() {
+    getDiscoveryInfo(): AnyObj {
         return {
-            help: { command: 'nget --help', description: 'Human-readable usage text with flag list and examples' },
+            help:         { command: 'nget --help',         description: 'Human-readable usage text with flag list and examples' },
             capabilities: { command: 'nget --capabilities', description: 'This document. Machine-readable JSON spec of every flag, event, and config key' },
-            openapi: { command: 'nget --openapi-spec', description: 'OpenAPI 3.0.3 contract for HTTP-style tooling' },
-            mcp: { command: 'nget-mcp', description: 'MCP server entry point exposing download_file, batch_download, get_jobs, get_capabilities' },
+            openapi:      { command: 'nget --openapi-spec', description: 'OpenAPI 3.0.3 contract for HTTP-style tooling' },
+            mcp:          { command: 'nget-mcp',            description: 'MCP server entry point exposing download_file, batch_download, get_jobs, get_capabilities' },
             ndjsonEvents: [
                 'session_start',
                 'download_queued',
@@ -429,16 +475,17 @@ class CapabilitiesService {
                 'session_end'
             ],
             outputModes: {
-                tty: 'progress bars and banners on stderr; final summary on stdout',
-                nonTty: 'NDJSON event stream on stdout (one JSON object per line)',
+                tty:        'progress bars and banners on stderr; final summary on stdout',
+                nonTty:     'NDJSON event stream on stdout (one JSON object per line)',
                 forceHuman: 'use --human to force tty-style output regardless of stdout'
             }
         };
     }
+
     /**
      * Get usage examples for agents
      */
-    getUsageExamples() {
+    getUsageExamples(): AnyObj {
         return {
             basic: {
                 singleFile: 'nget https://example.com/file.zip',
@@ -461,14 +508,15 @@ class CapabilitiesService {
                 sftp: 'nget sftp://user@server.com/file.zip --ssh-key ~/.ssh/id_rsa'
             },
             canonical: [
-                { description: 'Download a single file', command: 'nget https://example.com/file.zip' },
-                { description: 'Download many files concurrently to a directory', command: 'nget url1 url2 url3 -d ./downloads --max-concurrent 5' },
-                { description: 'Read URLs from stdin', command: 'cat urls.txt | nget -i - -d ./downloads' },
-                { description: 'SFTP download with explicit key', command: 'nget sftp://user@server/path/file.zip --ssh-key ~/.ssh/id_rsa' },
-                { description: 'List active sessions across all agents (NDJSON)', command: 'nget jobs' }
+                { description: 'Download a single file',                                command: 'nget https://example.com/file.zip' },
+                { description: 'Download many files concurrently to a directory',       command: 'nget url1 url2 url3 -d ./downloads --max-concurrent 5' },
+                { description: 'Read URLs from stdin',                                  command: 'cat urls.txt | nget -i - -d ./downloads' },
+                { description: 'SFTP download with explicit key',                       command: 'nget sftp://user@server/path/file.zip --ssh-key ~/.ssh/id_rsa' },
+                { description: 'List active sessions across all agents (NDJSON)',       command: 'nget jobs' }
             ]
         };
     }
+
     /**
      * Render an agent-targeted Markdown summary of capabilities.
      *
@@ -477,14 +525,16 @@ class CapabilitiesService {
      * by `nget instructions` so an agent has a complete one-shot doc
      * with no docs/* read or network call required.
      */
-    toMarkdown() {
+    toMarkdown(): string {
         const cap = this.getCapabilities({ detailed: true });
         const t = cap.tool || {};
         const d = cap.discovery || {};
         const examples = (cap.examples && cap.examples.canonical) || [];
         const protocols = (cap.protocols && cap.protocols.supported) || [];
         const events = d.ndjsonEvents || [];
-        const lines = [];
+
+        const lines: string[] = [];
+
         lines.push(`# ${t.name || 'n-get'} — Agent Instructions`);
         lines.push('');
         lines.push(`**Version:** ${t.version || ''} · **License:** ${t.license || ''} · **Node:** >= 18`);
@@ -493,6 +543,7 @@ class CapabilitiesService {
         lines.push('');
         lines.push('Auto-generated from `CapabilitiesService.toMarkdown()` — single source of truth. To regenerate run `npm run build:docs`.');
         lines.push('');
+
         lines.push('## Quick start');
         lines.push('');
         for (const ex of examples) {
@@ -502,6 +553,7 @@ class CapabilitiesService {
             lines.push('  ```');
         }
         lines.push('');
+
         lines.push('## Discovery surfaces');
         lines.push('');
         lines.push('Run any of these to introspect the tool — no docs required:');
@@ -510,11 +562,11 @@ class CapabilitiesService {
         lines.push('|---|---|---|');
         for (const key of ['help', 'capabilities', 'openapi', 'mcp']) {
             const s = d[key];
-            if (!s)
-                continue;
+            if (!s) continue;
             lines.push(`| ${key} | \`${s.command}\` | ${s.description} |`);
         }
         lines.push('');
+
         lines.push('## NDJSON event stream');
         lines.push('');
         lines.push('When stdout is not a TTY, `nget` writes one JSON object per line. Output modes:');
@@ -535,12 +587,14 @@ class CapabilitiesService {
             lines.push('Run `nget --capabilities | jq .schemas` for full per-event field schemas.');
             lines.push('');
         }
+
         if (protocols.length) {
             lines.push('## Protocols');
             lines.push('');
-            lines.push(`Supported: ${protocols.map((p) => `\`${p}\``).join(', ')}.`);
+            lines.push(`Supported: ${protocols.map((p: string) => `\`${p}\``).join(', ')}.`);
             lines.push('');
         }
+
         lines.push('## Programmatic API');
         lines.push('');
         lines.push('```javascript');
@@ -557,6 +611,7 @@ class CapabilitiesService {
         lines.push('// r.data, r.status, r.headers, r.ok');
         lines.push('```');
         lines.push('');
+
         lines.push('## MCP integration');
         lines.push('');
         lines.push('`nget-mcp` is the bundled MCP server. Add to a Claude Desktop config:');
@@ -571,16 +626,19 @@ class CapabilitiesService {
         lines.push('');
         lines.push('Tools exposed: `download_file`, `batch_download`, `get_jobs`, `get_capabilities`.');
         lines.push('');
+
         lines.push('---');
         lines.push('');
         lines.push('For the complete machine-readable contract: `nget --capabilities` (JSON) or `nget --openapi-spec` (OpenAPI 3.0.3).');
         lines.push('');
+
         return lines.join('\n');
     }
+
     /**
      * Get schema information for structured outputs
      */
-    getSchemas() {
+    getSchemas(): AnyObj {
         return {
             downloadResult: {
                 type: 'object',
@@ -621,10 +679,11 @@ class CapabilitiesService {
             }
         };
     }
+
     /**
      * Get key dependencies info
      */
-    getKeyDependencies() {
+    getKeyDependencies(): AnyObj {
         const deps = packageJson.dependencies || {};
         return {
             'node-fetch': deps['node-fetch'],
@@ -634,10 +693,11 @@ class CapabilitiesService {
             'minimist': deps['minimist']
         };
     }
+
     /**
      * Get SFTP algorithm capabilities
      */
-    getSftpAlgorithms() {
+    getSftpAlgorithms(): AnyObj {
         return {
             kex: [
                 'ecdh-sha2-nistp256',
@@ -664,10 +724,11 @@ class CapabilitiesService {
             ]
         };
     }
+
     /**
      * Format capabilities output
      */
-    formatOutput(capabilities, format = 'json') {
+    formatOutput(capabilities: AnyObj, format: string = 'json'): string {
         switch (format.toLowerCase()) {
             case 'json':
                 return JSON.stringify(capabilities, null, 2);
@@ -685,4 +746,5 @@ class CapabilitiesService {
         }
     }
 }
-module.exports = CapabilitiesService;
+
+export = CapabilitiesService;
