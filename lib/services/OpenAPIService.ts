@@ -1,33 +1,55 @@
-"use strict";
 /**
  * @fileoverview OpenAPI Specification Service for AI Agent Integration
  * Generates comprehensive OpenAPI 3.0.3 specifications for n-get CLI operations
  * @module OpenAPIService
  */
+
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
 // Load package.json to get version dynamically
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const packageJson = require('../../package.json');
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyObj = Record<string, any>;
+
+interface OpenAPIServiceOptions {
+    logger?: AnyObj;
+    configManager?: AnyObj;
+    capabilitiesService?: AnyObj;
+}
+
+interface GenerateSpecOptions {
+    includeExamples?: boolean;
+    includeSchemas?: boolean;
+    format?: string;
+}
+
 /**
  * OpenAPI Service for generating machine-readable API specifications
  * Enables AI agents to understand n-get capabilities through standardized specs
  */
 class OpenAPIService {
-    logger;
-    configManager;
-    version;
-    capabilitiesService;
-    constructor(options = {}) {
+    logger: AnyObj;
+    configManager: AnyObj | undefined;
+    version: string;
+    capabilitiesService: AnyObj | undefined;
+
+    constructor(options: OpenAPIServiceOptions = {}) {
         this.logger = options.logger || console;
         this.configManager = options.configManager;
         this.version = packageJson.version;
         this.capabilitiesService = options.capabilitiesService;
     }
+
     /**
      * Generate complete OpenAPI 3.0.3 specification for n-get
      */
-    generateSpec(options = {}) {
+    generateSpec(options: GenerateSpecOptions = {}): AnyObj {
         const { includeExamples = true, includeSchemas = true, format = 'json' } = options;
-        const spec = {
+
+        const spec: AnyObj = {
             openapi: '3.0.3',
             info: this.generateInfoSection(),
             servers: this.generateServersSection(),
@@ -36,18 +58,21 @@ class OpenAPIService {
             tags: this.generateTagsSection(),
             externalDocs: this.generateExternalDocsSection()
         };
+
         // Remove undefined sections
         Object.keys(spec).forEach(key => {
             if (spec[key] === undefined) {
                 delete spec[key];
             }
         });
+
         return spec;
     }
+
     /**
      * Generate OpenAPI info section
      */
-    generateInfoSection() {
+    generateInfoSection(): AnyObj {
         return {
             title: 'N-Get Enterprise Download API',
             version: this.version,
@@ -92,10 +117,11 @@ This API is optimized for AI agent integration with features including:
             'x-maturity': 'stable'
         };
     }
+
     /**
      * Generate servers section for different environments
      */
-    generateServersSection() {
+    generateServersSection(): AnyObj[] {
         return [
             {
                 url: 'cli://n-get',
@@ -115,11 +141,12 @@ This API is optimized for AI agent integration with features including:
             }
         ];
     }
+
     /**
      * Generate comprehensive paths section
      */
-    generatePathsSection(includeExamples) {
-        const paths = {
+    generatePathsSection(includeExamples: boolean): AnyObj {
+        const paths: AnyObj = {
             '/download': {
                 post: {
                     summary: 'Download single or multiple files',
@@ -162,6 +189,7 @@ This API is optimized for AI agent integration with features including:
                     }
                 }
             },
+
             '/download/batch': {
                 post: {
                     summary: 'Download multiple files concurrently',
@@ -188,6 +216,7 @@ This API is optimized for AI agent integration with features including:
                     }
                 }
             },
+
             '/download/resume': {
                 post: {
                     summary: 'Resume interrupted downloads',
@@ -214,6 +243,7 @@ This API is optimized for AI agent integration with features including:
                     }
                 }
             },
+
             '/download/recursive': {
                 post: {
                     summary: 'Recursive website/directory download',
@@ -240,6 +270,7 @@ This API is optimized for AI agent integration with features including:
                     }
                 }
             },
+
             '/config': {
                 get: {
                     summary: 'Get current configuration',
@@ -278,6 +309,7 @@ This API is optimized for AI agent integration with features including:
                         }
                     }
                 },
+
                 put: {
                     summary: 'Update configuration',
                     description: 'Update n-get configuration settings with validation',
@@ -303,6 +335,7 @@ This API is optimized for AI agent integration with features including:
                     }
                 }
             },
+
             '/config/profiles': {
                 get: {
                     summary: 'List available configuration profiles',
@@ -321,6 +354,7 @@ This API is optimized for AI agent integration with features including:
                     }
                 }
             },
+
             '/config/profiles/{profileName}': {
                 post: {
                     summary: 'Apply configuration profile',
@@ -351,6 +385,7 @@ This API is optimized for AI agent integration with features including:
                     }
                 }
             },
+
             '/capabilities': {
                 get: {
                     summary: 'Get tool capabilities for AI agents',
@@ -390,6 +425,7 @@ This API is optimized for AI agent integration with features including:
                     }
                 }
             },
+
             '/history': {
                 get: {
                     summary: 'Get download history',
@@ -440,16 +476,19 @@ This API is optimized for AI agent integration with features including:
                 }
             }
         };
+
         // Add examples if requested
         if (includeExamples) {
             this.addOperationExamples(paths);
         }
+
         return paths;
     }
+
     /**
      * Generate comprehensive components section with schemas
      */
-    generateComponentsSection() {
+    generateComponentsSection(): AnyObj {
         return {
             schemas: {
                 DownloadRequest: {
@@ -493,6 +532,7 @@ This API is optimized for AI agent integration with features including:
                         }
                     }
                 },
+
                 BatchDownloadRequest: {
                     type: 'object',
                     required: ['downloads'],
@@ -520,6 +560,7 @@ This API is optimized for AI agent integration with features including:
                         }
                     }
                 },
+
                 RecursiveDownloadRequest: {
                     type: 'object',
                     required: ['url'],
@@ -538,6 +579,7 @@ This API is optimized for AI agent integration with features including:
                         }
                     }
                 },
+
                 ResumeRequest: {
                     type: 'object',
                     properties: {
@@ -550,6 +592,7 @@ This API is optimized for AI agent integration with features including:
                         downloadId: { type: 'string', description: 'Specific download ID to resume' }
                     }
                 },
+
                 DownloadResponse: {
                     type: 'object',
                     properties: {
@@ -574,6 +617,7 @@ This API is optimized for AI agent integration with features including:
                         }
                     }
                 },
+
                 DownloadResult: {
                     type: 'object',
                     properties: {
@@ -619,6 +663,7 @@ This API is optimized for AI agent integration with features including:
                         }
                     }
                 },
+
                 ErrorResponse: {
                     type: 'object',
                     properties: {
@@ -653,6 +698,7 @@ This API is optimized for AI agent integration with features including:
                         }
                     }
                 },
+
                 ConfigurationResponse: {
                     type: 'object',
                     properties: {
@@ -662,6 +708,7 @@ This API is optimized for AI agent integration with features including:
                         data: { type: 'object' }
                     }
                 },
+
                 CapabilitiesResponse: {
                     type: 'object',
                     properties: {
@@ -681,6 +728,7 @@ This API is optimized for AI agent integration with features including:
                     }
                 }
             },
+
             parameters: {
                 OutputFormat: {
                     name: 'format',
@@ -707,10 +755,11 @@ This API is optimized for AI agent integration with features including:
             }
         };
     }
+
     /**
      * Generate tags section for operation grouping
      */
-    generateTagsSection() {
+    generateTagsSection(): AnyObj[] {
         return [
             {
                 name: 'Downloads',
@@ -754,19 +803,21 @@ This API is optimized for AI agent integration with features including:
             }
         ];
     }
+
     /**
      * Generate external documentation links
      */
-    generateExternalDocsSection() {
+    generateExternalDocsSection(): AnyObj {
         return {
             description: 'N-Get Documentation',
             url: packageJson.homepage || 'https://github.com/bingeboy/n-get'
         };
     }
+
     /**
      * Add operation examples to paths
      */
-    addOperationExamples(paths) {
+    addOperationExamples(paths: AnyObj): void {
         // Add examples for download operation
         if (paths['/download']?.post) {
             paths['/download'].post.requestBody.content['application/json'].examples = {
@@ -797,6 +848,7 @@ This API is optimized for AI agent integration with features including:
                 }
             };
         }
+
         // Add examples for batch download
         if (paths['/download/batch']?.post) {
             paths['/download/batch'].post.requestBody.content['application/json'].examples = {
@@ -817,10 +869,11 @@ This API is optimized for AI agent integration with features including:
             };
         }
     }
+
     /**
      * Format specification output
      */
-    formatOutput(spec, format = 'json') {
+    formatOutput(spec: AnyObj, format: string = 'json'): string {
         switch (format.toLowerCase()) {
             case 'json':
                 return JSON.stringify(spec, null, 2);
@@ -838,32 +891,38 @@ This API is optimized for AI agent integration with features including:
                 return JSON.stringify(spec, null, 2);
         }
     }
+
     /**
      * Generate OpenAPI specification and return formatted output
      */
-    generateAndFormat(options = {}) {
+    generateAndFormat(options: GenerateSpecOptions = {}): string {
         const spec = this.generateSpec(options);
         return this.formatOutput(spec, options.format);
     }
+
     /**
      * Validate generated specification
      */
-    validateSpec(spec) {
-        const errors = [];
-        const warnings = [];
+    validateSpec(spec: AnyObj): AnyObj {
+        const errors: string[] = [];
+        const warnings: string[] = [];
+
         // Basic validation
         if (!spec.openapi) {
             errors.push('Missing required "openapi" field');
         }
+
         if (!spec.info || !spec.info.title || !spec.info.version) {
             errors.push('Missing required info fields (title, version)');
         }
+
         if (!spec.paths || Object.keys(spec.paths).length === 0) {
             errors.push('No paths defined');
         }
+
         // Validate path operations
-        Object.entries(spec.paths || {}).forEach(([p, pathItem]) => {
-            Object.entries(pathItem).forEach(([method, operation]) => {
+        Object.entries(spec.paths || {}).forEach(([p, pathItem]: [string, AnyObj]) => {
+            Object.entries(pathItem).forEach(([method, operation]: [string, AnyObj]) => {
                 if (!operation.operationId) {
                     warnings.push(`Missing operationId for ${method.toUpperCase()} ${p}`);
                 }
@@ -872,6 +931,7 @@ This API is optimized for AI agent integration with features including:
                 }
             });
         });
+
         return {
             valid: errors.length === 0,
             errors,
@@ -883,13 +943,17 @@ This API is optimized for AI agent integration with features including:
             }
         };
     }
+
     /**
      * Count total operations in paths
      */
-    countOperations(paths) {
-        return Object.values(paths).reduce((count, pathItem) => {
-            return count + Object.keys(pathItem).filter(key => ['get', 'post', 'put', 'delete', 'patch', 'head', 'options', 'trace'].includes(key)).length;
+    countOperations(paths: AnyObj): number {
+        return Object.values(paths).reduce((count: number, pathItem: AnyObj) => {
+            return count + Object.keys(pathItem).filter(key =>
+                ['get', 'post', 'put', 'delete', 'patch', 'head', 'options', 'trace'].includes(key)
+            ).length;
         }, 0);
     }
 }
-module.exports = OpenAPIService;
+
+export = OpenAPIService;
