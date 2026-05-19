@@ -123,9 +123,9 @@ describe('CLI output contract', () => {
             expect(capabilities.protocols.supported).to.include.members(['http', 'https', 'sftp']);
         });
 
-        it('discovery section has all four commands + ndjsonEvents + outputModes', () => {
+        it('discovery section has all four commands + ndjsonEvents + outputModes + webhooks', () => {
             expect(capabilities.discovery).to.have.all.keys(
-                'help', 'capabilities', 'openapi', 'mcp', 'ndjsonEvents', 'outputModes'
+                'help', 'capabilities', 'openapi', 'mcp', 'ndjsonEvents', 'outputModes', 'webhooks'
             );
         });
 
@@ -152,6 +152,18 @@ describe('CLI output contract', () => {
 
         it('agentIntegration.discovery.openapi === "supported"', () => {
             expect(capabilities.agentIntegration.discovery.openapi).to.equal('supported');
+        });
+
+        it('agentIntegration.eventDriven.webhooks is "supported"', () => {
+            expect(capabilities.agentIntegration.eventDriven.webhooks).to.equal('supported');
+        });
+
+        it('discovery.webhooks has url flag and events array', () => {
+            expect(capabilities.discovery).to.have.property('webhooks');
+            expect(capabilities.discovery.webhooks).to.have.property('flag');
+            expect(capabilities.discovery.webhooks).to.have.property('events');
+            expect(capabilities.discovery.webhooks.events).to.be.an('array');
+            expect(capabilities.discovery.webhooks.events.length).to.be.greaterThan(0);
         });
     });
 

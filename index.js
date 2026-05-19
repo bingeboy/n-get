@@ -69,6 +69,7 @@ const HistoryCommands = require('./lib/cli/historyCommands');
 const download = require("./lib/downloadPipeline");
 const ConfigManager = require("./lib/config/ConfigManager");
 const jobsCommands_js_1 = require("./lib/cli/jobsCommands.js");
+const NgetEmitter_js_1 = require("./lib/core/NgetEmitter.js");
 // ─── Argv parsing ─────────────────────────────────────────────────────────────
 const argv = (0, minimist_1.default)(process.argv.slice(2), {
     boolean: [
@@ -88,6 +89,7 @@ const argv = (0, minimist_1.default)(process.argv.slice(2), {
         'session-id', 'request-id', 'conversation-id', 'output-format',
         'agent-id',
         'method', 'data', 'header',
+        'webhook', 'webhook-header', 'webhook-events',
     ],
     alias: {
         d: 'destination',
@@ -244,6 +246,33 @@ async function main() {
             console.error('Failed to initialize configuration:', err.message);
             process.exit(1);
         }
+        // ─── Webhook config parser ────────────────────────────────────────────
+        function parseWebhookConfig() {
+            const rawUrls = argv.webhook
+                ? (Array.isArray(argv.webhook) ? argv.webhook : [argv.webhook])
+                : [];
+            if (rawUrls.length === 0) {
+                return [];
+            }
+            const rawHeaders = argv['webhook-header']
+                ? (Array.isArray(argv['webhook-header']) ? argv['webhook-header'] : [argv['webhook-header']])
+                : [];
+            const headers = {};
+            for (const h of rawHeaders) {
+                const colonIdx = h.indexOf(':');
+                if (colonIdx > 0) {
+                    headers[h.slice(0, colonIdx).trim()] = h.slice(colonIdx + 1).trim();
+                }
+            }
+            const events = argv['webhook-events']
+                ? argv['webhook-events'].split(',').map((e) => e.trim()).filter(Boolean)
+                : [];
+            return rawUrls.map((url) => ({
+                url,
+                headers: Object.keys(headers).length > 0 ? headers : undefined,
+                events: events.length > 0 ? events : undefined,
+            }));
+        }
         // ─── Subcommands ──────────────────────────────────────────────────────
         if (argv.capabilities) {
             // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -354,8 +383,17 @@ async function main() {
                     headers[headerStr.slice(0, colonIdx).trim()] = headerStr.slice(colonIdx + 1).trim();
                 }
             }
+            const fetchSessionId = argv['session-id'] || `fetch_${Date.now()}`;
+            const fetchEmitter = new NgetEmitter_js_1.NgetEmitter({
+                sessionId: fetchSessionId,
+                pipeMode: true,
+                webhooks: parseWebhookConfig(),
+            });
+            fetchEmitter.fetchStart(fetchUrl, method, data !== undefined);
             ngetFetch(fetchUrl, { method, body: data, headers, agentId: argv['agent-id'] })
-                .then((resp) => {
+                .then(async (resp) => {
+                const contentType = resp.headers['content-type'] ?? null;
+                fetchEmitter.fetchComplete(fetchUrl, method, resp.status, resp.statusText, resp.latencyMs, contentType);
                 console.log(JSON.stringify({
                     ok: resp.ok,
                     status: resp.status,
@@ -366,9 +404,11 @@ async function main() {
                     latencyMs: resp.latencyMs,
                     agentId: argv['agent-id'] || null
                 }));
+                await fetchEmitter.flush();
                 process.exit(resp.ok ? 0 : 1);
             })
-                .catch((err) => {
+                .catch(async (err) => {
+                fetchEmitter.fetchError(fetchUrl, method, err.message, err.latencyMs ?? null);
                 console.log(JSON.stringify({
                     ok: false,
                     status: 0,
@@ -378,6 +418,7 @@ async function main() {
                     latencyMs: err.latencyMs ?? null,
                     agentId: argv['agent-id'] || null
                 }));
+                await fetchEmitter.flush();
                 process.exit(1);
             });
             return;
@@ -526,6 +567,7 @@ async function main() {
             outputFormat: (argv['output-format'] || 'text'),
             requestedBy: 'cli',
             metadata: {},
+            webhooks: parseWebhookConfig(),
         };
         // ─── Recursive mode ───────────────────────────────────────────────────
         if (argv.recursive) {

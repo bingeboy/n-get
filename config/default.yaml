@@ -191,6 +191,10 @@ profiles:
       format: "text"
       enableColors: false
 
+# Webhook event forwarding
+webhooks:
+  default: []                 # Array of webhook URLs for all nget runs on this machine
+
 # Development and Debugging
 development:
   hotReload: true             # Enable configuration hot-reloading

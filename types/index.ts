@@ -53,6 +53,7 @@ export interface DownloadOptions {
     logFormat?: LogFormat;
     requestedBy?: string;
     metadata?: Record<string, unknown>;
+    webhooks?: WebhookConfig[];
     /** Internal: shared session injected by the batch download() call */
     _session?: unknown;
 }
@@ -84,6 +85,9 @@ export type NgetEventType =
     | 'checksum_complete'
     | 'download_complete'
     | 'download_error'
+    | 'fetch_start'
+    | 'fetch_complete'
+    | 'fetch_error'
     | 'warning'
     | 'info';
 
@@ -164,6 +168,31 @@ export interface DownloadErrorEvent extends NgetEventBase {
     retryable: boolean;
 }
 
+export interface FetchStartEvent extends NgetEventBase {
+    event: 'fetch_start';
+    url: string;
+    method: string;
+    hasBody: boolean;
+}
+
+export interface FetchCompleteEvent extends NgetEventBase {
+    event: 'fetch_complete';
+    url: string;
+    method: string;
+    status: number;
+    statusText: string;
+    latencyMs: number;
+    contentType: string | null;
+}
+
+export interface FetchErrorEvent extends NgetEventBase {
+    event: 'fetch_error';
+    url: string;
+    method: string;
+    error: string;
+    latencyMs: number | null;
+}
+
 export interface WarningEvent extends NgetEventBase {
     event: 'warning';
     message: string;
@@ -187,6 +216,9 @@ export type NgetEvent =
     | ChecksumCompleteEvent
     | DownloadCompleteEvent
     | DownloadErrorEvent
+    | FetchStartEvent
+    | FetchCompleteEvent
+    | FetchErrorEvent
     | WarningEvent
     | InfoEvent;
 
@@ -250,6 +282,12 @@ export interface LoggerConfig {
     outputs?: string[];
     enableColors?: boolean;
     logDir?: string;
+}
+
+export interface WebhookConfig {
+    url: string;
+    headers?: Record<string, string>;
+    events?: string[];
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
