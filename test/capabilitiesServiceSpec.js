@@ -9,7 +9,6 @@
  *   getAgentIntegration() — mcp and openapi fields reflect shipped state
  */
 
-const { expect } = require('chai');
 const CapabilitiesService = require('../lib/services/CapabilitiesService');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

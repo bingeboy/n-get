@@ -1,6 +1,5 @@
 'use strict';
 
-const { expect } = require('chai');
 const { NgetEmitter, EVENT } = require('../lib/core/NgetEmitter');
 
 // ─── Stream capture helpers ───────────────────────────────────────────────────

@@ -1,4 +1,3 @@
-const {expect} = require('chai');
 const uriManager = require('../lib/uriManager.js');
 
 describe('URI Manager', () => {

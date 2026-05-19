@@ -12,7 +12,6 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { expect } = require('chai');
 
 const CapabilitiesService = require('../lib/services/CapabilitiesService');
 

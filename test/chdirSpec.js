@@ -1,4 +1,3 @@
-const {expect} = require('chai');
 const path = require('node:path');
 const chdir = require('../lib/chdir');
 

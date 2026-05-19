@@ -9,7 +9,6 @@
 
 const EXPECTED_VERSION = require('../package.json').version;
 
-const { expect } = require('chai');
 const fs   = require('node:fs');
 const path = require('node:path');
 const os   = require('node:os');

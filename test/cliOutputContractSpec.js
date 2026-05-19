@@ -13,7 +13,6 @@
 
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { expect } = require('chai');
 
 const packageJson = require('../package.json');
 
