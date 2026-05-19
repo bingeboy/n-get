@@ -698,6 +698,7 @@ async function download(urls: string[], destination: string, options: DownloadOp
         pipeMode:      (options as DownloadOptions).pipeMode  ?? false,
         quietMode,
         configManager: configManager ?? null,
+        webhooks:      (options as DownloadOptions).webhooks ?? [],
     }).start();
 
     const historyManager = new HistoryManager();
