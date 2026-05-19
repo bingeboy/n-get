@@ -14,6 +14,7 @@ import type {
     NgetEvent,
     ChecksumResult,
     SessionSummary,
+    WebhookConfig,
 } from '../../types/index.js';
 
 // UIManager is still .js — typed loosely until it migrates
@@ -30,6 +31,9 @@ export const EVENT: Record<string, NgetEventType> = {
     CHECKSUM_COMPLETE:  'checksum_complete',
     DOWNLOAD_COMPLETE:  'download_complete',
     DOWNLOAD_ERROR:     'download_error',
+    FETCH_START:        'fetch_start',
+    FETCH_COMPLETE:     'fetch_complete',
+    FETCH_ERROR:        'fetch_error',
     WARNING:            'warning',
     INFO:               'info',
 } as const;
@@ -39,6 +43,7 @@ export interface NgetEmitterOptions {
     humanMode?: boolean;
     pipeMode?: boolean;
     ui?: UIManager;
+    webhooks?: WebhookConfig[];
 }
 
 export class NgetEmitter {
@@ -48,12 +53,14 @@ export class NgetEmitter {
 
     private readonly ui: UIManager;
     private readonly _out: NodeJS.WriteStream;
+    private readonly _webhooks: WebhookConfig[];
 
     constructor(options: NgetEmitterOptions) {
         this.sessionId  = options.sessionId;
         this.humanMode  = options.humanMode  ?? false;
         this.pipeMode   = options.pipeMode   ?? false;
         this.ui         = options.ui         ?? null;
+        this._webhooks  = options.webhooks   ?? [];
 
         // Route events to the right stream
         this._out = (this.humanMode || this.pipeMode)
@@ -77,7 +84,36 @@ export class NgetEmitter {
             this._out.write(JSON.stringify(event) + '\n');
         }
 
+        if (this._webhooks.length > 0) {
+            this._fireWebhooks(event);
+        }
+
         return event;
+    }
+
+    private _fireWebhooks(event: NgetEvent): void {
+        for (const wh of this._webhooks) {
+            if (wh.events && wh.events.length > 0 && !wh.events.includes(event.event)) {
+                continue;
+            }
+            const body = JSON.stringify(event);
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 2000);
+            fetch(wh.url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...wh.headers,
+                },
+                body,
+                signal: controller.signal,
+            })
+                .then(() => clearTimeout(timer))
+                .catch((err: Error) => {
+                    clearTimeout(timer);
+                    process.stderr.write(`[nget] webhook POST to ${wh.url} failed: ${err.message}\n`);
+                });
+        }
     }
 
     // ─── Typed event helpers ──────────────────────────────────────────────────
@@ -127,6 +163,18 @@ export class NgetEmitter {
             code:      error.code      ?? null,
             retryable: error.retryable ?? false,
         });
+    }
+
+    fetchStart(url: string, method: string, hasBody: boolean): NgetEvent {
+        return this.emit('fetch_start', { url, method, hasBody });
+    }
+
+    fetchComplete(url: string, method: string, status: number, statusText: string, latencyMs: number, contentType: string | null): NgetEvent {
+        return this.emit('fetch_complete', { url, method, status, statusText, latencyMs, contentType });
+    }
+
+    fetchError(url: string, method: string, error: string, latencyMs: number | null): NgetEvent {
+        return this.emit('fetch_error', { url, method, error, latencyMs });
     }
 
     warn(message: string, data: Record<string, unknown> = {}): NgetEvent {
