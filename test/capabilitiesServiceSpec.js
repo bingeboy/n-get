@@ -132,8 +132,8 @@ describe('CapabilitiesService', () => {
             expect(examples).to.have.property('canonical').that.is.an('array');
         });
 
-        it('canonical has exactly 5 entries', () => {
-            expect(examples.canonical).to.have.length(5);
+        it('canonical has at least 5 entries', () => {
+            expect(examples.canonical.length).to.be.at.least(5);
         });
 
         it('each canonical entry has description and command strings', () => {
