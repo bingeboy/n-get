@@ -54,6 +54,7 @@ export class NgetEmitter {
     private readonly ui: UIManager;
     private readonly _out: NodeJS.WriteStream;
     private readonly _webhooks: WebhookConfig[];
+    private readonly _inflight: Promise<void>[] = [];
 
     constructor(options: NgetEmitterOptions) {
         this.sessionId  = options.sessionId;
@@ -91,6 +92,10 @@ export class NgetEmitter {
         return event;
     }
 
+    flush(): Promise<void> {
+        return Promise.allSettled(this._inflight).then(() => { this._inflight.length = 0; });
+    }
+
     private _fireWebhooks(event: NgetEvent): void {
         for (const wh of this._webhooks) {
             if (wh.events && wh.events.length > 0 && !wh.events.includes(event.event)) {
@@ -99,7 +104,7 @@ export class NgetEmitter {
             const body = JSON.stringify(event);
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), 2000);
-            fetch(wh.url, {
+            const p = fetch(wh.url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -113,6 +118,7 @@ export class NgetEmitter {
                     clearTimeout(timer);
                     process.stderr.write(`[nget] webhook POST to ${wh.url} failed: ${err.message}\n`);
                 });
+            this._inflight.push(p);
         }
     }
 

@@ -11,7 +11,6 @@
 const http    = require('node:http');
 const { execFile } = require('node:child_process');
 const path    = require('node:path');
-const { expect } = require('chai');
 
 const NGET = path.join(__dirname, '..', 'index.js');
 const FIXTURE_URL = 'https://httpbin.org/get';  // public, reliable, small response
