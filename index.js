@@ -391,7 +391,7 @@ async function main() {
             });
             fetchEmitter.fetchStart(fetchUrl, method, data !== undefined);
             ngetFetch(fetchUrl, { method, body: data, headers, agentId: argv['agent-id'] })
-                .then((resp) => {
+                .then(async (resp) => {
                 const contentType = resp.headers['content-type'] ?? null;
                 fetchEmitter.fetchComplete(fetchUrl, method, resp.status, resp.statusText, resp.latencyMs, contentType);
                 console.log(JSON.stringify({
@@ -404,9 +404,10 @@ async function main() {
                     latencyMs: resp.latencyMs,
                     agentId: argv['agent-id'] || null
                 }));
+                await fetchEmitter.flush();
                 process.exit(resp.ok ? 0 : 1);
             })
-                .catch((err) => {
+                .catch(async (err) => {
                 fetchEmitter.fetchError(fetchUrl, method, err.message, err.latencyMs ?? null);
                 console.log(JSON.stringify({
                     ok: false,
@@ -417,6 +418,7 @@ async function main() {
                     latencyMs: err.latencyMs ?? null,
                     agentId: argv['agent-id'] || null
                 }));
+                await fetchEmitter.flush();
                 process.exit(1);
             });
             return;

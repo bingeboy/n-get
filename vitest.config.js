@@ -11,6 +11,7 @@ module.exports = defineConfig({
       'test/recursivePipeSpec.js',
       'test/fetchSpec.js',
       'test/stdoutSpec.js',
+      'test/webhookSpec.js',
       '**/node_modules/**'
     ],
     testTimeout: 15000,
