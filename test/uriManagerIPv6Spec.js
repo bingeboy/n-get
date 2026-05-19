@@ -3,7 +3,6 @@
  * Tests IPv6 URL parsing and normalization in uriManager
  */
 
-const {expect} = require('chai');
 const requestUri = require('../lib/uriManager');
 
 describe('URI Manager IPv6 Support', function() {

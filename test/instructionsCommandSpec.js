@@ -8,7 +8,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { expect } = require('chai');
 
 const projectRoot = path.join(__dirname, '..');
 const cli = path.join(projectRoot, 'index.js');

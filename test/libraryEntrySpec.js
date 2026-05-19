@@ -6,7 +6,6 @@
  * five exports backed by CapabilitiesService.
  */
 
-const { expect } = require('chai');
 
 describe('lib/index — programmatic entry point', () => {
 

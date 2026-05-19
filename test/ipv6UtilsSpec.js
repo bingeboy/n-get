@@ -3,7 +3,6 @@
  * Tests IPv6 address detection, validation, URL parsing, and HTTP agent support
  */
 
-const {expect} = require('chai');
 const IPv6Utils = require('../lib/utils/ipv6Utils');
 
 describe('IPv6Utils', function() {

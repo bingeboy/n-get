@@ -1,4 +1,3 @@
-const {expect} = require('chai');
 const fs = require('node:fs').promises;
 const path = require('node:path');
 const {spawn} = require('node:child_process');

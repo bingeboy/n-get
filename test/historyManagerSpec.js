@@ -1,4 +1,3 @@
-const {expect} = require('chai');
 const fs = require('node:fs').promises;
 const path = require('node:path');
 const HistoryManager = require('../lib/services/HistoryManager');
