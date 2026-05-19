@@ -3,7 +3,6 @@
  * Tests configuration loading, validation, profiles, AI integration, and error handling
  */
 
-const {expect} = require('chai');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
@@ -37,7 +36,7 @@ describe('ConfigManager', () => {
         configInstances = [];
     });
 
-    afterEach((done) => {
+    afterEach(async () => {
         // Clean up all ConfigManager instances
         const cleanupPromises = configInstances.map(config => {
             try {
@@ -51,33 +50,23 @@ describe('ConfigManager', () => {
             return Promise.resolve();
         });
 
-        Promise.all(cleanupPromises)
-            .then(() => {
-                // Restore original state
-                process.chdir(originalCwd);
-                process.env = originalEnv;
+        try {
+            await Promise.all(cleanupPromises);
+        } catch (_) {
+            // Even if cleanup fails, continue with test cleanup
+        }
 
-                // Clean up temporary directory
-                if (fs.existsSync(tempDir)) {
-                    fs.rmSync(tempDir, {recursive: true, force: true});
-                }
-                
-                // Clear the instances array
-                configInstances = [];
-                done();
-            })
-            .catch(() => {
-                // Even if cleanup fails, continue with test cleanup
-                process.chdir(originalCwd);
-                process.env = originalEnv;
-                
-                if (fs.existsSync(tempDir)) {
-                    fs.rmSync(tempDir, {recursive: true, force: true});
-                }
-                
-                configInstances = [];
-                done();
-            });
+        // Restore original state
+        process.chdir(originalCwd);
+        process.env = originalEnv;
+
+        // Clean up temporary directory
+        if (fs.existsSync(tempDir)) {
+            fs.rmSync(tempDir, {recursive: true, force: true});
+        }
+
+        // Clear the instances array
+        configInstances = [];
     });
 
     // Helper function to create and track ConfigManager instances

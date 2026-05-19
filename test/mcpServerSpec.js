@@ -12,7 +12,6 @@
  *   batch_download    — summary fields, all-error sets isError, mixed results
  */
 
-const { expect }            = require('chai');
 const fs                    = require('node:fs');
 const path                  = require('node:path');
 

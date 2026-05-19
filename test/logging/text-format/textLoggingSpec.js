@@ -3,7 +3,6 @@
  * Verifies that setting NGET_LOG_FORMAT=text produces human-readable text logs (default format)
  */
 
-const {expect} = require('chai');
 const Logger = require('../../../lib/services/Logger');
 const LogsCommands = require('../../../lib/cli/logsCommands');
 const path = require('node:path');

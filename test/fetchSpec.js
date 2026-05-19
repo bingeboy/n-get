@@ -1,4 +1,3 @@
-const {expect} = require('chai');
 const nget = require('../index.js');
 
 describe('N-Get Fetch API', () => {

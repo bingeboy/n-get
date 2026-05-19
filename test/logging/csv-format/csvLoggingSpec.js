@@ -4,7 +4,6 @@
  * Note: CSV format may produce structured output that can be parsed as CSV-like data
  */
 
-const {expect} = require('chai');
 const Logger = require('../../../lib/services/Logger');
 const LogsCommands = require('../../../lib/cli/logsCommands');
 const path = require('node:path');

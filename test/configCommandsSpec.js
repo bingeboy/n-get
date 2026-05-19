@@ -3,7 +3,6 @@
  * Tests all config commands: show, set, profiles, profile, validate, debug
  */
 
-const {expect} = require('chai');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');

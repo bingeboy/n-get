@@ -3,7 +3,6 @@
  * Verifies that setting NGET_LOG_FORMAT=json produces proper JSON structured logs
  */
 
-const {expect} = require('chai');
 const Logger = require('../../../lib/services/Logger');
 const path = require('node:path');
 const fs = require('node:fs');

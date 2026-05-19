@@ -1,4 +1,3 @@
-const {expect} = require('chai');
 const fs = require('node:fs').promises;
 const path = require('node:path');
 const HistoryCommands = require('../lib/cli/historyCommands');
@@ -9,6 +8,7 @@ describe('HistoryCommands CLI', () => {
     let historyCommands;
     let historyManager;
     let originalLog;
+    let originalError;
     let consoleOutput;
 
     before(async() => {
@@ -27,17 +27,14 @@ describe('HistoryCommands CLI', () => {
         // Capture console output
         consoleOutput = [];
         originalLog = console.log;
-        const originalError = console.error;
-        
+        originalError = console.error;
+
         console.log = (...args) => {
             consoleOutput.push(args.join(' '));
         };
         console.error = (...args) => {
             consoleOutput.push(args.join(' '));
         };
-        
-        // Restore console.error in afterEach
-        this.originalError = originalError;
         
         // Clear any existing history before each test
         try {
@@ -47,11 +44,11 @@ describe('HistoryCommands CLI', () => {
         }
     });
 
-    afterEach(function() {
+    afterEach(() => {
         // Restore console methods
         console.log = originalLog;
-        if (this.originalError) {
-            console.error = this.originalError;
+        if (originalError) {
+            console.error = originalError;
         }
     });
 
