@@ -27,6 +27,14 @@ const pkg                      = require('../../package.json');
 const CapabilitiesService      = require('../services/CapabilitiesService');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const downloadPipeline         = require('../downloadPipeline');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const ConfigManager            = require('../config/ConfigManager');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const HistoryManager           = require('../services/HistoryManager');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const fs                       = require('node:fs');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const path                     = require('node:path');
 
 import { DownloadSession, readActiveSessions, pruneDeadSessions } from '../core/DownloadSession.js';
 
@@ -37,6 +45,19 @@ export function createServer() {
         name:    'n-get',
         version: pkg.version,
     });
+
+    // Track in-process active sessions for cancel_session / get_session support
+    const sessions: Map<string, DownloadSession> = new Map();
+
+    // ConfigManager instance shared across set_profile calls
+    const configManager = new ConfigManager({
+        environment: 'development',
+        enableHotReload: false,
+        logger: { info: () => {}, debug: () => {}, warn: () => {}, error: () => {} },
+    });
+
+    // HistoryManager instance
+    const historyManager = new HistoryManager();
 
     // ── download_file ─────────────────────────────────────────────────────────
 
@@ -65,6 +86,7 @@ export function createServer() {
             });
 
             session.start();
+            sessions.set(session.id, session);
 
             try {
                 const results = await downloadPipeline([url], dest, {
@@ -94,6 +116,7 @@ export function createServer() {
                     }],
                 };
             } finally {
+                sessions.delete(session.id);
                 await session.end();
             }
         }
@@ -128,6 +151,7 @@ export function createServer() {
             });
 
             session.start();
+            sessions.set(session.id, session);
 
             try {
                 const results = await downloadPipeline(urls, dest, {
@@ -155,6 +179,7 @@ export function createServer() {
                     content: [{ type: 'text' as const, text: JSON.stringify(summary) }],
                 };
             } finally {
+                sessions.delete(session.id);
                 await session.end();
             }
         }
@@ -207,6 +232,200 @@ export function createServer() {
                     text: JSON.stringify(caps.getCapabilities()),
                 }],
             };
+        }
+    );
+
+    // ── cancel_session ────────────────────────────────────────────────────────
+
+    server.tool(
+        'cancel_session',
+        'Cancel an active download session by session ID. Other sessions continue unaffected.',
+        {
+            sessionId: (z as any).string().describe('Session ID to cancel'),
+        },
+        async ({ sessionId }: { sessionId: string }) => {
+            const session = sessions.get(sessionId);
+            if (session) {
+                session.cancel();
+                await new Promise(resolve => setTimeout(resolve, 100));
+                return {
+                    content: [{
+                        type: 'text' as const,
+                        text: JSON.stringify({ sessionId, cancelled: true, message: 'Session cancelled' }),
+                    }],
+                };
+            }
+            // Check if it's a session from another process
+            const activeSessions = readActiveSessions();
+            const external = activeSessions.find((s: any) => s.sessionId === sessionId);
+            if (external) {
+                return {
+                    isError: true,
+                    content: [{
+                        type: 'text' as const,
+                        text: JSON.stringify({ code: 'EXTERNAL_SESSION', message: 'Session belongs to another process and cannot be cancelled via MCP' }),
+                    }],
+                };
+            }
+            return {
+                isError: true,
+                content: [{
+                    type: 'text' as const,
+                    text: JSON.stringify({ code: 'SESSION_NOT_FOUND', message: 'Session not found or already complete' }),
+                }],
+            };
+        }
+    );
+
+    // ── get_session ───────────────────────────────────────────────────────────
+
+    server.tool(
+        'get_session',
+        'Query the current state of a specific download session by session ID.',
+        {
+            sessionId: (z as any).string().describe('Session ID to query'),
+        },
+        ({ sessionId }: { sessionId: string }) => {
+            const session = sessions.get(sessionId);
+            if (session) {
+                const s = (session as any)._status;
+                return {
+                    content: [{
+                        type: 'text' as const,
+                        text: JSON.stringify({
+                            sessionId: s.sessionId,
+                            agentId:   s.agent,
+                            pid:       s.pid,
+                            startTime: s.startTime,
+                            active:    true,
+                            downloads: s.downloads,
+                        }),
+                    }],
+                };
+            }
+            const activeSessions = readActiveSessions();
+            const external = activeSessions.find((s: any) => s.sessionId === sessionId);
+            if (external) {
+                return {
+                    content: [{
+                        type: 'text' as const,
+                        text: JSON.stringify({
+                            sessionId: external.sessionId,
+                            agentId:   external.agent,
+                            pid:       external.pid,
+                            startTime: external.startTime,
+                            active:    true,
+                            downloads: external.downloads,
+                        }),
+                    }],
+                };
+            }
+            return {
+                isError: true,
+                content: [{
+                    type: 'text' as const,
+                    text: JSON.stringify({ code: 'SESSION_NOT_FOUND', message: 'Session not found or already complete' }),
+                }],
+            };
+        }
+    );
+
+    // ── set_profile ───────────────────────────────────────────────────────────
+
+    server.tool(
+        'set_profile',
+        'Apply a named configuration profile process-wide. Valid profiles: fast, secure, bulk, careful.',
+        {
+            profileName: (z as any).enum(['fast', 'secure', 'bulk', 'careful']).describe('Config profile name'),
+        },
+        async ({ profileName }: { profileName: string }) => {
+            try {
+                await configManager.applyProfile(profileName);
+                return {
+                    content: [{
+                        type: 'text' as const,
+                        text: JSON.stringify({ profile: profileName, applied: true }),
+                    }],
+                };
+            } catch (err: any) {
+                return {
+                    content: [{
+                        type: 'text' as const,
+                        text: JSON.stringify({ profile: profileName, applied: false, message: err.message || 'Profile system not available' }),
+                    }],
+                };
+            }
+        }
+    );
+
+    // ── get_history ───────────────────────────────────────────────────────────
+
+    server.tool(
+        'get_history',
+        'Return recent download history as a flat list. Optionally filter by destination, limit, status, or date.',
+        {
+            destination: (z as any).string().optional().describe('Directory to read history from (default: cwd)'),
+            limit:       (z as any).number().int().min(1).max(500).optional().describe('Max entries to return (default: all)'),
+            status:      (z as any).string().optional().describe('Filter by status: complete, error, etc.'),
+            since:       (z as any).string().optional().describe('ISO 8601 date — return entries after this time'),
+        },
+        async ({ destination, limit, status, since }: { destination?: string; limit?: number; status?: string; since?: string }) => {
+            try {
+                const dest = destination ?? process.cwd();
+                const opts: any = {};
+                if (limit)  opts.limit  = limit;
+                if (status) opts.status = status;
+                if (since)  opts.since  = new Date(since);
+                const raw = await historyManager.getHistory(dest, opts);
+                const entries = raw.map((e: any) => ({
+                    timestamp:     e.timestamp,
+                    url:           e.url,
+                    filename:      e.filePath ? path.basename(e.filePath) : null,
+                    status:        e.status,
+                    bytes:         e.size     ?? null,
+                    duration:      e.duration ?? null,
+                    error:         e.error    ?? null,
+                    correlationId: e.correlationId ?? null,
+                }));
+                return {
+                    content: [{
+                        type: 'text' as const,
+                        text: JSON.stringify({ entries, total: entries.length, limit: limit ?? null }),
+                    }],
+                };
+            } catch (err: any) {
+                return {
+                    isError: true,
+                    content: [{
+                        type: 'text' as const,
+                        text: JSON.stringify({ code: 'HISTORY_ERROR', message: err.message }),
+                    }],
+                };
+            }
+        }
+    );
+
+    // ── get_instructions ─────────────────────────────────────────────────────
+
+    server.tool(
+        'get_instructions',
+        'Return the contents of AGENTS.md — the agent-facing usage guide for n-get.',
+        {},
+        () => {
+            try {
+                const agentsMd = fs.readFileSync(path.join(__dirname, '../../AGENTS.md'), 'utf8');
+                return {
+                    content: [{ type: 'text' as const, text: agentsMd }],
+                };
+            } catch {
+                return {
+                    isError: true,
+                    content: [{
+                        type: 'text' as const,
+                        text: JSON.stringify({ code: 'NOT_FOUND', message: 'AGENTS.md not found' }),
+                    }],
+                };
+            }
         }
     );
 
