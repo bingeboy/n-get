@@ -367,8 +367,8 @@ class CapabilitiesService {
                 schemas: true
             },
             eventDriven: {
-                webhooks: false, // TODO: implement
-                callbacks: false, // TODO: implement
+                webhooks: 'supported',
+                callbacks: false,
                 progressEvents: true
             },
             compatibility: {
@@ -535,6 +535,19 @@ class CapabilitiesService {
                 tty:        'progress bars and banners on stderr; final summary on stdout',
                 nonTty:     'NDJSON event stream on stdout (one JSON object per line)',
                 forceHuman: 'use --human to force tty-style output regardless of stdout'
+            },
+            webhooks: {
+                flag:        '--webhook <url>',
+                repeatable:  true,
+                description: 'POST each NDJSON event as JSON to the given URL (fire-and-forget, 2 s timeout). Repeat for multiple receivers. Filter with --webhook-events.',
+                filterFlag:  '--webhook-events <comma-list>',
+                authFlag:    '--webhook-header "Name: value"',
+                events: [
+                    'session_start', 'download_queued', 'download_start', 'progress',
+                    'checksum_start', 'checksum_complete', 'download_complete',
+                    'download_error', 'session_end',
+                    'fetch_start', 'fetch_complete', 'fetch_error'
+                ]
             }
         };
     }
