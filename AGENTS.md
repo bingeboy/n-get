@@ -1,6 +1,6 @@
 # n-get — Agent Instructions
 
-**Version:** 1.8.0 · **License:** MIT · **Node:** >= 18
+**Version:** 1.9.1 · **License:** MIT · **Node:** >= 18
 
 Observable downloads for AI agents. NDJSON event stream, MCP server, OpenAPI spec, session visibility, HTTP + SFTP with resume.
 
@@ -27,6 +27,14 @@ Auto-generated from `CapabilitiesService.toMarkdown()` — single source of trut
 - List active sessions across all agents (NDJSON)
   ```bash
   nget jobs
+  ```
+- HTTP fetch with structured JSON output
+  ```bash
+  nget fetch https://api.example.com/data
+  ```
+- HTTP POST with body and agent tracking
+  ```bash
+  nget fetch --method POST --data '{"key":"val"}' --agent-id my-agent https://api.example.com/endpoint
   ```
 
 ## Discovery surfaces
