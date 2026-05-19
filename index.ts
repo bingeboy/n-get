@@ -36,7 +36,8 @@ import download           = require('./lib/downloadPipeline');
 import ConfigManager      = require('./lib/config/ConfigManager');
 import { handleJobsCommand } from './lib/cli/jobsCommands.js';
 
-import type { DownloadOptions } from './types/index.js';
+import type { DownloadOptions, WebhookConfig } from './types/index.js';
+import { NgetEmitter } from './lib/core/NgetEmitter.js';
 
 // ─── Argv parsing ─────────────────────────────────────────────────────────────
 
@@ -58,6 +59,7 @@ const argv = minimist(process.argv.slice(2), {
         'session-id', 'request-id', 'conversation-id', 'output-format',
         'agent-id',
         'method', 'data', 'header',
+        'webhook', 'webhook-header', 'webhook-events',
     ],
     alias: {
         d: 'destination',
@@ -226,6 +228,36 @@ async function main(): Promise<void> {
             process.exit(1);
         }
 
+        // ─── Webhook config parser ────────────────────────────────────────────
+
+        function parseWebhookConfig(): WebhookConfig[] {
+            const rawUrls = argv.webhook
+                ? (Array.isArray(argv.webhook) ? argv.webhook : [argv.webhook])
+                : [];
+            if (rawUrls.length === 0) { return []; }
+
+            const rawHeaders = argv['webhook-header']
+                ? (Array.isArray(argv['webhook-header']) ? argv['webhook-header'] : [argv['webhook-header']])
+                : [];
+            const headers: Record<string, string> = {};
+            for (const h of rawHeaders) {
+                const colonIdx = (h as string).indexOf(':');
+                if (colonIdx > 0) {
+                    headers[(h as string).slice(0, colonIdx).trim()] = (h as string).slice(colonIdx + 1).trim();
+                }
+            }
+
+            const events = argv['webhook-events']
+                ? (argv['webhook-events'] as string).split(',').map((e: string) => e.trim()).filter(Boolean)
+                : [];
+
+            return rawUrls.map((url: string) => ({
+                url,
+                headers: Object.keys(headers).length > 0 ? headers : undefined,
+                events:  events.length > 0 ? events : undefined,
+            }));
+        }
+
         // ─── Subcommands ──────────────────────────────────────────────────────
 
         if (argv.capabilities) {
@@ -332,8 +364,20 @@ async function main(): Promise<void> {
                     headers[headerStr.slice(0, colonIdx).trim()] = headerStr.slice(colonIdx + 1).trim();
                 }
             }
+
+            const fetchSessionId = (argv['session-id'] as string) || `fetch_${Date.now()}`;
+            const fetchEmitter = new NgetEmitter({
+                sessionId: fetchSessionId,
+                pipeMode: true,
+                webhooks: parseWebhookConfig(),
+            });
+
+            fetchEmitter.fetchStart(fetchUrl, method, data !== undefined);
+
             ngetFetch(fetchUrl, { method, body: data, headers, agentId: argv['agent-id'] })
                 .then((resp: { ok: boolean; status: number; statusText: string; data: unknown; headers: Record<string, string>; url: string; latencyMs: number }) => {
+                    const contentType = resp.headers['content-type'] ?? null;
+                    fetchEmitter.fetchComplete(fetchUrl, method, resp.status, resp.statusText, resp.latencyMs, contentType);
                     console.log(JSON.stringify({
                         ok: resp.ok,
                         status: resp.status,
@@ -347,6 +391,7 @@ async function main(): Promise<void> {
                     process.exit(resp.ok ? 0 : 1);
                 })
                 .catch((err: Error & { code?: string; latencyMs?: number }) => {
+                    fetchEmitter.fetchError(fetchUrl, method, err.message, err.latencyMs ?? null);
                     console.log(JSON.stringify({
                         ok: false,
                         status: 0,
@@ -513,6 +558,7 @@ async function main(): Promise<void> {
             outputFormat:    (argv['output-format'] || 'text') as 'json' | 'yaml' | 'csv' | 'text',
             requestedBy:     'cli',
             metadata:        {},
+            webhooks:        parseWebhookConfig(),
         };
 
         // ─── Recursive mode ───────────────────────────────────────────────────
