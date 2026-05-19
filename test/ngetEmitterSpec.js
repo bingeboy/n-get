@@ -864,4 +864,75 @@ describe('NgetEmitter', function () {
             }
         });
     });
+
+    // ── webhook sink ─────────────────────────────────────────────────────────
+
+    describe('webhook sink', () => {
+
+        it('fires POST to webhook URL when an event is emitted', async () => {
+            const http = require('node:http');
+            const received = [];
+            const server = http.createServer((req, res) => {
+                let body = '';
+                req.on('data', c => { body += c; });
+                req.on('end', () => {
+                    try { received.push(JSON.parse(body)); } catch { /* ignore */ }
+                    res.writeHead(200); res.end();
+                });
+            });
+            await new Promise(r => server.listen(0, '127.0.0.1', r));
+            const { port } = server.address();
+
+            const stdout = captureStream(process.stdout);
+            try {
+                const emitter = new NgetEmitter({
+                    sessionId: 'test-wh',
+                    webhooks: [{ url: `http://127.0.0.1:${port}/hook` }],
+                });
+
+                emitter.emit('info', { message: 'hello' });
+                await new Promise(r => setTimeout(r, 300));
+            } finally {
+                stdout.restore();
+            }
+
+            server.close();
+            expect(received.length).to.be.greaterThanOrEqual(1);
+            expect(received[0]).to.have.property('event', 'info');
+        });
+
+        it('skips events not in the events filter', async () => {
+            const http = require('node:http');
+            const received = [];
+            const server = http.createServer((req, res) => {
+                let body = '';
+                req.on('data', c => { body += c; });
+                req.on('end', () => {
+                    try { received.push(JSON.parse(body)); } catch { /* ignore */ }
+                    res.writeHead(200); res.end();
+                });
+            });
+            await new Promise(r => server.listen(0, '127.0.0.1', r));
+            const { port } = server.address();
+
+            const stdout = captureStream(process.stdout);
+            try {
+                const emitter = new NgetEmitter({
+                    sessionId: 'test-wh-filter',
+                    webhooks: [{ url: `http://127.0.0.1:${port}/hook`, events: ['download_complete'] }],
+                });
+
+                emitter.emit('info', { message: 'should be filtered' });
+                emitter.emit('download_complete', { url: 'http://example.com/file.zip' });
+                await new Promise(r => setTimeout(r, 300));
+            } finally {
+                stdout.restore();
+            }
+
+            server.close();
+            expect(received.length).to.equal(1);
+            expect(received[0]).to.have.property('event', 'download_complete');
+        });
+
+    });
 });
