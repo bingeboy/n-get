@@ -16,6 +16,7 @@ import type {
     DownloadStatus,
     DownloadStatusValue,
     SessionSummary,
+    WebhookConfig,
 } from '../../types/index.js';
 
 import { NgetEmitter } from './NgetEmitter.js';
@@ -41,6 +42,7 @@ export interface DownloadSessionOptions {
     humanMode?:     boolean;
     pipeMode?:      boolean;
     quietMode?:     boolean;
+    webhooks?:      WebhookConfig[];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     configManager?: any;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -93,6 +95,7 @@ export class DownloadSession {
             humanMode: this.humanMode,
             pipeMode:  this.pipeMode,
             ui:        options.ui ?? null,
+            webhooks:  options.webhooks ?? [],
         });
 
         this.logger          = this._buildLogger();
