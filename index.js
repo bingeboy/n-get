@@ -87,6 +87,7 @@ const argv = (0, minimist_1.default)(process.argv.slice(2), {
         'limit', 'status', 'since', 'until', 'output', 'days',
         'session-id', 'request-id', 'conversation-id', 'output-format',
         'agent-id',
+        'method', 'data', 'header',
     ],
     alias: {
         d: 'destination',
@@ -129,6 +130,7 @@ ${ui.emojis.gear} AI agents — start here:
   nget instructions               Full one-page agent guide (AGENTS.md, auto-generated)
   nget --capabilities             Machine-readable JSON spec of every flag, event, and config key
   nget --openapi-spec             OpenAPI 3.0.3 contract
+  nget fetch <url>                HTTP API client (GET/POST/PUT/DELETE), structured JSON output
   nget-mcp                        MCP server entry point (download_file, batch_download, get_jobs, get_capabilities)
   Output is NDJSON to stdout when not running in a TTY — parse with jq.
 
@@ -446,6 +448,61 @@ async function main() {
             const humanMode = !!(argv.human || (process.stdout.isTTY && !outputToStdout));
             (0, jobsCommands_js_1.handleJobsCommand)(argv, humanMode);
             process.exit(0);
+        }
+        // fetch — HTTP API client (GET/POST/PUT/DELETE) with structured JSON output
+        if (argv._.length > 0 && argv._[0] === 'fetch') {
+            const fetchUrl = argv._[1];
+            if (!fetchUrl) {
+                console.error('Error: fetch requires a URL. Usage: nget fetch [--method GET] [--data <json>] [--header "Key: Value"] <url>');
+                process.exit(1);
+            }
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const ngetFetch = require('./lib/fetch');
+            const method = argv.method || 'GET';
+            let data = undefined;
+            if (argv.data) {
+                try {
+                    data = JSON.parse(argv.data);
+                }
+                catch {
+                    data = argv.data;
+                }
+            }
+            const headers = {};
+            if (argv.header) {
+                const headerStr = argv.header;
+                const colonIdx = headerStr.indexOf(':');
+                if (colonIdx > 0) {
+                    headers[headerStr.slice(0, colonIdx).trim()] = headerStr.slice(colonIdx + 1).trim();
+                }
+            }
+            ngetFetch(fetchUrl, { method, body: data, headers, agentId: argv['agent-id'] })
+                .then((resp) => {
+                console.log(JSON.stringify({
+                    ok: resp.ok,
+                    status: resp.status,
+                    statusText: resp.statusText,
+                    data: resp.data,
+                    headers: resp.headers,
+                    url: resp.url,
+                    latencyMs: resp.latencyMs,
+                    agentId: argv['agent-id'] || null
+                }));
+                process.exit(resp.ok ? 0 : 1);
+            })
+                .catch((err) => {
+                console.log(JSON.stringify({
+                    ok: false,
+                    status: 0,
+                    error: err.message,
+                    code: err.code,
+                    url: fetchUrl,
+                    latencyMs: err.latencyMs ?? null,
+                    agentId: argv['agent-id'] || null
+                }));
+                process.exit(1);
+            });
+            return;
         }
         if (argv['list-resume']) {
             await listResumableDownloads();
