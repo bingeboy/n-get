@@ -232,4 +232,96 @@ describe('CapabilitiesService', () => {
             expect(a).to.equal(b);
         });
     });
+
+    // ── cli.flags ────────────────────────────────────────────────────────────────
+
+    describe('getCLIFlags()', () => {
+
+        let flags;
+        before(() => {
+            flags = makeService().getCLIFlags();
+        });
+
+        it('returns a non-empty array', () => {
+            expect(flags).to.be.an('array').with.length.greaterThan(0);
+        });
+
+        it('every entry has long and description strings', () => {
+            flags.forEach((f, i) => {
+                expect(f, `entry ${i} missing long`).to.have.property('long').that.is.a('string').and.is.not.empty;
+                expect(f, `entry ${i} missing description`).to.have.property('description').that.is.a('string').and.is.not.empty;
+            });
+        });
+
+        it('every entry has a valid group', () => {
+            const valid = new Set(['general', 'pipe', 'recursive', 'ssh', 'agent', 'webhook']);
+            flags.forEach((f, i) => {
+                expect(valid.has(f.group), `entry ${i} has invalid group: ${f.group}`).to.be.true;
+            });
+        });
+
+        it('contains the key agent flags', () => {
+            const longs = flags.map(f => f.long);
+            ['agent-id', 'session-id', 'request-id', 'conversation-id',
+             'capabilities', 'openapi-spec', 'webhook'].forEach(flag => {
+                expect(longs, `missing flag: ${flag}`).to.include(flag);
+            });
+        });
+
+        it('getCapabilities().cli.flags is populated from getCLIFlags()', () => {
+            const svc = makeService();
+            const caps = svc.getCapabilities();
+            expect(caps.cli).to.have.property('flags').that.is.an('array').with.length.greaterThan(0);
+            expect(caps.cli.flags.length).to.equal(svc.getCLIFlags().length);
+        });
+    });
+
+    // ── toHelpSummary ─────────────────────────────────────────────────────────────
+
+    describe('toHelpSummary()', () => {
+
+        let summary;
+        before(() => {
+            summary = makeService().toHelpSummary();
+        });
+
+        it('returns a non-empty string', () => {
+            expect(summary).to.be.a('string').and.is.not.empty;
+        });
+
+        it('contains Usage: line', () => {
+            expect(summary).to.include('Usage: nget');
+        });
+
+        it('contains AI agents discovery block', () => {
+            expect(summary).to.include('AI agents — start here:');
+            expect(summary).to.include('nget --capabilities');
+            expect(summary).to.include('nget fetch');
+            expect(summary).to.include('nget-mcp');
+        });
+
+        it('contains section headers for each group', () => {
+            ['General Options', 'Pipe Options', 'Recursive Download Options',
+             'SSH/SFTP Options', 'AI Agent Integration Options', 'Webhook Options'].forEach(section => {
+                expect(summary, `missing section: ${section}`).to.include(section);
+            });
+        });
+
+        it('contains all long flag names', () => {
+            const svc = makeService();
+            svc.getCLIFlags().forEach(f => {
+                expect(summary, `missing flag: --${f.long}`).to.include(`--${f.long}`);
+            });
+        });
+
+        it('contains Examples: section', () => {
+            expect(summary).to.include('Examples:');
+        });
+
+        it('is deterministic (same output on repeated calls)', () => {
+            const a = makeService().toHelpSummary();
+            const b = makeService().toHelpSummary();
+            expect(a).to.equal(b);
+        });
+    });
 });

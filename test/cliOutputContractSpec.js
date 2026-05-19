@@ -78,6 +78,15 @@ describe('CLI output contract', () => {
             expect(stdout).to.match(/Examples?:/);
             expect(stdout).to.match(/nget\s+https?:\/\//);
         });
+
+        it('--help output contains all long flag names from getCapabilities().cli.flags', () => {
+            const CapabilitiesService = require('../lib/services/CapabilitiesService');
+            const svc = new CapabilitiesService();
+            const flags = svc.getCLIFlags();
+            flags.forEach(f => {
+                expect(stdout, `--help missing --${f.long}`).to.include(`--${f.long}`);
+            });
+        });
     });
 
     // ── --capabilities ───────────────────────────────────────────────────────
