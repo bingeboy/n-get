@@ -97,6 +97,27 @@ All active sessions are visible via `nget jobs` (NDJSON) or `nget jobs --human` 
 
 Run `nget --help` for the full flag reference.
 
+## A2A discovery
+
+n-get publishes an [A2A 0.3.0](https://a2aprotocol.ai) agent card — the standard that lets AI orchestrators (LangChain, AWS Bedrock AgentCore, Spring AI, etc.) discover and invoke agents automatically.
+
+```bash
+# output the agent card JSON
+nget --agent-card
+
+# serve it where orchestrators expect it
+nget --agent-card > /var/www/.well-known/agent.json
+```
+
+Or fetch it over MCP without leaving your agent loop:
+
+```javascript
+// MCP tool
+get_agent_card()  // returns A2A 0.3.0 JSON
+```
+
+The card is generated live from `--capabilities` — it never drifts from what n-get actually supports. Skills exposed: `download`, `batch_download`, `fetch`.
+
 ## MCP server
 
 n-get ships a standalone MCP server as the `nget-mcp` binary. Add it to your Claude Desktop config:
