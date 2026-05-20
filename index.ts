@@ -175,7 +175,7 @@ async function main(): Promise<void> {
             const outputToStdout = argv['output-file'] === '-';
             // --capabilities, --openapi-spec, and --agent-card need config to read live values
             // but their output should be clean machine-readable spec only.
-            const isInfoOnlyFlag = !!(argv.capabilities || argv['openapi-spec'] || argv['agent-card']);
+            const isInfoOnlyFlag = !!(argv.capabilities || argv['openapi-spec'] || argv['agent-card'] || argv._[0] === 'fetch');
             const shouldSuppressLogs = argv.quiet || outputToStdout || isInfoOnlyFlag;
 
             let configDir: string;
