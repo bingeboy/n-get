@@ -1,3 +1,21 @@
+# Release Notes - v1.10.2
+
+## Overview
+Patch. Homepage URL updated from the defunct GitHub Pages address to the live Cloudflare Pages site.
+
+## Changes
+- `package.json` `homepage`: `bingeboy.github.io/n-get` → `n-get.design-87b.workers.dev`
+- `site/index.html` added to master for Cloudflare Pages auto-deploy
+
+## Breaking Changes
+None.
+
+---
+
+**Full Changelog**: [Compare v1.10.1...v1.10.2](https://github.com/bingeboy/n-get/compare/v1.10.1...v1.10.2)
+
+---
+
 # Release Notes - v1.10.1
 
 ## Overview
