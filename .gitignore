@@ -253,3 +253,7 @@ config/local.yaml
 config/local.yml
 get
 get.*
+
+# test artifacts
+test/.nget/
+test/cli-test/.nget/
