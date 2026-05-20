@@ -4,9 +4,7 @@
 
 </div>
 
-**A2A 0.3.0 · MCP · NDJSON · Webhooks**
-
-The download layer for modern agent stacks. n-get speaks A2A and MCP natively — any orchestrator that understands either protocol can discover and invoke it without glue code. Every transfer emits a structured event stream agents can parse, forward, and act on in real time. HTTP/HTTPS and SFTP, with resume and checksum verification.
+Downloads that agents can actually see. Structured events, concurrent, resumable. HTTP/HTTPS and SFTP with resume and checksum verification.
 
 ## Install
 

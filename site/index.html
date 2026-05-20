@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="n-get — observable downloads for AI agents. NDJSON event stream, MCP tools, webhook forwarding.">
+  <meta name="description" content="n-get — observable downloads for AI agents. Structured events, concurrent, resumable.">
   <title>n-get</title>
   <style>
     :root {
@@ -311,7 +311,7 @@
 
 <header>
   <span class="logo" aria-label="n-get">𝐍̴̡͉̞̿͐͝-̸̺͙̦̄̄̽́͝𝐆̸͕̟̺̽͑̈́𝐄̸̢̦͖ͤͤ̾̀̕ᴛ̵͙̫͖ⷮ͒̈́</span>
-  <p>The download layer for modern agent stacks. A2A&nbsp;0.3.0&nbsp;· MCP&nbsp;· NDJSON&nbsp;· Webhooks. Any orchestrator that speaks A2A or MCP can discover and invoke it — no glue code.</p>
+  <p>Downloads that agents can actually see. Structured events, concurrent, resumable. Works wherever you already are.</p>
 
   <div class="install">
     <span class="prompt">$</span>
@@ -336,8 +336,8 @@
 
   <section id="a2a" aria-labelledby="a2a-heading">
     <h2 id="a2a-heading">Agent discovery</h2>
-    <h3>A2A 0.3.0</h3>
-    <p>Publish a standard agent card and any A2A-compatible orchestrator — LangChain, AWS Bedrock AgentCore, Spring AI — can discover and invoke n-get automatically. No custom integration code.</p>
+    <h3>Agent card</h3>
+    <p>Publish a standard A2A 0.3.0 agent card and compatible orchestrators discover and invoke n-get automatically.</p>
 
     <pre><code><span class="dim"># output the card</span>
 <span class="hi">nget</span> <span class="flag">--agent-card</span>
@@ -345,7 +345,7 @@
 <span class="dim"># serve it where orchestrators look</span>
 <span class="hi">nget</span> <span class="flag">--agent-card</span> > /var/www/.well-known/agent.json</code></pre>
 
-    <p>The card is generated live from <code>--capabilities</code> — it never drifts from what n-get actually supports. Also available as the <code>get_agent_card</code> MCP tool for agents that don't leave the MCP loop.</p>
+    <p>Generated live from <code>--capabilities</code> — never drifts from what n-get actually supports.</p>
   </section>
 
   <section id="mcp" aria-labelledby="mcp-heading">
@@ -372,7 +372,7 @@
           <tr><td>get_history</td>       <td>Download history with status and time filters</td></tr>
           <tr><td>get_capabilities</td>  <td>Full capabilities document</td></tr>
           <tr><td>get_instructions</td>  <td>AGENTS.md — the complete agent guide</td></tr>
-          <tr><td>get_agent_card</td>    <td>A2A 0.3.0 agent card — serve at /.well-known/agent.json</td></tr>
+          <tr><td>get_agent_card</td>    <td>Agent card — serve at /.well-known/agent.json</td></tr>
         </tbody>
       </table>
     </div>
@@ -440,7 +440,7 @@
 <span class="dim"># signed webhooks — receiver verifies X-NGet-Signature: sha256=&lt;hex&gt;</span>
 <span class="hi">nget</span> <span class="flag">--webhook</span> https://receiver/events <span class="flag">--webhook-secret</span> mysecret https://example.com/model.bin
 
-<span class="dim"># A2A 0.3.0 agent card — serve this at /.well-known/agent.json</span>
+<span class="dim"># agent card</span>
 <span class="hi">nget</span> <span class="flag">--agent-card</span>
 
 <span class="dim"># self-discovery</span>
