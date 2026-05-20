@@ -1,6 +1,8 @@
-![Logo](https://raw.github.com/bingeboy/n-get/master/assets/nget-logo.png)
+<div align="center">
 
-# n-get
+# 𝐍̴̡͉̞̿͐͝-̸̺͙̦̄̄̽́͝𝐆̸͕̟̺̽͑̈́𝐄̸̢̦͖ͤͤ̾̀̕ᴛ̵͙̫͖ⷮ͒̈́
+
+</div>
 
 Observable downloads for AI agents. n-get streams NDJSON events for every fetch, exposes itself via `--capabilities` and `--openapi-spec`, surfaces every active session across processes through `nget jobs`, and ships an MCP server (`nget-mcp`) for direct integration with Claude and other MCP-compatible assistants. HTTP/HTTPS and SFTP, with resume.
 
