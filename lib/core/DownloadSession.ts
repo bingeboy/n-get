@@ -89,11 +89,14 @@ export class DownloadSession {
         this.startTime     = Date.now();
 
         this.emitter = new EventSink({
-            sessionId: this.id,
-            humanMode: this.humanMode,
-            pipeMode:  this.pipeMode,
-            ui:        options.ui ?? null,
-            webhooks:  options.webhooks ?? [],
+            sessionId:           this.id,
+            humanMode:           this.humanMode,
+            pipeMode:            this.pipeMode,
+            ui:                  options.ui ?? null,
+            webhooks:            options.webhooks ?? [],
+            webhookSecret:       (this.configManager?.get('webhooks.secret')             as string)   ?? '',
+            webhookMaxAttempts:  (this.configManager?.get('webhooks.retry.maxAttempts') as number)   ?? undefined,
+            webhookBackoffMs:    (this.configManager?.get('webhooks.retry.backoffMs')   as number[]) ?? undefined,
         });
 
         this.logger          = this._buildLogger();

@@ -136,7 +136,55 @@ describe('webhook exponential-backoff retry', () => {
         expect(stderr.output).to.include('failed after 3 attempts');
     });
 
-    // ── 4. Success on first try ──────────────────────────────────────────────
+    // ── 4. Configurable maxAttempts ──────────────────────────────────────────
+
+    it('respects webhookMaxAttempts: 1 means no retry on 500', async () => {
+        const srv = await startStatusServer([500, 500, 500]);
+        const stdout = captureStream(process.stdout);
+        const stderr = captureStream(process.stderr);
+
+        try {
+            const emitter = new EventSink({
+                sessionId:          'max-attempts-1-test',
+                webhooks:           [{ url: `http://127.0.0.1:${srv.port}/hook` }],
+                webhookMaxAttempts: 1,
+                webhookBackoffMs:   [0],
+            });
+            emitter.emit('info', { message: 'no-retry' });
+            await emitter.flush();
+        } finally {
+            stdout.restore();
+            stderr.restore();
+        }
+
+        await srv.close();
+        expect(srv.callCount).to.equal(1);
+    });
+
+    it('respects webhookMaxAttempts: 2 makes exactly 2 attempts on repeated 500', async () => {
+        const srv = await startStatusServer([500, 500, 500]);
+        const stdout = captureStream(process.stdout);
+        const stderr = captureStream(process.stderr);
+
+        try {
+            const emitter = new EventSink({
+                sessionId:          'max-attempts-2-test',
+                webhooks:           [{ url: `http://127.0.0.1:${srv.port}/hook` }],
+                webhookMaxAttempts: 2,
+                webhookBackoffMs:   [0, 0],
+            });
+            emitter.emit('info', { message: 'two-attempts' });
+            await emitter.flush();
+        } finally {
+            stdout.restore();
+            stderr.restore();
+        }
+
+        await srv.close();
+        expect(srv.callCount).to.equal(2);
+    });
+
+    // ── 5. Success on first try ──────────────────────────────────────────────
 
     it('success on first try: makes exactly 1 call and logs nothing on 200', async () => {
         const srv = await startStatusServer([200]);
