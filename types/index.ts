@@ -288,6 +288,8 @@ export interface WebhookConfig {
     url: string;
     headers?: Record<string, string>;
     events?: string[];
+    /** HMAC-SHA256 secret for signing webhook payloads. When set, a `X-NGet-Signature: sha256=<hex>` header is added to every POST. */
+    webhookSecret?: string;
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
