@@ -23,7 +23,7 @@ const ui                 = require('./lib/ui');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const resumeManager      = require('./lib/resumeManager');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const RecursiveDownloader = require('./lib/recursiveDownloader');
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const ConfigCommands     = require('./lib/cli/configCommands');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -44,7 +44,7 @@ import { EventSink } from './lib/core/EventSink.js';
 const argv = minimist(process.argv.slice(2), {
     boolean: [
         'resume', 'no-resume', 'list-resume', 'help', 'version',
-        'recursive', 'no-parent', 'quiet', 'verbose',
+        'quiet', 'verbose',
         'json', 'csv', 'text', 'confirm', 'force',
         'metadata', 'checksums', 'no-checksums',
         'capabilities', 'openapi-spec', 'agent-card',
@@ -52,7 +52,7 @@ const argv = minimist(process.argv.slice(2), {
     ],
     string: [
         'd', 'destination', 'ssh-key', 'ssh-password', 'ssh-passphrase',
-        'level', 'accept', 'reject', 'user-agent',
+        'user-agent',
         'i', 'input-file', 'o', 'output-file',
         'max-concurrent', 'config-environment', 'config-ai-profile',
         'limit', 'status', 'since', 'until', 'output', 'days',
@@ -68,8 +68,6 @@ const argv = minimist(process.argv.slice(2), {
         h: 'help',
         v: 'version',
         V: 'verbose',
-        R: 'recursive',
-        np: 'no-parent',
         A: 'accept',
         j: 'reject',
         i: 'input-file',
@@ -79,7 +77,6 @@ const argv = minimist(process.argv.slice(2), {
     },
     default: {
         resume: true,
-        level: 5,
         'max-concurrent': 3,
     },
 });
@@ -579,43 +576,9 @@ async function main(): Promise<void> {
             webhooks:        parseWebhookConfig(),
         };
 
-        // ─── Recursive mode ───────────────────────────────────────────────────
-
-        if (argv.recursive) {
-            if (outputToStdout) {
-                ui.displayError('Recursive mode is not compatible with stdout output (-o -)');
-                process.exit(1);
-            }
-
-            const acceptPatterns = argv.accept ? (argv.accept as string).split(',').map((p: string) => p.trim()) : [];
-            const rejectPatterns = argv.reject ? (argv.reject as string).split(',').map((p: string) => p.trim()) : [];
-
-            const recursiveOptions = {
-                level:       Number.parseInt(argv.level as string) || 5,
-                noParent:    argv['no-parent'] || false,
-                accept:      acceptPatterns,
-                reject:      rejectPatterns,
-                enableResume,
-                sshOptions,
-                userAgent:   argv['user-agent'] || (configManager.get('http.userAgent', 'n-get-recursive/1.0') as string),
-                quietMode,
-                maxConcurrent,
-                configManager,
-            };
-
-            if (!quietMode) {
-                ui.displayInfo(`Recursive mode enabled (depth: ${recursiveOptions.level})`);
-                if (recursiveOptions.noParent) { ui.displayInfo('Parent directory restriction enabled'); }
-            }
-
-            const recursiveDownloader = new RecursiveDownloader(recursiveOptions);
-            await recursiveDownloader.recursiveDownload(processedUrls, destination ?? process.cwd());
-
-        } else {
-            const results = await download(processedUrls, destination as string, downloadOptions);
-            const allFailed = (results as Array<{ success: boolean }>).every(r => !r.success);
-            if (allFailed && results.length > 0) { process.exit(1); }
-        }
+        const results = await download(processedUrls, destination as string, downloadOptions);
+        const allFailed = (results as Array<{ success: boolean }>).every(r => !r.success);
+        if (allFailed && results.length > 0) { process.exit(1); }
 
     } catch (err) {
         const error = err as NodeJS.ErrnoException;
