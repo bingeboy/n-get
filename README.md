@@ -4,7 +4,9 @@
 
 </div>
 
-Observable downloads for AI agents. n-get streams NDJSON events for every fetch, exposes itself via `--capabilities` and `--openapi-spec`, surfaces every active session across processes through `nget jobs`, and ships an MCP server (`nget-mcp`) for direct integration with Claude and other MCP-compatible assistants. HTTP/HTTPS and SFTP, with resume.
+**A2A 0.3.0 · MCP · NDJSON · Webhooks**
+
+The download layer for modern agent stacks. n-get speaks A2A and MCP natively — any orchestrator that understands either protocol can discover and invoke it without glue code. Every transfer emits a structured event stream agents can parse, forward, and act on in real time. HTTP/HTTPS and SFTP, with resume and checksum verification.
 
 ## Install
 
