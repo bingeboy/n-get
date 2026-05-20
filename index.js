@@ -66,10 +66,10 @@ const LogsCommands = require('./lib/cli/logsCommands');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const HistoryCommands = require('./lib/cli/historyCommands');
 // Migrated modules — import-style
-const download = require("./lib/downloadPipeline");
+const download = require("./lib/downloader");
 const ConfigManager = require("./lib/config/ConfigManager");
 const jobsCommands_js_1 = require("./lib/cli/jobsCommands.js");
-const NgetEmitter_js_1 = require("./lib/core/NgetEmitter.js");
+const EventSink_js_1 = require("./lib/core/EventSink.js");
 // ─── Argv parsing ─────────────────────────────────────────────────────────────
 const argv = (0, minimist_1.default)(process.argv.slice(2), {
     boolean: [
@@ -399,7 +399,7 @@ async function main() {
                 }
             }
             const fetchSessionId = argv['session-id'] || `fetch_${Date.now()}`;
-            const fetchEmitter = new NgetEmitter_js_1.NgetEmitter({
+            const fetchEmitter = new EventSink_js_1.EventSink({
                 sessionId: fetchSessionId,
                 pipeMode: true,
                 webhooks: parseWebhookConfig(),

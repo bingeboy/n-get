@@ -214,7 +214,7 @@ class ResilientDownloadService {
         try {
             // Use existing download logic from downloadPipeline
             // eslint-disable-next-line @typescript-eslint/no-require-imports
-            const download = require('../downloadPipeline');
+            const download = require('../downloader');
             const results = await download([url], destination, {
                 enableResume: options.enableResume !== false,
                 quietMode: true, // Suppress UI output for service calls

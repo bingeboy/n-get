@@ -50,7 +50,7 @@ export interface NgetEmitterOptions {
     webhookSecret?: string;
 }
 
-export class NgetEmitter {
+export class EventSink {
     public readonly sessionId: string;
     public readonly humanMode: boolean;
     public readonly pipeMode: boolean;
