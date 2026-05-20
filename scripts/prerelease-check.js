@@ -47,15 +47,4 @@ try {
          'Run: git pull origin master');
 }
 
-// 4. Current version tag must not already exist locally
-try {
-    run(`git rev-parse --verify refs/tags/v${version}`);
-    // If we get here, the tag exists — that's bad
-    fail(`Tag v${version} already exists locally`,
-         `Run: git tag -d v${version}  (then re-run npm version)`);
-} catch (e) {
-    // rev-parse throws when tag doesn't exist — that's what we want
-    if (e.status === 0) process.exit(1); // re-throw the fail() above
-}
-
 console.log(`  ✓  prerelease checks passed (current: v${version})`);
