@@ -1,6 +1,6 @@
 # n-get — Agent Instructions
 
-**Version:** 1.10.2 · **License:** MIT · **Node:** >= 18
+**Version:** 1.11.0 · **License:** MIT · **Node:** >= 18
 
 Observable downloads for AI agents. NDJSON event stream, MCP server, OpenAPI spec, session visibility, HTTP + SFTP with resume.
 

@@ -1,3 +1,41 @@
+# Release Notes - v1.11.0
+
+## Overview
+Agent security and discovery. Webhook receivers can now verify every n-get event is authentic (HMAC-SHA256 signing), and any A2A 0.3.0-compatible orchestrator can discover and invoke n-get from a standard agent card.
+
+## New Features
+
+### HMAC webhook signing (`--webhook-secret`)
+- `--webhook-secret <secret>` — signs every webhook POST with `X-NGet-Signature: sha256=<hmac-hex>` using `node:crypto`. No new dependency.
+- `webhooks.secret: ''` in `config/default.yaml` for persistent config.
+- Empty/absent secret = no header added (fully backwards compatible).
+- `--capabilities` reports `webhooks.signing: 'hmac-sha256'`.
+
+Receiver verification (one `timingSafeEqual` call):
+```js
+const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+const valid = crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
+```
+
+### A2A 0.3.0 agent card (`--agent-card`, `get_agent_card`)
+- `nget --agent-card` — outputs A2A 0.3.0 JSON to stdout. Serve at `/.well-known/agent.json` via Cloudflare Workers, nginx, etc.
+- `get_agent_card` MCP tool — 10th MCP tool; returns the same JSON for orchestrators running over MCP.
+- Card is generated from `CapabilitiesService` — never drifts from actual capabilities.
+- `--capabilities` gains a `discovery.a2a` subsection.
+- Skills: `download`, `batch_download`, `fetch` — map 1:1 to MCP tools.
+
+## Breaking Changes
+None. All CLI flags, NDJSON event names, library exports, and MCP tool names from 1.10.x are unchanged.
+
+## Tests
+475 passing, 0 failing (up from 449 — 26 new tests across `test/webhookSigningSpec.js` and `test/a2aCardSpec.js`).
+
+---
+
+**Full Changelog**: [Compare v1.10.2...v1.11.0](https://github.com/bingeboy/n-get/compare/v1.10.2...v1.11.0)
+
+---
+
 # Release Notes - v1.10.2
 
 ## Overview
