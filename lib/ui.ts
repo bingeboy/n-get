@@ -7,9 +7,7 @@
 
 import * as path from 'node:path';
 
-// cli-progress has no @types package — typed as any
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const cliProgress: any = require('cli-progress');
+import * as cliProgress from 'cli-progress';
 // Colors is imported to extend String.prototype with color methods
 require('colors');
 
@@ -85,7 +83,7 @@ interface ResumableDownloadItem {
  * Handles all terminal output including progress bars, status messages, and formatted displays
  */
 class UIManager {
-    multibar: any;
+    multibar: cliProgress.MultiBar | null;
     spinners: Map<string, MockSpinner>;
     enableEmojis: boolean;
 
@@ -195,7 +193,7 @@ class UIManager {
     }
 
     // Create a progress bar for downloads
-    createProgressBar(label: string, total: number): any {
+    createProgressBar(label: string, total: number): cliProgress.SingleBar {
         this.multibar ||= new cliProgress.MultiBar({
             clearOnComplete: false,
             hideCursor: true,
