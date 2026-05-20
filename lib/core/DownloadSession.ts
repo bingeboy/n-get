@@ -79,6 +79,7 @@ export class DownloadSession {
     private readonly _statusFile: string;
     private          _status:     SessionStatus;
     private          _active:     boolean = false;
+    private          _cancelled:  boolean = false;
     private          _writeChain: Promise<void> = Promise.resolve();
 
     constructor(options: DownloadSessionOptions = {}) {
@@ -173,6 +174,15 @@ export class DownloadSession {
             error:  error.message,
             code:   error.code ?? null,
         });
+    }
+
+    cancel(): void {
+        this._cancelled = true;
+        this._flushStatus();
+    }
+
+    isCancelled(): boolean {
+        return this._cancelled;
     }
 
     // ─── Private ─────────────────────────────────────────────────────────────
