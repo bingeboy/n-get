@@ -5,13 +5,12 @@
  */
 
 // Use Node.js built-in fetch (available in Node 18+)
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const ConfigManager = require('./config/ConfigManager');
+import ConfigManager = require('./config/ConfigManager');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { getHttpAgent } = require('./downloader');
 
 // Initialize configuration
-let configManager: any;
+let configManager: InstanceType<typeof ConfigManager> | null;
 try {
     configManager = new ConfigManager({
         logger: { info: () => {}, debug: () => {}, warn: () => {}, error: console.error }
@@ -109,14 +108,14 @@ async function ngetFetch(url: string, options: FetchOptions = {}): Promise<Fetch
 
     // Get timeout from config or options
     const requestTimeout: number = timeout ||
-        (configManager ? configManager.get('http.timeout', 30000) : 30000);
+        (configManager ? (configManager.get('http.timeout', 30000) as number) : 30000);
 
     // Build fetch options
-    const fetchOptions: any = {
+    const fetchOptions: Record<string, unknown> & { headers: Record<string, string>; method: string } = {
         method: method.toUpperCase(),
         headers: {
             'User-Agent': configManager ?
-                configManager.get('http.userAgent', 'N-Get-Enterprise/2.0') :
+                (configManager.get('http.userAgent', 'N-Get-Enterprise/2.0') as string) :
                 'N-Get-Enterprise/2.0',
             ...headers
         },
@@ -166,16 +165,17 @@ async function ngetFetch(url: string, options: FetchOptions = {}): Promise<Fetch
         const latencyMs = Date.now() - startTime;
         const err = error as Error & { code?: string };
         // Enhance error with request details
-        const enhancedError: any = new Error(`Request failed: ${err.message}`);
-        enhancedError.code = err.code || 'REQUEST_FAILED';
-        enhancedError.latencyMs = latencyMs;
-        enhancedError.config = {
+        const baseError = new Error(`Request failed: ${err.message}`);
+        const enhancedError = baseError as typeof baseError & Record<string, unknown>;
+        enhancedError['code'] = err.code || 'REQUEST_FAILED';
+        enhancedError['latencyMs'] = latencyMs;
+        enhancedError['config'] = {
             method: fetchOptions.method,
             url,
             headers: fetchOptions.headers,
             timeout: requestTimeout
         };
-        enhancedError.request = { url, method: fetchOptions.method };
+        enhancedError['request'] = { url, method: fetchOptions.method };
 
         throw enhancedError;
     }
