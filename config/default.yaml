@@ -194,6 +194,7 @@ profiles:
 # Webhook event forwarding
 webhooks:
   default: []                 # Array of webhook URLs for all nget runs on this machine
+  secret: ''                  # HMAC-SHA256 signing secret. When set, all webhook POSTs include X-NGet-Signature: sha256=<hex>.
 
 # Development and Debugging
 development:

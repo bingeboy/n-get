@@ -123,10 +123,11 @@ describe('CLI output contract', () => {
             expect(capabilities.protocols.supported).to.include.members(['http', 'https', 'sftp']);
         });
 
-        it('discovery section has all four commands + ndjsonEvents + outputModes + webhooks', () => {
-            expect(capabilities.discovery).to.have.all.keys(
-                'help', 'capabilities', 'openapi', 'mcp', 'ndjsonEvents', 'outputModes', 'webhooks'
-            );
+        it('discovery section has all required commands + ndjsonEvents + outputModes + webhooks + a2a', () => {
+            const required = ['help', 'capabilities', 'openapi', 'mcp', 'ndjsonEvents', 'outputModes', 'webhooks', 'a2a'];
+            required.forEach(key => {
+                expect(capabilities.discovery, `missing discovery key: ${key}`).to.have.property(key);
+            });
         });
 
         it('discovery.ndjsonEvents lists all 9 event types', () => {
@@ -154,8 +155,12 @@ describe('CLI output contract', () => {
             expect(capabilities.agentIntegration.discovery.openapi).to.equal('supported');
         });
 
-        it('agentIntegration.eventDriven.webhooks is "supported"', () => {
-            expect(capabilities.agentIntegration.eventDriven.webhooks).to.equal('supported');
+        it('agentIntegration.eventDriven.webhooks reports supported and hmac-sha256 signing', () => {
+            const webhooks = capabilities.agentIntegration.eventDriven.webhooks;
+            // webhooks is now an object (not the old string 'supported')
+            expect(webhooks).to.be.an('object');
+            expect(webhooks).to.have.property('supported', true);
+            expect(webhooks).to.have.property('signing', 'hmac-sha256');
         });
 
         it('discovery.webhooks has url flag and events array', () => {

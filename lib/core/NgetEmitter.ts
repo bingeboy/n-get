@@ -9,6 +9,8 @@
  * for event output are banned outside this file.
  */
 
+import * as crypto from 'node:crypto';
+
 import type {
     NgetEventType,
     NgetEvent,
@@ -44,6 +46,8 @@ export interface NgetEmitterOptions {
     pipeMode?: boolean;
     ui?: UIManager;
     webhooks?: WebhookConfig[];
+    /** HMAC-SHA256 secret. When set, all webhook POSTs include `X-NGet-Signature: sha256=<hex>`. */
+    webhookSecret?: string;
 }
 
 export class NgetEmitter {
@@ -54,14 +58,16 @@ export class NgetEmitter {
     private readonly ui: UIManager;
     private readonly _out: NodeJS.WriteStream;
     private readonly _webhooks: WebhookConfig[];
+    private readonly _webhookSecret: string;
     private readonly _inflight: Promise<void>[] = [];
 
     constructor(options: NgetEmitterOptions) {
-        this.sessionId  = options.sessionId;
-        this.humanMode  = options.humanMode  ?? false;
-        this.pipeMode   = options.pipeMode   ?? false;
-        this.ui         = options.ui         ?? null;
-        this._webhooks  = options.webhooks   ?? [];
+        this.sessionId     = options.sessionId;
+        this.humanMode     = options.humanMode     ?? false;
+        this.pipeMode      = options.pipeMode      ?? false;
+        this.ui            = options.ui            ?? null;
+        this._webhooks     = options.webhooks      ?? [];
+        this._webhookSecret = options.webhookSecret ?? '';
 
         // Route events to the right stream
         this._out = (this.humanMode || this.pipeMode)
@@ -102,6 +108,15 @@ export class NgetEmitter {
                 continue;
             }
             const body = JSON.stringify(event);
+
+            // HMAC-SHA256 signing — prefer per-webhook secret, fall back to emitter-level secret
+            const secret = wh.webhookSecret || this._webhookSecret;
+            const sigHeaders: Record<string, string> = {};
+            if (secret) {
+                const sig = 'sha256=' + crypto.createHmac('sha256', secret).update(body).digest('hex');
+                sigHeaders['X-NGet-Signature'] = sig;
+            }
+
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), 2000);
             const p = fetch(wh.url, {
@@ -109,6 +124,7 @@ export class NgetEmitter {
                 headers: {
                     'Content-Type': 'application/json',
                     ...wh.headers,
+                    ...sigHeaders,
                 },
                 body,
                 signal: controller.signal,
