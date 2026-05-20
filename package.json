@@ -28,6 +28,9 @@
   },
   "scripts": {
     "start": "node index.js",
+    "preversion": "node scripts/prerelease-check.js",
+    "version": "node scripts/sync-version.js && npm run build && git add -u",
+    "postversion": "git push origin master --follow-tags",
     "build": "tsc && node scripts/gen-agents-md.js",
     "build:docs": "node scripts/gen-agents-md.js",
     "test": "vitest run",
