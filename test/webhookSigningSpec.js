@@ -10,7 +10,7 @@
 
 const http   = require('node:http');
 const crypto = require('node:crypto');
-const { NgetEmitter } = require('../lib/core/NgetEmitter');
+const { EventSink } = require('../lib/core/EventSink');
 const CapabilitiesService = require('../lib/services/CapabilitiesService');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ describe('Webhook HMAC signing', () => {
 
         const secret = 'my-super-secret';
         try {
-            const emitter = new NgetEmitter({
+            const emitter = new EventSink({
                 sessionId: 'sign-test',
                 webhooks: [{ url: `http://127.0.0.1:${srv.port}/hook`, webhookSecret: secret }],
             });
@@ -97,7 +97,7 @@ describe('Webhook HMAC signing', () => {
 
         const secret = 'emitter-level-secret';
         try {
-            const emitter = new NgetEmitter({
+            const emitter = new EventSink({
                 sessionId: 'sign-emitter-level',
                 webhookSecret: secret,
                 webhooks: [{ url: `http://127.0.0.1:${srv.port}/hook` }],
@@ -126,7 +126,7 @@ describe('Webhook HMAC signing', () => {
         const stdout = captureStream(process.stdout);
 
         try {
-            const emitter = new NgetEmitter({
+            const emitter = new EventSink({
                 sessionId: 'no-sign-test',
                 webhooks: [{ url: `http://127.0.0.1:${srv.port}/hook` }],
             });
@@ -148,7 +148,7 @@ describe('Webhook HMAC signing', () => {
         const stdout = captureStream(process.stdout);
 
         try {
-            const emitter = new NgetEmitter({
+            const emitter = new EventSink({
                 sessionId: 'empty-secret-test',
                 webhookSecret: '',
                 webhooks: [{ url: `http://127.0.0.1:${srv.port}/hook` }],

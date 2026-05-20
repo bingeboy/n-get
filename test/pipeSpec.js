@@ -1,7 +1,7 @@
 const fs = require('node:fs').promises;
 const path = require('node:path');
 const {spawn} = require('node:child_process');
-// const download = require('../lib/downloadPipeline'); // TODO: Use in future tests
+// const download = require('../lib/downloader'); // TODO: Use in future tests
 
 describe('Pipe Functionality', () => {
     const testDir = path.join(__dirname, 'temp');

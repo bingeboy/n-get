@@ -101,7 +101,7 @@ describe('DownloadSession', () => {
             expect(s.startTime).to.be.at.most(after);
         });
 
-        it('creates an NgetEmitter with matching sessionId', () => {
+        it('creates an EventSink with matching sessionId', () => {
             const s = makeSession({ sessionId: 'emitter-check' });
             expect(s.emitter).to.exist;
             expect(s.emitter.sessionId).to.equal('emitter-check');

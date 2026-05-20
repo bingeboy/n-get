@@ -19,7 +19,7 @@ import type {
     WebhookConfig,
 } from '../../types/index.js';
 
-import { NgetEmitter } from './NgetEmitter.js';
+import { EventSink } from './EventSink.js';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const NGET_VERSION = require('../../package.json').version as string;
@@ -68,7 +68,7 @@ export class DownloadSession {
     public readonly configManager: any;
     public readonly startTime:   number;
 
-    public readonly emitter:         NgetEmitter;
+    public readonly emitter:         EventSink;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     public readonly logger:          any;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -91,7 +91,7 @@ export class DownloadSession {
         this.configManager = options.configManager ?? null;
         this.startTime     = Date.now();
 
-        this.emitter = new NgetEmitter({
+        this.emitter = new EventSink({
             sessionId: this.id,
             humanMode: this.humanMode,
             pipeMode:  this.pipeMode,
