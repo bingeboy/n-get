@@ -1,10 +1,10 @@
 'use strict';
 /**
- * @fileoverview Tests for Feature 2 — A2A Agent Card.
+ * @fileoverview Tests for A2A 1.0 Agent Card.
  *
  * Covers:
- *   1. toA2ACard() returns valid JSON with protocolVersion: '0.3.0'
- *   2. Required top-level fields: name, description, url, preferredTransport, skills
+ *   1. toA2ACard() returns valid JSON with protocolVersion: '1.0'
+ *   2. Required top-level fields: id, name, description, url, interfaces, skills
  *   3. All 3 skills present (download, batch_download, fetch) with id, name, description, tags
  *   4. get_agent_card MCP tool returns same structure
  *   5. --capabilities discovery section includes the a2a key
@@ -43,10 +43,10 @@ describe('A2A Agent Card', () => {
 
     // ── 1. protocolVersion ────────────────────────────────────────────────────
 
-    it('toA2ACard() returns an object with protocolVersion "0.3.0"', () => {
+    it('toA2ACard() returns an object with protocolVersion "1.0"', () => {
         const svc  = new CapabilitiesService();
         const card = svc.toA2ACard();
-        expect(card).to.have.property('protocolVersion', '0.3.0');
+        expect(card).to.have.property('protocolVersion', '1.0');
     });
 
     // ── 2. Required top-level fields ──────────────────────────────────────────
@@ -54,10 +54,16 @@ describe('A2A Agent Card', () => {
     it('toA2ACard() includes all required top-level fields', () => {
         const svc  = new CapabilitiesService();
         const card = svc.toA2ACard();
-        const required = ['name', 'description', 'url', 'preferredTransport', 'skills'];
+        const required = ['id', 'name', 'description', 'url', 'interfaces', 'skills'];
         for (const field of required) {
             expect(card, `missing field: ${field}`).to.have.property(field);
         }
+    });
+
+    it('toA2ACard() id is "n-get"', () => {
+        const svc  = new CapabilitiesService();
+        const card = svc.toA2ACard();
+        expect(card.id).to.equal('n-get');
     });
 
     it('toA2ACard() name is "n-get"', () => {
@@ -66,10 +72,11 @@ describe('A2A Agent Card', () => {
         expect(card.name).to.equal('n-get');
     });
 
-    it('toA2ACard() preferredTransport is "JSONRPC"', () => {
+    it('toA2ACard() interfaces is an array containing "JSONRPC"', () => {
         const svc  = new CapabilitiesService();
         const card = svc.toA2ACard();
-        expect(card.preferredTransport).to.equal('JSONRPC');
+        expect(card.interfaces).to.be.an('array');
+        expect(card.interfaces).to.include('JSONRPC');
     });
 
     it('toA2ACard() version comes from package.json', () => {
@@ -141,11 +148,11 @@ describe('A2A Agent Card', () => {
 
     // ── 4. MCP get_agent_card tool ─────────────────────────────────────────────
 
-    it('get_agent_card MCP tool returns object with protocolVersion "0.3.0"', async () => {
+    it('get_agent_card MCP tool returns object with protocolVersion "1.0"', async () => {
         const { client, cleanup } = await connect();
         try {
             const card = await callTool(client, 'get_agent_card');
-            expect(card).to.have.property('protocolVersion', '0.3.0');
+            expect(card).to.have.property('protocolVersion', '1.0');
         } finally {
             await cleanup();
         }
@@ -155,7 +162,7 @@ describe('A2A Agent Card', () => {
         const { client, cleanup } = await connect();
         try {
             const card = await callTool(client, 'get_agent_card');
-            const required = ['name', 'description', 'url', 'preferredTransport', 'skills'];
+            const required = ['id', 'name', 'description', 'url', 'interfaces', 'skills'];
             for (const field of required) {
                 expect(card, `missing field from MCP tool: ${field}`).to.have.property(field);
             }
@@ -187,10 +194,10 @@ describe('A2A Agent Card', () => {
         expect(disc).to.have.property('a2a');
     });
 
-    it('discovery.a2a.protocolVersion is "0.3.0"', () => {
+    it('discovery.a2a.protocolVersion is "1.0"', () => {
         const svc  = new CapabilitiesService();
         const disc = svc.getDiscoveryInfo();
-        expect(disc.a2a).to.have.property('protocolVersion', '0.3.0');
+        expect(disc.a2a).to.have.property('protocolVersion', '1.0');
     });
 
     it('discovery.a2a.command references --agent-card flag', () => {

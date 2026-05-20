@@ -562,8 +562,8 @@ class CapabilitiesService {
             },
             a2a: {
                 command:     'nget --agent-card',
-                description: 'A2A 0.3.0 agent card (JSON). Describes n-get skills and transport for A2A-compatible orchestrators.',
-                protocolVersion: '0.3.0',
+                description: 'A2A 1.0 agent card (JSON). Describes n-get skills and transport for A2A-compatible orchestrators.',
+                protocolVersion: '1.0',
             }
         };
     }
@@ -613,12 +613,13 @@ class CapabilitiesService {
      */
     toA2ACard(endpointUrl?: string): AnyObj {
         return {
+            id:          'n-get',
             name:        'n-get',
             description: 'Observable downloads for AI agents — NDJSON event stream, webhook forwarding, HTTP + SFTP.',
             version:     this.version,
-            protocolVersion: '0.3.0',
+            protocolVersion: '1.0',
             url:         endpointUrl || 'https://your-host/a2a',
-            preferredTransport: 'JSONRPC',
+            interfaces:  ['JSONRPC'],
             capabilities: { streaming: true },
             defaultInputModes:  ['application/json'],
             defaultOutputModes: ['application/json', 'text/event-stream'],

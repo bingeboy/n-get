@@ -89,7 +89,7 @@ nget https://example.com/data.zip | jq 'select(.event == "download_complete")'
 - `--webhook-secret <secret>` — HMAC-SHA256 sign every POST with `X-NGet-Signature: sha256=<hex>`; receivers verify with `timingSafeEqual`
 
 **Agent discovery:**
-- `--agent-card` — outputs an A2A 0.3.0 agent card (JSON) to stdout; serve at `/.well-known/agent.json` for orchestrator discovery
+- `--agent-card` — outputs an A2A 1.0 agent card (JSON) to stdout; serve at `/.well-known/agent.json` for orchestrator discovery
 
 **Standard agent correlation flags:** `--agent-id`, `--session-id`, `--request-id`, `--conversation-id`
 
@@ -99,7 +99,7 @@ Run `nget --help` for the full flag reference.
 
 ## A2A discovery
 
-n-get publishes an [A2A 0.3.0](https://a2aprotocol.ai) agent card — the standard that lets AI orchestrators (LangChain, AWS Bedrock AgentCore, Spring AI, etc.) discover and invoke agents automatically.
+n-get publishes an [A2A 1.0](https://a2aprotocol.ai) agent card — the standard that lets AI orchestrators (LangChain, AWS Bedrock AgentCore, Spring AI, etc.) discover and invoke agents automatically.
 
 ```bash
 # output the agent card JSON
@@ -113,7 +113,7 @@ Or fetch it over MCP without leaving your agent loop:
 
 ```javascript
 // MCP tool
-get_agent_card()  // returns A2A 0.3.0 JSON
+get_agent_card()  // returns A2A 1.0 JSON
 ```
 
 The card is generated live from `--capabilities` — it never drifts from what n-get actually supports. Skills exposed: `download`, `batch_download`, `fetch`.
@@ -143,7 +143,7 @@ The MCP server exposes 10 tools for direct agent control:
 | `set_profile` | Apply a config profile (fast/secure/bulk/careful) |
 | `get_history` | Flat download history with filtering |
 | `get_instructions` | Return AGENTS.md — the full agent guide |
-| `get_agent_card` | Return the A2A 0.3.0 agent card JSON |
+| `get_agent_card` | Return the A2A 1.0 agent card JSON |
 
 ## Configuration
 

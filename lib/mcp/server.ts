@@ -431,9 +431,55 @@ export function createServer() {
 
     // ── get_agent_card ────────────────────────────────────────────────────────
 
+    // ── fetch_http ────────────────────────────────────────────────────────────
+
+    server.tool(
+        'fetch_http',
+        'Make an HTTP API call (GET/POST/PUT/DELETE/PATCH) and return the response as JSON. Use this to call external APIs without leaving the MCP loop.',
+        {
+            url:     (z as any).string().describe('The URL to fetch'),
+            method:  (z as any).enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']).optional().default('GET').describe('HTTP method'),
+            body:    (z as any).string().optional().describe('Request body (JSON string for POST/PUT/PATCH)'),
+            headers: (z as any).record((z as any).string()).optional().describe('Additional request headers'),
+            timeout: (z as any).number().optional().describe('Request timeout in milliseconds (default: 30000)'),
+        },
+        async ({ url, method = 'GET', body, headers, timeout }: {
+            url: string; method?: string; body?: string; headers?: Record<string, string>; timeout?: number;
+        }) => {
+            const ngetFetch = require('../fetch');
+            try {
+                let parsedBody: unknown = body;
+                if (body) {
+                    try { parsedBody = JSON.parse(body); } catch { parsedBody = body; }
+                }
+                const result = await ngetFetch(url, { method, headers, body: parsedBody, timeout });
+                return {
+                    content: [{ type: 'text' as const, text: JSON.stringify({
+                        status:      result.status,
+                        statusText:  result.statusText,
+                        latencyMs:   result.latencyMs,
+                        headers:     result.headers,
+                        data:        result.data,
+                    }) }],
+                };
+            } catch (err: unknown) {
+                const e = err as Error & { status?: number };
+                return {
+                    isError: true,
+                    content: [{ type: 'text' as const, text: JSON.stringify({
+                        error:   e.message,
+                        status:  e.status,
+                    }) }],
+                };
+            }
+        }
+    );
+
+    // ── get_agent_card ────────────────────────────────────────────────────────
+
     server.tool(
         'get_agent_card',
-        'Return the A2A 0.3.0 agent card for n-get. Describes agent skills, transport, and protocol version for A2A-compatible orchestrators.',
+        'Return the A2A 1.0 agent card for n-get. Describes agent skills, transport, and protocol version for A2A-compatible orchestrators.',
         {
             endpoint_url: (z as any).string().optional().describe('Override the default endpoint URL in the card (e.g. the public URL of your n-get MCP endpoint)'),
         },
