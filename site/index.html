@@ -372,6 +372,7 @@
           <tr><td>get_history</td>       <td>Download history with status and time filters</td></tr>
           <tr><td>get_capabilities</td>  <td>Full capabilities document</td></tr>
           <tr><td>get_instructions</td>  <td>AGENTS.md — the complete agent guide</td></tr>
+          <tr><td>fetch_http</td>        <td>HTTP API call (GET/POST/PUT/DELETE/PATCH) without leaving the MCP loop</td></tr>
           <tr><td>get_agent_card</td>    <td>Agent card — serve at /.well-known/agent.json</td></tr>
         </tbody>
       </table>
@@ -430,9 +431,12 @@
     <pre><code><span class="dim"># download</span>
 <span class="hi">nget</span> https://example.com/model.bin <span class="flag">-d</span> ./data <span class="flag">--agent-id</span> my-agent
 
-<span class="dim"># HTTP API call</span>
+<span class="dim"># HTTP API call — structured JSON response, same event stream as downloads</span>
 <span class="hi">nget fetch</span> https://api.example.com/data.json
-<span class="hi">nget fetch</span> <span class="flag">--method POST --data</span> <span class="flag">'{"key":"val"}'</span> https://api.example.com/endpoint
+<span class="hi">nget fetch</span> <span class="flag">--method POST</span> \
+     <span class="flag">--header</span> <span class="flag">'Authorization: Bearer $TOKEN'</span> \
+     <span class="flag">--header</span> <span class="flag">'Content-Type: application/json'</span> \
+     <span class="flag">--data</span> <span class="flag">'{"key":"val"}'</span> https://api.example.com/endpoint
 
 <span class="dim"># SFTP</span>
 <span class="hi">nget</span> sftp://user@host/path/file.tar.gz <span class="flag">--ssh-key</span> ~/.ssh/id_ed25519
