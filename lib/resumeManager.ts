@@ -1,88 +1,111 @@
-"use strict";
 /**
  * @fileoverview Download resume management with metadata tracking and validation
  * Handles partial download tracking, HTTP range request support, and file integrity validation
  * @module resumeManager
  */
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-const fs = __importStar(require("node:fs"));
-const path = __importStar(require("node:path"));
-const crypto = __importStar(require("node:crypto"));
+
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as crypto from 'node:crypto';
+
 // ui is still .js — typed loosely
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const ui = require('./ui');
+const ui: any = require('./ui');
+
+interface ResumeMetadata {
+    url: string;
+    filePath: string;
+    totalSize: number;
+    createdAt: string;
+    lastModified: string | null;
+    etag: string | null;
+    contentLength: string | number;
+    userAgent: string;
+}
+
+interface CheckPartialResult {
+    canResume: boolean;
+    reason?: string;
+    isComplete?: boolean;
+    currentSize?: number;
+    totalSize?: number;
+    resumeFrom?: number;
+    metadata?: ResumeMetadata;
+}
+
+interface RangeSupportResult {
+    supportsRanges: boolean;
+    contentLength: number | null;
+    headers: {
+        etag: string | null;
+        'last-modified': string | null;
+        'content-length': string | null;
+    };
+}
+
+interface RangeHeaders {
+    Range: string;
+    'User-Agent': string;
+    Connection: string;
+}
+
+interface ValidateRangeResult {
+    valid: boolean;
+    reason?: string;
+    start?: number;
+    end?: number;
+    total?: number | null;
+}
+
+interface ResumableDownload extends ResumeMetadata {
+    currentSize: number;
+    metadataPath: string;
+}
+
 /**
  * Resume Manager for handling interrupted downloads with metadata persistence
  * Supports HTTP range requests, partial file validation, and download state tracking
  */
 class ResumeManager {
-    metadataDir;
-    metadataExt;
+    metadataDir: string;
+    metadataExt: string;
+
     constructor() {
         this.metadataDir = '.nget';
         this.metadataExt = '.nget-meta';
     }
+
     /**
      * Create metadata directory if it doesn't exist
      */
-    async ensureMetadataDir(destination) {
+    async ensureMetadataDir(destination: string): Promise<string> {
         const metaPath = path.join(destination || process.cwd(), this.metadataDir);
         try {
-            await fs.promises.mkdir(metaPath, { recursive: true });
+            await fs.promises.mkdir(metaPath, {recursive: true});
             return metaPath;
-        }
-        catch (error) {
+        } catch (error: any) {
             throw new Error(`Failed to create metadata directory: ${error.message}`);
         }
     }
+
     /**
      * Generate metadata file path for a URL and destination
      */
-    getMetadataPath(url, destination) {
+    getMetadataPath(url: string, destination: string): string {
         const urlHash = crypto.createHash('md5').update(url).digest('hex');
         const metaDir = path.join(destination || process.cwd(), this.metadataDir);
         return path.join(metaDir, `${urlHash}${this.metadataExt}`);
     }
+
     /**
      * Save download metadata for resume capability
      */
-    async saveMetadata(url, filePath, totalSize, headers = {}) {
+    async saveMetadata(url: string, filePath: string, totalSize: number, headers: Record<string, any> = {}): Promise<string | null> {
         try {
             const destination = path.dirname(filePath);
             await this.ensureMetadataDir(destination);
-            const metadata = {
+
+            const metadata: ResumeMetadata = {
                 url,
                 filePath,
                 totalSize,
@@ -92,63 +115,74 @@ class ResumeManager {
                 contentLength: headers['content-length'] || totalSize,
                 userAgent: 'n-get-resume/1.0',
             };
+
             const metadataPath = this.getMetadataPath(url, destination);
             await fs.promises.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+
             return metadataPath;
-        }
-        catch (error) {
+        } catch (error: any) {
             ui.displayWarning(`Failed to save resume metadata: ${error.message}`);
             return null;
         }
     }
+
     /**
      * Load existing download metadata
      */
-    async loadMetadata(url, destination) {
+    async loadMetadata(url: string, destination: string): Promise<ResumeMetadata | null> {
         try {
             const metadataPath = this.getMetadataPath(url, destination);
             const metadataContent = await fs.promises.readFile(metadataPath, 'utf8');
-            return JSON.parse(metadataContent);
-        }
-        catch {
+            return JSON.parse(metadataContent) as ResumeMetadata;
+        } catch {
             return null; // No existing metadata
         }
     }
+
     /**
      * Check if a partial download exists and is valid
      */
-    async checkPartialDownload(url, filePath, expectedSize, serverHeaders = {}) {
+    async checkPartialDownload(url: string, filePath: string, expectedSize: number, serverHeaders: Record<string, any> = {}): Promise<CheckPartialResult> {
         try {
             // Check if the file exists
             const stats = await fs.promises.stat(filePath);
             const currentSize = stats.size;
+
             // Load metadata
             const metadata = await this.loadMetadata(url, path.dirname(filePath));
+
             if (!metadata) {
-                return { canResume: false, reason: 'No resume metadata found' };
+                return {canResume: false, reason: 'No resume metadata found'};
             }
+
             // Validate file path matches metadata
             if (metadata.filePath !== filePath) {
-                return { canResume: false, reason: 'File path mismatch' };
+                return {canResume: false, reason: 'File path mismatch'};
             }
+
             // Check if file is already complete
             if (expectedSize && currentSize >= expectedSize) {
-                return { canResume: false, reason: 'File already complete', isComplete: true };
+                return {canResume: false, reason: 'File already complete', isComplete: true};
             }
+
             // Validate server supports resume (check for ETag or Last-Modified)
             const serverEtag = serverHeaders.etag;
             const serverLastModified = serverHeaders['last-modified'];
+
             if (metadata.etag && serverEtag && metadata.etag !== serverEtag) {
-                return { canResume: false, reason: 'File changed on server (ETag mismatch)' };
+                return {canResume: false, reason: 'File changed on server (ETag mismatch)'};
             }
+
             if (metadata.lastModified && serverLastModified
-                && metadata.lastModified !== serverLastModified) {
-                return { canResume: false, reason: 'File changed on server (Last-Modified mismatch)' };
+            	&& metadata.lastModified !== serverLastModified) {
+                return {canResume: false, reason: 'File changed on server (Last-Modified mismatch)'};
             }
+
             // Check file size is reasonable
             if (expectedSize && currentSize > expectedSize) {
-                return { canResume: false, reason: 'Partial file larger than expected' };
+                return {canResume: false, reason: 'Partial file larger than expected'};
             }
+
             return {
                 canResume: true,
                 currentSize,
@@ -156,28 +190,32 @@ class ResumeManager {
                 resumeFrom: currentSize,
                 metadata,
             };
-        }
-        catch (error) {
+        } catch (error: any) {
             if (error.code === 'ENOENT') {
-                return { canResume: false, reason: 'Partial file not found' };
+                return {canResume: false, reason: 'Partial file not found'};
             }
-            return { canResume: false, reason: `File check failed: ${error.message}` };
+
+            return {canResume: false, reason: `File check failed: ${error.message}`};
         }
     }
+
     /**
      * Test if server supports range requests
      */
-    async testRangeSupport(url) {
+    async testRangeSupport(url: string): Promise<RangeSupportResult> {
         try {
-            const fetch = (...args) => Promise.resolve().then(() => __importStar(require('node-fetch'))).then(({ default: fetch }) => fetch(...args));
-            const response = await fetch(url, {
+            const fetch = (...args: any[]) => import('node-fetch').then(({default: fetch}: any) => (fetch as any)(...args));
+
+            const response: any = await fetch(url, {
                 method: 'HEAD',
                 headers: {
                     'User-Agent': 'n-get-resume/1.0',
                 },
             });
+
             const acceptRanges = response.headers.get('accept-ranges');
             const contentLength = response.headers.get('content-length');
+
             return {
                 supportsRanges: acceptRanges === 'bytes',
                 contentLength: contentLength ? Number.parseInt(contentLength) : null,
@@ -187,47 +225,55 @@ class ResumeManager {
                     'content-length': contentLength,
                 },
             };
-        }
-        catch (error) {
+        } catch (error: any) {
             throw new Error(`Failed to test range support: ${error.message}`);
         }
     }
+
     /**
      * Create HTTP range request headers
      */
-    createRangeHeaders(startByte, endByte = null) {
+    createRangeHeaders(startByte: number, endByte: number | null = null): RangeHeaders {
         const rangeValue = endByte ? `bytes=${startByte}-${endByte}` : `bytes=${startByte}-`;
+
         return {
             Range: rangeValue,
             'User-Agent': 'n-get-resume/1.0',
             Connection: 'keep-alive',
         };
     }
+
     /**
      * Validate range response
      */
-    validateRangeResponse(response, expectedStart) {
+    validateRangeResponse(response: any, expectedStart: number): ValidateRangeResult {
         const statusCode = response.status;
         const contentRange = response.headers.get('content-range');
+
         if (statusCode !== 206) {
-            return { valid: false, reason: `Server returned ${statusCode} instead of 206` };
+            return {valid: false, reason: `Server returned ${statusCode} instead of 206`};
         }
+
         if (!contentRange) {
-            return { valid: false, reason: 'No Content-Range header in response' };
+            return {valid: false, reason: 'No Content-Range header in response'};
         }
+
         // Parse Content-Range: bytes start-end/total
         const rangeMatch = contentRange.match(/bytes\s+(\d+)-(\d+)\/(\d+|\*)/);
         if (!rangeMatch) {
-            return { valid: false, reason: 'Invalid Content-Range format' };
+            return {valid: false, reason: 'Invalid Content-Range format'};
         }
+
         const [, start, end, total] = rangeMatch;
         const actualStart = Number.parseInt(start);
+
         if (actualStart !== expectedStart) {
             return {
                 valid: false,
                 reason: `Range mismatch: expected ${expectedStart}, got ${actualStart}`,
             };
         }
+
         return {
             valid: true,
             start: actualStart,
@@ -235,54 +281,59 @@ class ResumeManager {
             total: total === '*' ? null : Number.parseInt(total),
         };
     }
+
     /**
      * Clean up metadata after successful download
      */
-    async cleanupMetadata(url, destination) {
+    async cleanupMetadata(url: string, destination: string): Promise<void> {
         try {
             const metadataPath = this.getMetadataPath(url, destination);
             await fs.promises.unlink(metadataPath);
-        }
-        catch {
+        } catch {
             // Ignore cleanup errors
         }
     }
+
     /**
      * Clean up old metadata files (older than 7 days)
      */
-    async cleanupOldMetadata(destination) {
+    async cleanupOldMetadata(destination: string): Promise<void> {
         try {
             const metaDir = path.join(destination || process.cwd(), this.metadataDir);
             const files = await fs.promises.readdir(metaDir);
             const cutoffTime = Date.now() - (7 * 24 * 60 * 60 * 1000); // 7 days ago
+
             for (const file of files) {
                 if (file.endsWith(this.metadataExt)) {
                     const filePath = path.join(metaDir, file);
                     const stats = await fs.promises.stat(filePath);
+
                     if (stats.mtime.getTime() < cutoffTime) {
                         await fs.promises.unlink(filePath);
                     }
                 }
             }
-        }
-        catch {
+        } catch {
             // Ignore cleanup errors
         }
     }
+
     /**
      * Get all resumable downloads in a directory
      */
-    async getResumableDownloads(destination) {
+    async getResumableDownloads(destination: string): Promise<ResumableDownload[]> {
         try {
             const metaDir = path.join(destination || process.cwd(), this.metadataDir);
             const files = await fs.promises.readdir(metaDir);
-            const resumable = [];
+            const resumable: ResumableDownload[] = [];
+
             for (const file of files) {
                 if (file.endsWith(this.metadataExt)) {
                     try {
                         const filePath = path.join(metaDir, file);
                         const content = await fs.promises.readFile(filePath, 'utf8');
-                        const metadata = JSON.parse(content);
+                        const metadata = JSON.parse(content) as ResumeMetadata;
+
                         // Check if partial file still exists
                         try {
                             const stats = await fs.promises.stat(metadata.filePath);
@@ -291,34 +342,37 @@ class ResumeManager {
                                 currentSize: stats.size,
                                 metadataPath: filePath,
                             });
-                        }
-                        catch {
+                        } catch {
                             // Partial file doesn't exist, remove metadata
                             await fs.promises.unlink(filePath);
                         }
-                    }
-                    catch {
+                    } catch {
                         // Invalid metadata file, ignore
                     }
                 }
             }
+
             return resumable;
-        }
-        catch {
+        } catch {
             return [];
         }
     }
+
     /**
      * Find the most recent resumable download
      */
-    async findLatestResumableDownload(destination) {
+    async findLatestResumableDownload(destination: string): Promise<ResumableDownload | null> {
         const resumableDownloads = await this.getResumableDownloads(destination);
+
         if (resumableDownloads.length === 0) {
             return null;
         }
+
         // Sort by creation time (most recent first)
         resumableDownloads.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
         return resumableDownloads[0];
     }
 }
-module.exports = new ResumeManager();
+
+export = new ResumeManager();

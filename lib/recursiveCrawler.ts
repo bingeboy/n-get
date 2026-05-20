@@ -1,61 +1,76 @@
-"use strict";
 /**
  * @fileoverview Recursive web crawler for downloading entire websites and directory structures
  * Supports depth control, file filtering, and directory structure recreation
  */
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-const node_url_1 = require("node:url");
-const path = __importStar(require("node:path"));
+
+import {URL} from 'node:url';
+import * as path from 'node:path';
+
 // node-fetch is loaded dynamically; ui is .js — typed loosely
-const fetch = (...args) => Promise.resolve().then(() => __importStar(require('node-fetch'))).then(({ default: fetch }) => fetch(...args));
+const fetch = (...args: any[]) => import('node-fetch').then(({default: fetch}: any) => (fetch as any)(...args));
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const ui = require('./ui');
+const ui: any = require('./ui');
+
+interface RecursiveCrawlerOptions {
+    maxDepth?: number;
+    noParent?: boolean;
+    acceptPatterns?: string[];
+    rejectPatterns?: string[];
+    delayMs?: number;
+    userAgent?: string;
+    followExternalLinks?: boolean;
+    createDirectoryStructure?: boolean;
+    maxConcurrent?: number;
+    respectRobotsTxt?: boolean;
+}
+
+interface CrawlItem {
+    url: string;
+    type: 'crawlable' | 'downloadable';
+    depth: number;
+    parent: string | null;
+}
+
+interface DiscoveredInfo {
+    depth: number;
+    parent: string | null;
+    type: 'crawlable' | 'downloadable';
+}
+
+interface CrawlStats {
+    pagesVisited: number;
+    filesDiscovered: number;
+    filesDownloaded: number;
+    totalSize: number;
+    errors: number;
+}
+
 /**
  * Recursive web crawler for downloading entire websites and directory structures
  */
 class RecursiveCrawler {
-    options;
-    visited;
-    discovered;
-    downloadQueue;
-    robotsCache;
-    maxVisitedEntries;
-    maxDiscoveredEntries;
-    cleanupThreshold;
-    stats;
-    constructor(options = {}) {
+    options: {
+        maxDepth: number;
+        noParent: boolean;
+        acceptPatterns: string[];
+        rejectPatterns: string[];
+        delayMs: number;
+        userAgent: string;
+        followExternalLinks: boolean;
+        createDirectoryStructure: boolean;
+        maxConcurrent: number;
+        respectRobotsTxt: boolean;
+    };
+    visited: Set<string>;
+    discovered: Map<string, DiscoveredInfo>;
+    downloadQueue: any[];
+    robotsCache: Map<string, boolean>;
+    maxVisitedEntries: number;
+    maxDiscoveredEntries: number;
+    cleanupThreshold: number;
+    stats: CrawlStats;
+
+    constructor(options: RecursiveCrawlerOptions = {}) {
         this.options = {
             maxDepth: options.maxDepth || 5,
             noParent: options.noParent || false,
@@ -68,10 +83,12 @@ class RecursiveCrawler {
             maxConcurrent: options.maxConcurrent || 3,
             respectRobotsTxt: options.respectRobotsTxt !== false,
         };
+
         this.visited = new Set();
         this.discovered = new Map(); // URL -> {depth, parent, type}
         this.downloadQueue = [];
         this.robotsCache = new Map();
+
         // Memory management settings
         this.maxVisitedEntries = 10000;
         this.maxDiscoveredEntries = 5000;
@@ -84,11 +101,13 @@ class RecursiveCrawler {
             errors: 0,
         };
     }
+
     /**
      * Cleanup memory by removing oldest entries when limits are exceeded
      */
-    cleanupMemory() {
+    cleanupMemory(): void {
         const totalEntries = this.visited.size + this.discovered.size;
+
         if (totalEntries > this.cleanupThreshold) {
             // Keep only recent visited entries
             if (this.visited.size > this.maxVisitedEntries) {
@@ -96,21 +115,25 @@ class RecursiveCrawler {
                 this.visited.clear();
                 recentEntries.forEach(entry => this.visited.add(entry));
             }
+
             // Keep only recent discovered entries
             if (this.discovered.size > this.maxDiscoveredEntries) {
                 const recentEntries = Array.from(this.discovered.entries()).slice(-this.maxDiscoveredEntries);
                 this.discovered.clear();
                 recentEntries.forEach(([key, value]) => this.discovered.set(key, value));
             }
+
             ui.displayInfo(`Memory cleanup: ${totalEntries} -> ${this.visited.size + this.discovered.size} entries`);
         }
     }
+
     /**
      * Check if URL matches accept/reject patterns
      */
-    shouldDownloadFile(url) {
+    shouldDownloadFile(url: URL): boolean {
         const urlString = url.toString();
-        const filename = path.basename(new node_url_1.URL(urlString).pathname);
+        const filename = path.basename(new URL(urlString).pathname);
+
         // Check reject patterns first
         if (this.options.rejectPatterns.length > 0) {
             for (const pattern of this.options.rejectPatterns) {
@@ -120,6 +143,7 @@ class RecursiveCrawler {
                 }
             }
         }
+
         // Check accept patterns (if specified, must match)
         if (this.options.acceptPatterns.length > 0) {
             for (const pattern of this.options.acceptPatterns) {
@@ -128,113 +152,132 @@ class RecursiveCrawler {
                     return true;
                 }
             }
+
             return false; // No accept pattern matched
         }
+
         return true; // No patterns specified or only reject patterns (and none matched)
     }
+
     /**
      * Convert glob pattern to regex
      */
-    globToRegex(pattern) {
+    globToRegex(pattern: string): RegExp {
         // Escape special regex characters except * and ?
         const escaped = pattern
-            .replaceAll(/[.+^${}()|[\]\\]/g, String.raw `\$&`)
+            .replaceAll(/[.+^${}()|[\]\\]/g, String.raw`\$&`)
             .replaceAll('*', '.*')
             .replaceAll('?', '.');
         return new RegExp(`^${escaped}$`, 'i');
     }
+
     /**
      * Check if URL should be crawled based on parent restrictions
      */
-    shouldCrawlUrl(url, baseUrl, currentDepth) {
+    shouldCrawlUrl(url: URL, baseUrl: string | null, currentDepth: number): boolean {
         if (currentDepth >= this.options.maxDepth) {
             return false;
         }
+
         if (this.visited.has(url.toString())) {
             return false;
         }
+
         // Check no-parent restriction
         if (this.options.noParent && baseUrl) {
-            const baseUrlObject = new node_url_1.URL(baseUrl);
+            const baseUrlObject = new URL(baseUrl);
             const basePath = baseUrlObject.pathname.replace(/\/[^/]*$/, '/'); // Remove filename, keep directory
+
             if (!url.pathname.startsWith(basePath)) {
                 return false;
             }
         }
+
         // Check external links
         if (!this.options.followExternalLinks && baseUrl) {
-            const baseUrlObject = new node_url_1.URL(baseUrl);
+            const baseUrlObject = new URL(baseUrl);
             if (url.hostname !== baseUrlObject.hostname) {
                 return false;
             }
         }
+
         return true;
     }
+
     /**
      * Fetch and parse robots.txt
      */
-    async checkRobotsTxt(baseUrl) {
+    async checkRobotsTxt(baseUrl: string): Promise<boolean> {
         if (!this.options.respectRobotsTxt) {
             return true;
         }
-        const robotsUrl = new node_url_1.URL('/robots.txt', baseUrl).toString();
+
+        const robotsUrl = new URL('/robots.txt', baseUrl).toString();
+
         if (this.robotsCache.has(robotsUrl)) {
-            return this.robotsCache.get(robotsUrl);
+            return this.robotsCache.get(robotsUrl)!;
         }
+
         try {
-            const response = await fetch(robotsUrl, {
-                headers: { 'User-Agent': this.options.userAgent },
+            const response: any = await fetch(robotsUrl, {
+                headers: {'User-Agent': this.options.userAgent},
                 timeout: 10000,
             });
+
             if (!response.ok) {
                 this.robotsCache.set(robotsUrl, true); // No robots.txt = allowed
                 return true;
             }
-            const robotsText = await response.text();
+
+            const robotsText: string = await response.text();
             const allowed = this.parseRobotsTxt(robotsText, baseUrl);
             this.robotsCache.set(robotsUrl, allowed);
             return allowed;
-        }
-        catch {
+        } catch {
             this.robotsCache.set(robotsUrl, true); // Error fetching = allow
             return true;
         }
     }
+
     /**
      * Parse robots.txt content
      */
-    parseRobotsTxt(robotsText, url) {
+    parseRobotsTxt(robotsText: string, url: string): boolean {
         const lines = robotsText.split('\n');
         const userAgent = this.options.userAgent.toLowerCase();
         let _currentUserAgent = '';
-        const disallowed = [];
+        const disallowed: string[] = [];
         let inRelevantSection = false;
+
         for (const line of lines) {
             const trimmed = line.trim().toLowerCase();
+
             if (trimmed.startsWith('user-agent:')) {
                 const agent = trimmed.slice(11).trim();
                 inRelevantSection = agent === '*' || agent === userAgent || userAgent.includes(agent);
                 _currentUserAgent = agent;
-            }
-            else if (inRelevantSection && trimmed.startsWith('disallow:')) {
+            } else if (inRelevantSection && trimmed.startsWith('disallow:')) {
                 const disallowPath = trimmed.slice(9).trim();
                 if (disallowPath) {
                     disallowed.push(disallowPath);
                 }
             }
         }
+
         // Check if current URL is disallowed
-        const urlPath = new node_url_1.URL(url).pathname;
+        const urlPath = new URL(url).pathname;
         return !disallowed.some(disallowPath => urlPath.startsWith(disallowPath));
     }
+
     /**
      * Extract URLs from HTML content
      */
-    extractUrlsFromHtml(html, baseUrl) {
-        const urls = new Set();
-        const _baseUrlObject = new node_url_1.URL(baseUrl);
+    extractUrlsFromHtml(html: string, baseUrl: string): string[] {
+        const urls = new Set<string>();
+        const _baseUrlObject = new URL(baseUrl);
+
         // Regex patterns for different link types
-        const patterns = [
+        const patterns: RegExp[] = [
             // Href attributes (a, link tags)
             /(?:href\s*=\s*["']([^"']+)["'])/gi,
             // Src attributes (img, script, iframe, etc.)
@@ -245,60 +288,68 @@ class RecursiveCrawler {
             // Srcset attributes (responsive images)
             /(?:srcset\s*=\s*["']([^"']+)["'])/gi,
         ];
+
         for (const pattern of patterns) {
-            let match;
+            let match: RegExpExecArray | null;
             while ((match = pattern.exec(html)) !== null) {
                 const urlString = match[1].trim();
+
                 // Skip data URLs, mailto, tel, etc.
                 if (urlString.startsWith('data:')
-                    || urlString.startsWith('mailto:')
-                    || urlString.startsWith('tel:')
-                    || urlString.startsWith('javascript:')
-                    || urlString.startsWith('#')) {
+                	|| urlString.startsWith('mailto:')
+                	|| urlString.startsWith('tel:')
+                	|| urlString.startsWith('javascript:')
+                	|| urlString.startsWith('#')) {
                     continue;
                 }
+
                 try {
-                    const absoluteUrl = new node_url_1.URL(urlString, baseUrl);
+                    const absoluteUrl = new URL(urlString, baseUrl);
+
                     // Only collect HTTP/HTTPS URLs
                     if (absoluteUrl.protocol === 'http:' || absoluteUrl.protocol === 'https:') {
                         urls.add(absoluteUrl.toString());
                     }
-                }
-                catch {
+                } catch {
                     // Invalid URL, skip
                     continue;
                 }
             }
         }
+
         // Handle srcset which can contain multiple URLs with descriptors
         const srcsetPattern = /srcset\s*=\s*["']([^"']+)["']/gi;
-        let srcsetMatch;
+        let srcsetMatch: RegExpExecArray | null;
         while ((srcsetMatch = srcsetPattern.exec(html)) !== null) {
             const srcsetValue = srcsetMatch[1];
-            const srcsetUrls = srcsetValue.split(',').map((item) => item.trim().split(/\s+/)[0]);
+            const srcsetUrls = srcsetValue.split(',').map((item: string) => item.trim().split(/\s+/)[0]);
+
             for (const srcUrl of srcsetUrls) {
                 try {
-                    const absoluteUrl = new node_url_1.URL(srcUrl, baseUrl);
+                    const absoluteUrl = new URL(srcUrl, baseUrl);
                     if (absoluteUrl.protocol === 'http:' || absoluteUrl.protocol === 'https:') {
                         urls.add(absoluteUrl.toString());
                     }
-                }
-                catch {
+                } catch {
                     continue;
                 }
             }
         }
+
         return [...urls];
     }
+
     /**
      * Determine if URL points to a downloadable file or crawlable page
      */
-    classifyUrl(url) {
-        const urlObject = new node_url_1.URL(url);
+    classifyUrl(url: string): 'crawlable' | 'downloadable' {
+        const urlObject = new URL(url);
         const pathname = urlObject.pathname.toLowerCase();
         const extension = path.extname(pathname).slice(1);
+
         // Common web page extensions that should be crawled
         const crawlableExtensions = ['html', 'htm', 'xhtml', 'php', 'asp', 'jsp', 'cfm', ''];
+
         // Common downloadable file extensions
         const downloadableExtensions = [
             // Documents
@@ -316,32 +367,40 @@ class RecursiveCrawler {
             // Code/Data
             'js', 'css', 'json', 'xml', 'csv', 'sql',
         ];
+
         if (crawlableExtensions.includes(extension)) {
             return 'crawlable';
         }
+
         if (downloadableExtensions.includes(extension)) {
             return 'downloadable';
         }
+
         if (pathname.endsWith('/') || !extension) {
             // Directory or no extension - likely crawlable
             return 'crawlable';
         }
+
         // Unknown extension - treat as downloadable to be safe
         return 'downloadable';
     }
+
     /**
      * Crawl a single URL and discover linked resources
      */
-    async crawlUrl(url, depth = 0, parentUrl = null) {
+    async crawlUrl(url: string, depth: number = 0, parentUrl: string | null = null): Promise<CrawlItem[]> {
         if (this.visited.has(url)) {
             return [];
         }
+
         this.visited.add(url);
-        const _urlObject = new node_url_1.URL(url);
+        const _urlObject = new URL(url);
+
         // Perform memory cleanup periodically
         if (this.stats.pagesVisited % 100 === 0) {
             this.cleanupMemory();
         }
+
         ui.displayCrawlProgress({
             pagesVisited: this.stats.pagesVisited + 1,
             filesFound: this.stats.filesDiscovered,
@@ -349,6 +408,7 @@ class RecursiveCrawler {
             maxDepth: this.options.maxDepth,
             currentUrl: url,
         });
+
         try {
             // Check robots.txt
             const robotsAllowed = await this.checkRobotsTxt(url);
@@ -356,40 +416,48 @@ class RecursiveCrawler {
                 ui.displayWarning(`Robots.txt disallows crawling: ${url}`);
                 return [];
             }
+
             // Fetch the page
-            const response = await fetch(url, {
+            const response: any = await fetch(url, {
                 headers: {
                     'User-Agent': this.options.userAgent,
                     Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                 },
                 timeout: 30000,
             });
+
             if (!response.ok) {
                 ui.displayWarning(`HTTP ${response.status} for: ${url}`);
                 this.stats.errors++;
                 return [];
             }
-            const contentType = response.headers.get('content-type') || '';
+
+            const contentType: string = response.headers.get('content-type') || '';
+
             // Only parse HTML-like content for links
             if (!contentType.includes('text/html')
-                && !contentType.includes('application/xhtml')
-                && !contentType.includes('text/xml')) {
+            	&& !contentType.includes('application/xhtml')
+            	&& !contentType.includes('text/xml')) {
                 // This is a file to download, not crawl
                 return [{
-                        url,
-                        type: 'downloadable',
-                        depth,
-                        parent: parentUrl,
-                    }];
+                    url,
+                    type: 'downloadable',
+                    depth,
+                    parent: parentUrl,
+                }];
             }
-            const html = await response.text();
+
+            const html: string = await response.text();
             this.stats.pagesVisited++;
+
             // Extract URLs from the HTML
             const discoveredUrls = this.extractUrlsFromHtml(html, url);
-            const results = [];
+            const results: CrawlItem[] = [];
+
             for (const discoveredUrl of discoveredUrls) {
-                const discoveredUrlObject = new node_url_1.URL(discoveredUrl);
+                const discoveredUrlObject = new URL(discoveredUrl);
                 const urlType = this.classifyUrl(discoveredUrl);
+
                 // Add to discovered set
                 if (!this.discovered.has(discoveredUrl)) {
                     this.discovered.set(discoveredUrl, {
@@ -397,8 +465,10 @@ class RecursiveCrawler {
                         parent: url,
                         type: urlType,
                     });
+
                     if (urlType === 'downloadable') {
                         this.stats.filesDiscovered++;
+
                         // Check if this file should be downloaded
                         if (this.shouldDownloadFile(discoveredUrlObject)) {
                             results.push({
@@ -408,9 +478,8 @@ class RecursiveCrawler {
                                 parent: url,
                             });
                         }
-                    }
-                    else if (urlType === 'crawlable' // Check if we should crawl this URL
-                        && this.shouldCrawlUrl(discoveredUrlObject, url, depth + 1)) {
+                    } else if (urlType === 'crawlable' // Check if we should crawl this URL
+                    	&& this.shouldCrawlUrl(discoveredUrlObject, url, depth + 1)) {
                         results.push({
                             url: discoveredUrl,
                             type: 'crawlable',
@@ -420,82 +489,98 @@ class RecursiveCrawler {
                     }
                 }
             }
+
             // Add small delay to be polite to servers
             if (this.options.delayMs > 0) {
                 await new Promise(resolve => setTimeout(resolve, this.options.delayMs));
             }
+
             return results;
-        }
-        catch (error) {
+        } catch (error: any) {
             ui.displayError(`Crawl error for ${url}: ${error.message}`);
             this.stats.errors++;
             return [];
         }
     }
+
     /**
      * Recursively crawl starting from initial URLs
      */
-    async crawl(initialUrls) {
-        const crawlQueue = initialUrls.map(url => ({
+    async crawl(initialUrls: string[]): Promise<CrawlItem[]> {
+        const crawlQueue: CrawlItem[] = initialUrls.map(url => ({
             url,
             type: 'crawlable',
             depth: 0,
             parent: null,
         }));
-        const downloadUrls = [];
-        const processed = new Set();
+
+        const downloadUrls: CrawlItem[] = [];
+        const processed = new Set<string>();
+
         while (crawlQueue.length > 0) {
             const batch = crawlQueue.splice(0, this.options.maxConcurrent);
-            const crawlPromises = batch.map(async (item) => {
+            const crawlPromises = batch.map(async (item: CrawlItem) => {
                 if (processed.has(item.url)) {
                     return [];
                 }
+
                 processed.add(item.url);
+
                 if (item.type === 'downloadable') {
                     downloadUrls.push(item);
                     return [];
                 }
+
                 return await this.crawlUrl(item.url, item.depth, item.parent);
             });
-            const results = await Promise.all(crawlPromises);
+
+            const results: CrawlItem[][] = await Promise.all(crawlPromises);
+
             // Add discovered URLs to appropriate queues
             for (const resultSet of results) {
                 for (const item of resultSet) {
                     if (item.type === 'crawlable' && item.depth < this.options.maxDepth) {
                         crawlQueue.push(item);
-                    }
-                    else if (item.type === 'downloadable') {
+                    } else if (item.type === 'downloadable') {
                         downloadUrls.push(item);
                     }
                 }
             }
         }
+
         return downloadUrls;
     }
+
     /**
      * Generate local file path that recreates directory structure
      */
-    generateLocalPath(url, baseDestination) {
-        const urlObject = new node_url_1.URL(url);
+    generateLocalPath(url: string, baseDestination: string): string {
+        const urlObject = new URL(url);
+
         if (!this.options.createDirectoryStructure) {
             // Just use filename
             return path.join(baseDestination, path.basename(urlObject.pathname) || 'index.html');
         }
+
         // Recreate directory structure
         let localPath = path.join(baseDestination, urlObject.hostname);
+
         // Add port if not default
         if (urlObject.port
-            && !((urlObject.protocol === 'http:' && urlObject.port === '80')
-                || (urlObject.protocol === 'https:' && urlObject.port === '443'))) {
+        	&& !((urlObject.protocol === 'http:' && urlObject.port === '80')
+        		|| (urlObject.protocol === 'https:' && urlObject.port === '443'))) {
             localPath += `_${urlObject.port}`;
         }
+
         // Add pathname
         const pathname = urlObject.pathname === '/' ? '/index.html' : urlObject.pathname;
         localPath = path.join(localPath, pathname.slice(1)); // Remove leading slash
+
         // Ensure we have a filename
         if (localPath.endsWith('/')) {
             localPath = path.join(localPath, 'index.html');
         }
+
         // Handle query parameters (create a safe filename)
         if (urlObject.search) {
             const extension = path.extname(localPath);
@@ -503,22 +588,25 @@ class RecursiveCrawler {
             const query = urlObject.search.slice(1).replaceAll(/[^a-zA-Z\d]/g, '_');
             localPath = `${base}_${query}${extension}`;
         }
+
         return localPath;
     }
+
     /**
      * Get crawling statistics
      */
-    getStats() {
+    getStats(): CrawlStats & { visitedUrls: number; discoveredUrls: number } {
         return {
             ...this.stats,
             visitedUrls: this.visited.size,
             discoveredUrls: this.discovered.size,
         };
     }
+
     /**
      * Reset crawler state
      */
-    reset() {
+    reset(): void {
         this.visited.clear();
         this.discovered.clear();
         this.downloadQueue = [];
@@ -532,4 +620,5 @@ class RecursiveCrawler {
         };
     }
 }
-module.exports = RecursiveCrawler;
+
+export = RecursiveCrawler;
