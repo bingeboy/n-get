@@ -155,6 +155,24 @@ Built-in profiles: `fast`, `secure`, `bulk`, `careful`. Switch with `nget config
 
 Run `nget config show` for current settings or `nget --capabilities` for the full configuration surface including all env-var keys.
 
+## nget fetch — curl for agents
+
+`nget fetch` is a drop-in curl replacement that emits NDJSON events instead of raw output — every API call becomes observable, webhook-forwardable, and agent-parseable.
+
+```bash
+# instead of: curl https://api.github.com/repos/bingeboy/n-get
+nget fetch https://api.github.com/repos/bingeboy/n-get
+
+# POST with body and auth header
+nget fetch --method POST \
+  --header 'Authorization: Bearer $TOKEN' \
+  --header 'Content-Type: application/json' \
+  --data '{"title":"bug report"}' \
+  https://api.github.com/repos/bingeboy/n-get/issues
+```
+
+Every call emits `fetch_start`, `fetch_complete` (with status + latency), and `fetch_error` through the same NDJSON stream as downloads — forward all of it to your event store with `--webhook`.
+
 ## Programmatic API
 
 ```javascript
@@ -164,8 +182,6 @@ const { fetch } = require('n-get');
 const response = await fetch('https://api.example.com/data.json');
 console.log(response.data);
 ```
-
-The CLI is the primary interface. Programmatic use is supported but the response contract may evolve. See `docs/ARCHITECTURE.md` for internals.
 
 ## Documentation
 
