@@ -1,56 +1,26 @@
-"use strict";
 /**
  * @fileoverview History command-line interface
  * Handles download history management, search, analytics, and export commands
  * @module HistoryCommands
  */
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-const path = __importStar(require("node:path"));
-const fs = __importStar(require("node:fs"));
+
+import * as path from 'node:path';
+import * as fs from 'node:fs';
+
 // These services are .js/.ts — typed loosely
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const HistoryManager = require('../services/HistoryManager');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const OutputFormatterService = require('../services/OutputFormatterService');
+
 /**
  * Handler for history CLI commands
  * Provides functionality to view, search, analyze, and manage download history
  */
 class HistoryCommands {
-    historyManager;
-    outputFormatter;
+    historyManager: any;
+    outputFormatter: any;
+
     /**
      * Creates a new HistoryCommands instance
      */
@@ -58,61 +28,68 @@ class HistoryCommands {
         this.historyManager = new HistoryManager();
         this.outputFormatter = new OutputFormatterService();
     }
+
     /**
      * Executes a history command based on arguments
      */
-    async execute(args, argv) {
+    async execute(args: string[], argv: any): Promise<void> {
         if (args.length === 0) {
             this.showHelp();
             return;
         }
+
         const command = args[0];
         const destination = argv.destination || process.cwd();
+
         try {
             switch (command) {
-                case 'show':
-                    await this.handleShowCommand(destination, argv);
-                    break;
-                case 'clear':
-                    await this.handleClearCommand(destination, argv);
-                    break;
-                case 'search':
-                    await this.handleSearchCommand(args.slice(1), destination, argv);
-                    break;
-                case 'stats':
-                    await this.handleStatsCommand(destination, argv);
-                    break;
-                case 'export':
-                    await this.handleExportCommand(args.slice(1), destination, argv);
-                    break;
-                default:
-                    console.error(`Unknown history command: ${command}`);
-                    this.showHelp();
-                    process.exit(1);
+            case 'show':
+                await this.handleShowCommand(destination, argv);
+                break;
+            case 'clear':
+                await this.handleClearCommand(destination, argv);
+                break;
+            case 'search':
+                await this.handleSearchCommand(args.slice(1), destination, argv);
+                break;
+            case 'stats':
+                await this.handleStatsCommand(destination, argv);
+                break;
+            case 'export':
+                await this.handleExportCommand(args.slice(1), destination, argv);
+                break;
+            default:
+                console.error(`Unknown history command: ${command}`);
+                this.showHelp();
+                process.exit(1);
             }
-        }
-        catch (error) {
+        } catch (error: any) {
             console.error(`History command failed: ${error.message}`);
             process.exit(1);
         }
     }
+
     /**
      * Handles the show subcommand
      */
-    async handleShowCommand(destination, argv) {
+    async handleShowCommand(destination: string, argv: any): Promise<void> {
         const options = {
             limit: argv.limit ? parseInt(argv.limit) : 50,
             status: argv.status,
             since: argv.since ? new Date(argv.since) : null,
             until: argv.until ? new Date(argv.until) : null,
         };
-        const entries = await this.historyManager.getHistory(destination, options);
+
+        const entries: any[] = await this.historyManager.getHistory(destination, options);
+
         if (entries.length === 0) {
             console.log('No download history found.');
             return;
         }
+
         // Check for structured output format
         const outputFormat = argv['output-format'] || 'text';
+
         if (outputFormat !== 'text') {
             try {
                 const formattedOutput = this.outputFormatter.formatHistoryOutput(entries, {
@@ -121,14 +98,15 @@ class HistoryCommands {
                 });
                 console.log(formattedOutput);
                 return;
-            }
-            catch (error) {
+            } catch (error: any) {
                 console.error(`Error formatting output as ${outputFormat}:`, error.message);
                 // Fall back to text output
             }
         }
+
         console.log(`\n📊 Download History (${entries.length} entries):`);
         console.log('═'.repeat(80));
+
         for (let i = 0; i < entries.length; i++) {
             const entry = entries[i];
             const status = this.formatStatus(entry.status);
@@ -136,70 +114,85 @@ class HistoryCommands {
             const filename = path.basename(entry.filePath);
             const size = entry.size ? this.formatSize(entry.size) : 'Unknown';
             const duration = entry.duration ? `${entry.duration}ms` : 'N/A';
+
             console.log(`${i + 1}. ${status} ${filename}`);
             console.log(`   📅 ${timestamp}`);
             console.log(`   🔗 ${entry.url}`);
             console.log(`   📁 ${entry.filePath}`);
             console.log(`   📏 ${size} | ⏱️  ${duration}`);
+
             if (entry.error) {
                 console.log(`   ❌ ${entry.error}`);
             }
+
             if (entry.correlationId) {
                 console.log(`   🔍 ID: ${entry.correlationId}`);
             }
+
             console.log('');
         }
     }
+
     /**
      * Handles the clear subcommand
      */
-    async handleClearCommand(destination, argv) {
+    async handleClearCommand(destination: string, argv: any): Promise<void> {
         if (!argv.confirm && !argv.force) {
             console.log('⚠️  This will permanently delete all download history.');
             console.log('Use --confirm to proceed or --force to skip this warning.');
             return;
         }
+
         await this.historyManager.clearHistory(destination);
         console.log('✅ Download history cleared successfully.');
     }
+
     /**
      * Handles the search subcommand
      */
-    async handleSearchCommand(searchArgs, destination, argv) {
+    async handleSearchCommand(searchArgs: string[], destination: string, argv: any): Promise<void> {
         if (searchArgs.length === 0) {
             console.error('Search term is required.');
             console.log('Usage: nget history search <term> [options]');
             return;
         }
+
         const searchTerm = searchArgs.join(' ');
         const options = {
             search: searchTerm,
             limit: argv.limit ? parseInt(argv.limit) : 100,
             status: argv.status,
         };
-        const entries = await this.historyManager.getHistory(destination, options);
+
+        const entries: any[] = await this.historyManager.getHistory(destination, options);
+
         if (entries.length === 0) {
             console.log(`No downloads found matching: "${searchTerm}"`);
             return;
         }
+
         console.log(`\n🔍 Search Results for "${searchTerm}" (${entries.length} matches):`);
         console.log('═'.repeat(80));
+
         for (let i = 0; i < entries.length; i++) {
             const entry = entries[i];
             const status = this.formatStatus(entry.status);
             const timestamp = new Date(entry.timestamp).toLocaleDateString();
             const filename = path.basename(entry.filePath);
+
             console.log(`${i + 1}. ${status} ${filename} (${timestamp})`);
             console.log(`   🔗 ${entry.url}`);
             console.log('');
         }
     }
+
     /**
      * Handles the stats subcommand
      */
-    async handleStatsCommand(destination, argv) {
+    async handleStatsCommand(destination: string, argv: any): Promise<void> {
         const days = argv.days ? parseInt(argv.days) : 30;
-        const stats = await this.historyManager.getStatistics(destination, { days });
+        const stats: any = await this.historyManager.getStatistics(destination, {days});
+
         console.log(`\n📈 Download Statistics (Last ${days} days):`);
         console.log('═'.repeat(50));
         console.log(`📊 Total Downloads: ${stats.totalDownloads}`);
@@ -208,87 +201,99 @@ class HistoryCommands {
         console.log(`⏳ In Progress: ${stats.inProgressDownloads}`);
         console.log(`📏 Total Size: ${this.formatSize(stats.totalSize)}`);
         console.log(`⏱️  Average Duration: ${stats.averageDuration}ms`);
+
         if (stats.sizeSummary.smallest !== null) {
             console.log('\n📦 Size Summary:');
             console.log(`   Smallest: ${this.formatSize(stats.sizeSummary.smallest)}`);
             console.log(`   Largest: ${this.formatSize(stats.sizeSummary.largest)}`);
             console.log(`   Average: ${this.formatSize(stats.sizeSummary.average)}`);
         }
+
         if (Object.keys(stats.topErrors).length > 0) {
             console.log('\n❌ Top Errors:');
             const sortedErrors = Object.entries(stats.topErrors)
-                .sort(([, a], [, b]) => b - a)
+                .sort(([,a], [,b]) => (b as number) - (a as number))
                 .slice(0, 5);
+
             for (const [error, count] of sortedErrors) {
                 console.log(`   ${count}x ${error}`);
             }
         }
+
         if (Object.keys(stats.downloadsByDay).length > 0) {
             console.log('\n📅 Recent Activity:');
             const recentDays = Object.entries(stats.downloadsByDay)
                 .sort(([a], [b]) => b.localeCompare(a))
                 .slice(0, 7);
+
             for (const [day, count] of recentDays) {
                 console.log(`   ${day}: ${count} downloads`);
             }
         }
     }
+
     /**
      * Handles the export subcommand
      */
-    async handleExportCommand(exportArgs, destination, argv) {
+    async handleExportCommand(exportArgs: string[], destination: string, argv: any): Promise<void> {
         const format = argv.json ? 'json' : (argv.csv ? 'csv' : 'json');
         const outputFile = argv.output || `nget-history.${format}`;
+
         const options = {
             limit: argv.limit ? parseInt(argv.limit) : null,
             status: argv.status,
             since: argv.since ? new Date(argv.since) : null,
             until: argv.until ? new Date(argv.until) : null,
         };
+
         console.log(`📤 Exporting history to ${format.toUpperCase()} format...`);
-        const exportData = await this.historyManager.exportHistory(destination, format, options);
+
+        const exportData: string = await this.historyManager.exportHistory(destination, format, options);
+
         if (argv.output === '-' || outputFile === '-') {
             // Output to stdout
             console.log(exportData);
-        }
-        else {
+        } else {
             // Write to file
             const outputPath = path.resolve(outputFile);
             await fs.promises.writeFile(outputPath, exportData, 'utf8');
             console.log(`✅ History exported to: ${outputPath}`);
         }
     }
+
     /**
      * Format download status with emoji
      */
-    formatStatus(status) {
+    formatStatus(status: string): string {
         switch (status) {
-            case 'success':
-                return '✅ Success';
-            case 'failed':
-                return '❌ Failed';
-            case 'in_progress':
-                return '⏳ In Progress';
-            default:
-                return `❓ ${status}`;
+        case 'success':
+            return '✅ Success';
+        case 'failed':
+            return '❌ Failed';
+        case 'in_progress':
+            return '⏳ In Progress';
+        default:
+            return `❓ ${status}`;
         }
     }
+
     /**
      * Format file size in human-readable format
      */
-    formatSize(bytes) {
-        if (!bytes || bytes === 0) {
-            return '0 B';
-        }
+    formatSize(bytes: number): string {
+        if (!bytes || bytes === 0) {return '0 B';}
+
         const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
         const i = Math.floor(Math.log(bytes) / Math.log(1024));
         const size = (bytes / Math.pow(1024, i)).toFixed(1);
+
         return `${size} ${sizes[i]}`;
     }
+
     /**
      * Shows help information for history commands
      */
-    showHelp() {
+    showHelp(): void {
         console.log('');
         console.log('History Commands:');
         console.log('  show                Show recent download history');
@@ -333,4 +338,5 @@ class HistoryCommands {
         console.log('');
     }
 }
-module.exports = HistoryCommands;
+
+export = HistoryCommands;
