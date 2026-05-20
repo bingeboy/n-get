@@ -1,3 +1,34 @@
+# Release Notes - v1.12.0
+
+## Overview
+Reliable webhook delivery and better docs for the agent-discovery story. Webhook receivers that are temporarily unavailable now get retried automatically. A2A 0.3.0 discovery gets its own section in the README and site.
+
+## New Features
+
+### Webhook retry with exponential backoff
+- 3 attempts total per webhook POST: immediate → 500 ms → 1000 ms
+- Retries on: network errors, HTTP 5xx
+- No retry on: HTTP 4xx (client error, won't recover)
+- Intermediate failures are silent; only final failure logs to stderr
+- Each attempt gets a fresh 2s timeout — `flush()` behavior unchanged
+- Constants (`MAX_ATTEMPTS`, `BACKOFF_MS`) are module-level in `EventSink` — configurable retry via `config/default.yaml` is tracked for a future release
+
+## Improvements
+- README: new `## A2A discovery` section explaining the agent card, how to serve it, and the `get_agent_card` MCP tool
+- Site: dedicated A2A section between MCP tools and events
+
+## Breaking Changes
+None.
+
+## Tests
+479 passing, 0 failing (4 new in `test/webhookRetrySpec.js`).
+
+---
+
+**Full Changelog**: [Compare v1.11.0...v1.12.0](https://github.com/bingeboy/n-get/compare/v1.11.0...v1.12.0)
+
+---
+
 # Release Notes - v1.11.0
 
 ## Overview
