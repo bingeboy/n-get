@@ -364,6 +364,20 @@
     </div>
   </section>
 
+  <section id="a2a" aria-labelledby="a2a-heading">
+    <h2 id="a2a-heading">Agent discovery</h2>
+    <h3>A2A 0.3.0</h3>
+    <p>Publish a standard agent card and any A2A-compatible orchestrator — LangChain, AWS Bedrock AgentCore, Spring AI — can discover and invoke n-get automatically. No custom integration code.</p>
+
+    <pre><code><span class="dim"># output the card</span>
+<span class="hi">nget</span> <span class="flag">--agent-card</span>
+
+<span class="dim"># serve it where orchestrators look</span>
+<span class="hi">nget</span> <span class="flag">--agent-card</span> > /var/www/.well-known/agent.json</code></pre>
+
+    <p>The card is generated live from <code>--capabilities</code> — it never drifts from what n-get actually supports. Also available as the <code>get_agent_card</code> MCP tool for agents that don't leave the MCP loop.</p>
+  </section>
+
   <section id="events" aria-labelledby="events-heading">
     <h2 id="events-heading">Observation</h2>
     <h3>NDJSON events &amp; webhooks</h3>
