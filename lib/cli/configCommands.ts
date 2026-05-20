@@ -7,24 +7,20 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-// These modules are .js — typed loosely
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const ConfigManager = require('../config/ConfigManager');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const OutputFormatterService = require('../services/OutputFormatterService');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const ui: any = require('../ui');
+import ConfigManager = require('../config/ConfigManager');
+import OutputFormatterService = require('../services/OutputFormatterService');
+import ui = require('../ui');
 
 /**
  * CLI Configuration Command Handler
  * Provides commands for viewing, setting, and managing configuration
  */
 class ConfigCommands {
-    options: any;
-    configManager: any;
-    outputFormatter: any;
+    options: Record<string, unknown>;
+    configManager: InstanceType<typeof ConfigManager> | null;
+    outputFormatter: InstanceType<typeof OutputFormatterService>;
 
-    constructor(options: any = {}) {
+    constructor(options: Record<string, unknown> = {}) {
         this.options = options;
         this.configManager = null;
         this.outputFormatter = new OutputFormatterService();
@@ -33,10 +29,10 @@ class ConfigCommands {
     /**
      * Initialize ConfigManager for commands
      */
-    initializeConfigManager(cliOptions: any = {}): any {
+    initializeConfigManager(cliOptions: Record<string, unknown> = {}): InstanceType<typeof ConfigManager> {
         if (!this.configManager) {
             const configOptions = {
-                environment: cliOptions['config-environment'] || process.env.NODE_ENV || 'development',
+                environment: (cliOptions['config-environment'] as string | undefined) || process.env.NODE_ENV || 'development',
                 enableHotReload: false, // Disable for CLI commands
                 logger: cliOptions.quiet ? {
                     info: () => {},
@@ -61,7 +57,7 @@ class ConfigCommands {
         try {
             const config = configManager.getConfig();
 
-            let configData: any;
+            let configData: Record<string, unknown>;
             if (section) {
                 // Show specific section
                 const sectionData = configManager.get(section);
@@ -69,18 +65,22 @@ class ConfigCommands {
                     console.error(`${ui.emojis.error} Section '${section}' not found`);
                     process.exit(1);
                 }
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const cm = configManager as any;
                 configData = {
                     section: section,
                     data: sectionData,
-                    environment: configManager.options.environment,
-                    activeProfile: configManager.activeProfile || 'none'
+                    environment: cm.options.environment,
+                    activeProfile: cm.activeProfile || 'none'
                 };
             } else {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const cm = configManager as any;
                 // Show all configuration
                 configData = {
-                    environment: configManager.options.environment,
-                    activeProfile: configManager.activeProfile || 'none',
-                    configDirectory: configManager.options.configDir,
+                    environment: cm.options.environment,
+                    activeProfile: cm.activeProfile || 'none',
+                    configDirectory: cm.options.configDir,
                     configuration: config
                 };
             }
@@ -181,7 +181,7 @@ class ConfigCommands {
         }
 
         try {
-            const profiles: any = configManager.getAvailableProfiles();
+            const profiles: Record<string, unknown> = configManager.getAvailableProfiles();
             const profileNames = Object.keys(profiles);
 
             if (profileNames.length === 0) {
@@ -196,15 +196,16 @@ class ConfigCommands {
             }
 
             profileNames.forEach(name => {
-                const profile = profiles[name];
-                const activeIndicator = profile.active ? ' ⭐ (active)' : '';
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const profile = profiles[name] as Record<string, any>;
+                const activeIndicator = profile['active'] ? ' ⭐ (active)' : '';
                 console.log(`${ui.emojis.gear} ${name}${activeIndicator}`);
-                console.log(`  Description: ${profile.description}`);
-                console.log(`  Settings: ${Object.keys(profile.config || {}).length} configuration overrides`);
+                console.log(`  Description: ${profile['description']}`);
+                console.log(`  Settings: ${Object.keys(profile['config'] || {}).length} configuration overrides`);
 
                 if (args.includes('--verbose') || args.includes('-v')) {
                     console.log('  Configuration:');
-                    console.log(JSON.stringify(profile.config, null, 4).replace(/^/gm, '    '));
+                    console.log(JSON.stringify(profile['config'], null, 4).replace(/^/gm, '    '));
                 }
                 console.log('');
             });
@@ -234,7 +235,7 @@ class ConfigCommands {
         const profileName = args[0];
 
         try {
-            const availableProfiles: any = configManager.getAvailableProfiles();
+            const availableProfiles: Record<string, unknown> = configManager.getAvailableProfiles();
 
             if (!availableProfiles[profileName]) {
                 console.error(`${ui.emojis.error} Profile '${profileName}' not found`);
@@ -246,15 +247,17 @@ class ConfigCommands {
 
             if (!cliOptions.quiet) {
                 console.log(`${ui.emojis.success} Applied profile '${profileName}'`);
-                console.log(`${ui.emojis.info} Description: ${availableProfiles[profileName].description}`);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const profileData = availableProfiles[profileName] as Record<string, any>;
+                console.log(`${ui.emojis.info} Description: ${profileData['description']}`);
                 console.log(`\n${ui.emojis.gear} Profile configuration applied:`);
 
-                const config: any = availableProfiles[profileName].config;
+                const config = profileData['config'] as Record<string, unknown>;
                 Object.keys(config).forEach(section => {
                     console.log(`  ${section}:`);
                     if (typeof config[section] === 'object') {
-                        Object.keys(config[section]).forEach(key => {
-                            console.log(`    ${key}: ${JSON.stringify(config[section][key])}`);
+                        Object.keys(config[section] as Record<string, unknown>).forEach(key => {
+                            console.log(`    ${key}: ${JSON.stringify((config[section] as Record<string, unknown>)[key])}`);
                         });
                     } else {
                         console.log(`    ${JSON.stringify(config[section])}`);
@@ -282,11 +285,15 @@ class ConfigCommands {
         try {
             // Validation happens automatically during initialization
             const config = configManager.getConfig();
-            const metrics: any = configManager.getMetrics();
+            // getMetrics() returns Record<string,unknown> — cast for display-only access
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const metrics = configManager.getMetrics() as Record<string, any>;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const cm = configManager as any;
 
             console.log(`${ui.emojis.success} Configuration is valid`);
-            console.log(`${ui.emojis.info} Environment: ${configManager.options.environment}`);
-            console.log(`${ui.emojis.info} Active Profile: ${configManager.activeProfile || 'none'}`);
+            console.log(`${ui.emojis.info} Environment: ${cm.options.environment}`);
+            console.log(`${ui.emojis.info} Active Profile: ${cm.activeProfile || 'none'}`);
             console.log(`${ui.emojis.info} Configuration Sections: ${metrics.configSections.length}`);
             console.log(`${ui.emojis.info} Available Profiles: ${metrics.profileCount}`);
             console.log(`${ui.emojis.info} Validation Count: ${metrics.validationCount}`);
@@ -329,25 +336,29 @@ class ConfigCommands {
 
         try {
             const configManager = this.initializeConfigManager(cliOptions);
-            const metrics: any = configManager.getMetrics();
-            const config: any = configManager.getConfig();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const cm = configManager as any;
+            // getMetrics() returns Record<string,unknown> — cast for display-only access
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const metrics = configManager.getMetrics() as Record<string, any>;
+            const config = configManager.getConfig();
 
             // Basic information
-            console.log(`${ui.emojis.info} Environment: ${configManager.options.environment}`);
-            console.log(`${ui.emojis.info} Config Directory: ${configManager.options.configDir}`);
-            console.log(`${ui.emojis.info} Hot Reload: ${configManager.options.enableHotReload ? 'enabled' : 'disabled'}`);
+            console.log(`${ui.emojis.info} Environment: ${cm.options.environment}`);
+            console.log(`${ui.emojis.info} Config Directory: ${cm.options.configDir}`);
+            console.log(`${ui.emojis.info} Hot Reload: ${cm.options.enableHotReload ? 'enabled' : 'disabled'}`);
             console.log(`${ui.emojis.info} Load Time: ${metrics.loadTime || 'unknown'}`);
 
             // File existence check
             console.log(`\n${ui.emojis.folder} Configuration Files:`);
             const configFiles = [
                 'default.yaml',
-                `${configManager.options.environment}.yaml`,
+                `${cm.options.environment}.yaml`,
                 'local.yaml',
             ];
 
             configFiles.forEach(filename => {
-                const filePath = path.join(configManager.options.configDir, filename);
+                const filePath = path.join(cm.options.configDir, filename);
                 const exists = fs.existsSync(filePath);
                 const status = exists ? ui.emojis.success : ui.emojis.warning;
                 const message = exists ? 'Found' : 'Not found';
@@ -380,7 +391,7 @@ class ConfigCommands {
 
             // Profile information
             console.log(`\n${ui.emojis.rocket} Profile Status:`);
-            console.log(`  Active Profile: ${configManager.activeProfile || 'none'}`);
+            console.log(`  Active Profile: ${cm.activeProfile || 'none'}`);
             console.log(`  Available Profiles: ${metrics.profileCount}`);
             console.log(`  Profile Switches: ${metrics.profileSwitches}`);
 

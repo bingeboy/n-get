@@ -8,17 +8,13 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {Transform} from 'node:stream';
 
-// ssh2-sftp-client has no @types package — typed as any
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const SftpClient: any = require('ssh2-sftp-client');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const ui: any = require('./ui');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+import SftpClient = require('ssh2-sftp-client');
+import ui = require('./ui');
+import DownloadError from './errors/DownloadError';
+import ConfigManager = require('./config/ConfigManager');
+// resumeManager is a .js module without types — typed as any (no TS equivalent exists)
+// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-explicit-any
 const resumeManager: any = require('./resumeManager');
-
-// Enterprise error handling
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const DownloadError: any = require('./errors/DownloadError');
 
 interface ParsedSftpConnection {
     host: string;
@@ -34,24 +30,24 @@ interface SshConnectionConfig {
     port: number;
     username: string;
     readyTimeout: number;
-    algorithms: any;
-    privateKey?: any;
+    algorithms: Record<string, string[]>;
+    privateKey?: Buffer;
     passphrase?: string;
     password?: string;
 }
 
 interface ResumeCheckHeaders {
-    'last-modified'?: any;
-    [key: string]: any;
+    'last-modified'?: unknown;
+    [key: string]: unknown;
 }
 
 interface DownloadOptions {
     outputToStdout?: boolean;
     stdoutMode?: boolean;
     quietMode?: boolean;
-    configManager?: any;
+    configManager?: InstanceType<typeof ConfigManager> | null;
     timeout?: number;
-    privateKey?: any;
+    privateKey?: Buffer;
     passphrase?: string;
     keyPath?: string;
     password?: string;
@@ -70,7 +66,7 @@ interface DownloadResult {
 interface FileInfo {
     size: number;
     mode: number;
-    mtime: any;
+    mtime: number;
     isFile: boolean;
     isDirectory: boolean;
 }
@@ -78,7 +74,7 @@ interface FileInfo {
 interface ResumeSupportResult {
     supportsResume: boolean;
     totalSize: number;
-    lastModified: any;
+    lastModified: number;
     isFile: boolean;
 }
 
@@ -86,7 +82,7 @@ interface DirectoryItem {
     name: string;
     size: number;
     type: string;
-    modifyTime: any;
+    modifyTime: number;
     isFile: boolean;
     isDirectory: boolean;
 }
@@ -96,7 +92,7 @@ interface DirectoryItem {
  * Supports key-based authentication, password authentication, and connection reuse
  */
 class SftpManager {
-    connections: Map<string, any>;
+    connections: Map<string, InstanceType<typeof SftpClient>>;
     defaultPort: number;
 
     constructor() {
@@ -153,14 +149,14 @@ class SftpManager {
      */
     async createConnectionConfig(config: ParsedSftpConnection, options: DownloadOptions = {}): Promise<SshConnectionConfig> {
         const {configManager} = options;
-        const sshConfig: any = configManager ? configManager.get('ssh', {}) : {};
+        const sshConfig = (configManager ? configManager.get('ssh', {}) : {}) as Record<string, unknown>;
 
         const connectionConfig: SshConnectionConfig = {
             host: config.host,
             port: config.port,
             username: config.username,
-            readyTimeout: options.timeout || sshConfig.timeout || 30000,
-            algorithms: sshConfig.algorithms || {
+            readyTimeout: options.timeout || (sshConfig['timeout'] as number | undefined) || 30000,
+            algorithms: (sshConfig['algorithms'] as Record<string, string[]> | undefined) || {
                 kex: ['ecdh-sha2-nistp256', 'ecdh-sha2-nistp384', 'ecdh-sha2-nistp521', 'diffie-hellman-group14-sha256'],
                 serverHostKey: ['rsa-sha2-512', 'rsa-sha2-256', 'ssh-rsa', 'ecdsa-sha2-nistp256'],
                 cipher: ['aes128-gcm', 'aes256-gcm', 'aes128-ctr', 'aes256-ctr'],
@@ -214,7 +210,7 @@ class SftpManager {
     /**
      * Get or create SFTP connection
      */
-    async getConnection(config: ParsedSftpConnection, options: DownloadOptions = {}): Promise<any> {
+    async getConnection(config: ParsedSftpConnection, options: DownloadOptions = {}): Promise<InstanceType<typeof SftpClient>> {
         const connectionKey = this.getConnectionKey(config);
 
         // Check for existing connection
@@ -251,9 +247,12 @@ class SftpManager {
     /**
      * Get remote file information
      */
-    async getFileInfo(sftp: any, remotePath: string): Promise<FileInfo> {
+    async getFileInfo(sftp: InstanceType<typeof SftpClient>, remotePath: string): Promise<FileInfo> {
+        // Some SFTP servers return Stats with function or boolean isFile/isDirectory
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        type SftpStats = SftpClient.FileStats & { isFile?: any; isDirectory?: any };
         try {
-            const stats: any = await sftp.stat(remotePath);
+            const stats = await sftp.stat(remotePath) as SftpStats;
 
             // Handle different SFTP server stat object formats
             let isFile: boolean;
@@ -281,7 +280,8 @@ class SftpManager {
             return {
                 size: stats.size,
                 mode: stats.mode,
-                mtime: stats.mtime,
+                // @types uses modifyTime; some servers expose mtime — use whichever is present
+                mtime: stats.modifyTime,
                 isFile,
                 isDirectory,
             };
@@ -297,7 +297,7 @@ class SftpManager {
     /**
      * Check if SFTP server supports resume (always true for SFTP)
      */
-    async checkResumeSupport(sftp: any, remotePath: string): Promise<ResumeSupportResult> {
+    async checkResumeSupport(sftp: InstanceType<typeof SftpClient>, remotePath: string): Promise<ResumeSupportResult> {
         try {
             const fileInfo = await this.getFileInfo(sftp, remotePath);
             return {
@@ -314,7 +314,7 @@ class SftpManager {
     /**
      * Create progress tracking transform for SFTP
      */
-    createSftpProgressTracker(progressBar: any, totalSize: number, startByte: number = 0): Transform {
+    createSftpProgressTracker(progressBar: import('cli-progress').SingleBar | null, totalSize: number, startByte: number = 0): Transform {
         let downloaded = startByte;
         let lastUpdate = Date.now();
         let chunkCount = 0;
@@ -412,7 +412,7 @@ class SftpManager {
             }
 
             // Create progress bar for large files (not in stdout mode)
-            let progressBar: any = null;
+            let progressBar: import('cli-progress').SingleBar | null = null;
             if (!quietMode && !stdoutMode && totalSize > 1024) {
                 progressBar = ui.createProgressBar(config.filename, totalSize);
                 if (isResume) {
@@ -421,7 +421,7 @@ class SftpManager {
             }
 
             // Create write stream (stdout for stdout mode, file for normal mode)
-            let writeStream: any;
+            let writeStream: NodeJS.WritableStream;
             if (outputToStdout) {
                 writeStream = process.stdout;
             } else {
@@ -548,8 +548,8 @@ class SftpManager {
             const config = this.parseSftpUrl(url);
             const sftp = await this.getConnection(config, options);
 
-            const list: any[] = await sftp.list(config.remotePath);
-            return list.map((item: any) => ({
+            const list = await sftp.list(config.remotePath);
+            return list.map((item) => ({
                 name: item.name,
                 size: item.size,
                 type: item.type,

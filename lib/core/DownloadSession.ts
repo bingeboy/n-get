@@ -20,17 +20,17 @@ import type {
 } from '../../types/index.js';
 
 import { EventSink } from './EventSink.js';
+import ConfigManager = require('../config/ConfigManager');
+import SecurityService = require('../services/SecurityService');
+import MetadataService = require('../services/MetadataService');
+import ui = require('../ui');
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const NGET_VERSION = require('../../package.json').version as string;
 
-// These services are still .js — loosely typed until they migrate
+// Logger is still .js — loosely typed until it migrates
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const Logger          = require('../services/Logger');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const SecurityService = require('../services/SecurityService');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const MetadataService = require('../services/MetadataService');
+const Logger = require('../services/Logger');
 
 export const ACTIVE_DIR = path.join(os.homedir(), '.nget', 'active');
 
@@ -43,10 +43,9 @@ export interface DownloadSessionOptions {
     pipeMode?:      boolean;
     quietMode?:     boolean;
     webhooks?:      WebhookConfig[];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    configManager?: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ui?:            any;
+    configManager?: InstanceType<typeof ConfigManager> | null;
+    /** The singleton UIManager instance from lib/ui.ts */
+    ui?:            typeof ui | null;
 }
 
 export interface CompletedDownload {
@@ -64,17 +63,15 @@ export class DownloadSession {
     public readonly humanMode:   boolean;
     public readonly pipeMode:    boolean;
     public readonly quietMode:   boolean;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    public readonly configManager: any;
+    public readonly configManager: InstanceType<typeof ConfigManager> | null;
     public readonly startTime:   number;
 
     public readonly emitter:         EventSink;
+    // logger is still a .js module — loosely typed until it migrates
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     public readonly logger:          any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    public readonly securityService: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    public readonly metadataService: any;
+    public readonly securityService: InstanceType<typeof SecurityService>;
+    public readonly metadataService: InstanceType<typeof MetadataService>;
 
     private readonly _statusFile: string;
     private          _status:     SessionStatus;
@@ -196,23 +193,27 @@ export class DownloadSession {
     }
 
     private _buildLogger() {
-        const cfg = this.configManager ? this.configManager.get('logging', {}) : {};
+        const cfg = this.configManager
+            ? this.configManager.get('logging', {}) as Record<string, unknown>
+            : {} as Record<string, unknown>;
         return new Logger({
-            level:        cfg.level         ?? process.env['LOG_LEVEL'] ?? 'info',
-            format:       cfg.format        ?? 'text',
-            outputs:      this.quietMode ? [] : (cfg.outputs ?? ['console']),
-            enableColors: !this.quietMode && cfg.enableColors !== false,
+            level:        cfg['level']        ?? process.env['LOG_LEVEL'] ?? 'info',
+            format:       cfg['format']       ?? 'text',
+            outputs:      this.quietMode ? [] : (cfg['outputs'] ?? ['console']),
+            enableColors: !this.quietMode && cfg['enableColors'] !== false,
         });
     }
 
     private _buildSecurity() {
-        const cfg = this.configManager ? this.configManager.get('security', {}) : {};
+        const cfg = this.configManager
+            ? this.configManager.get('security', {}) as Record<string, unknown>
+            : {} as Record<string, unknown>;
         return new SecurityService({
             config: {
                 security: {
-                    allowedProtocols:     cfg.allowedProtocols     ?? ['https', 'http', 'sftp'],
-                    blockPrivateNetworks: cfg.blockPrivateNetworks  ?? false,
-                    blockLocalhost:       cfg.blockLocalhost        ?? false,
+                    allowedProtocols:     cfg['allowedProtocols']     ?? ['https', 'http', 'sftp'],
+                    blockPrivateNetworks: cfg['blockPrivateNetworks']  ?? false,
+                    blockLocalhost:       cfg['blockLocalhost']        ?? false,
                 },
             },
             logger: this.logger,
@@ -225,7 +226,7 @@ export class DownloadSession {
             logger:                this.logger,
             config:                fullConfig,
             enableIntegrityChecks: this.configManager
-                ? this.configManager.get('security.enableIntegrityChecks', true)
+                ? (this.configManager.get('security.enableIntegrityChecks', true) as boolean)
                 : true,
             enableTimingMetrics: true,
         });

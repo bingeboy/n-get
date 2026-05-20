@@ -7,19 +7,16 @@
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 
-// These services are .js/.ts — typed loosely
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const HistoryManager = require('../services/HistoryManager');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const OutputFormatterService = require('../services/OutputFormatterService');
+import HistoryManager = require('../services/HistoryManager');
+import OutputFormatterService = require('../services/OutputFormatterService');
 
 /**
  * Handler for history CLI commands
  * Provides functionality to view, search, analyze, and manage download history
  */
 class HistoryCommands {
-    historyManager: any;
-    outputFormatter: any;
+    historyManager: InstanceType<typeof HistoryManager>;
+    outputFormatter: InstanceType<typeof OutputFormatterService>;
 
     /**
      * Creates a new HistoryCommands instance
@@ -80,7 +77,7 @@ class HistoryCommands {
             until: argv.until ? new Date(argv.until) : null,
         };
 
-        const entries: any[] = await this.historyManager.getHistory(destination, options);
+        const entries = await this.historyManager.getHistory(destination, options);
 
         if (entries.length === 0) {
             console.log('No download history found.');
@@ -164,7 +161,7 @@ class HistoryCommands {
             status: argv.status,
         };
 
-        const entries: any[] = await this.historyManager.getHistory(destination, options);
+        const entries = await this.historyManager.getHistory(destination, options);
 
         if (entries.length === 0) {
             console.log(`No downloads found matching: "${searchTerm}"`);
@@ -191,7 +188,7 @@ class HistoryCommands {
      */
     async handleStatsCommand(destination: string, argv: any): Promise<void> {
         const days = argv.days ? parseInt(argv.days) : 30;
-        const stats: any = await this.historyManager.getStatistics(destination, {days});
+        const stats = await this.historyManager.getStatistics(destination, {days});
 
         console.log(`\n📈 Download Statistics (Last ${days} days):`);
         console.log('═'.repeat(50));
