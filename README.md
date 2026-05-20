@@ -21,8 +21,14 @@ nget https://example.com/file.zip
 # Multiple files to a destination directory
 nget https://example.com/file1.zip https://example.com/file2.pdf -d ./downloads
 
-# Fetch mode — stream response body to stdout (curl-style)
-nget --stdout https://api.example.com/data.json | jq .
+# HTTP API call — structured JSON output, NDJSON events
+nget fetch https://api.example.com/data.json
+
+# POST with a body
+nget fetch --method POST --data '{"key":"val"}' https://api.example.com/endpoint
+
+# Forward all NDJSON events to a webhook receiver (repeatable)
+nget --webhook http://receiver.example.com/events https://example.com/large-file.zip
 
 # SFTP (auto-detects SSH keys in ~/.ssh/)
 nget sftp://user@server.com/path/to/file.zip -d ~/Downloads
@@ -30,8 +36,8 @@ nget sftp://user@server.com/path/to/file.zip -d ~/Downloads
 # List active download sessions across all agents
 nget jobs
 
-# Force human-readable UI (progress bars) even inside a pipe
-nget --human https://example.com/large-file.zip
+# Print full agent guide (AGENTS.md)
+nget instructions
 ```
 
 ## Agent interface
@@ -49,6 +55,9 @@ When stdout is not a TTY — the normal case for agent subprocesses and pipes �
 | `download_complete` | A single file finished successfully |
 | `download_error` | A single file failed |
 | `session_end` | Final session summary |
+| `fetch_start` | `nget fetch` API call started — method, URL |
+| `fetch_complete` | `nget fetch` finished — status, latency, content-type |
+| `fetch_error` | `nget fetch` failed — error message, latency |
 
 Example stream:
 
@@ -71,6 +80,11 @@ nget https://example.com/data.zip | jq 'select(.event == "download_complete")'
 - `--capabilities` — emits a self-describing tool capabilities document (JSON/YAML) for agent introspection
 - `--openapi-spec` — emits an OpenAPI 3.0 specification for this tool
 
+**Webhook event forwarding:**
+- `--webhook <url>` — POST every NDJSON event to a receiver (repeatable for multiple receivers)
+- `--webhook-header 'Name: value'` — add a custom header to all webhook POSTs (repeatable)
+- `--webhook-events <list>` — comma-separated event types to forward; defaults to all
+
 **Standard agent correlation flags:** `--agent-id`, `--session-id`, `--request-id`, `--conversation-id`
 
 All active sessions are visible via `nget jobs` (NDJSON) or `nget jobs --human` (table). Pass `--agent-id <id>` to tag your agent in every event and in `nget jobs` output.
@@ -89,7 +103,19 @@ n-get ships a standalone MCP server as the `nget-mcp` binary. Add it to your Cla
 }
 ```
 
-The MCP server exposes n-get's download and configuration capabilities as MCP tools. See `docs/AI-INTEGRATION.md` for CrewAI, AutoGen, and LangChain integration.
+The MCP server exposes 9 tools for direct agent control:
+
+| Tool | What it does |
+|---|---|
+| `download_file` | Download a single file |
+| `batch_download` | Download multiple URLs concurrently |
+| `get_jobs` | List all active sessions across processes |
+| `get_capabilities` | Return the capabilities document |
+| `cancel_session` | Kill a specific session; others continue |
+| `get_session` | Full current state of one session |
+| `set_profile` | Apply a config profile (fast/secure/bulk/careful) |
+| `get_history` | Flat download history with filtering |
+| `get_instructions` | Return AGENTS.md — the full agent guide |
 
 ## Configuration
 
@@ -102,7 +128,7 @@ Run `nget config show` for current settings or `nget --capabilities` for the ful
 ## Programmatic API
 
 ```javascript
-const fetch = require('n-get/lib/fetch');
+const { fetch } = require('n-get');
 
 // axios-compatible response: .data, .status, .headers, .ok
 const response = await fetch('https://api.example.com/data.json');
