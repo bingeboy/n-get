@@ -195,6 +195,9 @@ profiles:
 webhooks:
   default: []                 # Array of webhook URLs for all nget runs on this machine
   secret: ''                  # HMAC-SHA256 signing secret. When set, all webhook POSTs include X-NGet-Signature: sha256=<hex>.
+  retry:
+    maxAttempts: 3            # Max delivery attempts per webhook POST (1 = no retry)
+    backoffMs: [0, 500, 1000] # Delay before each attempt in ms (length must equal maxAttempts)
 
 # Development and Debugging
 development:

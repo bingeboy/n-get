@@ -24,9 +24,9 @@ import type {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type UIManager = any;
 
-// ─── Webhook retry constants ──────────────────────────────────────────────────
-const MAX_ATTEMPTS = 3;
-const BACKOFF_MS = [0, 500, 1000];
+// ─── Webhook retry defaults ───────────────────────────────────────────────────
+const DEFAULT_MAX_ATTEMPTS = 3;
+const DEFAULT_BACKOFF_MS   = [0, 500, 1000];
 
 export const EVENT: Record<string, NgetEventType> = {
     SESSION_START:      'session_start',
@@ -53,6 +53,10 @@ export interface NgetEmitterOptions {
     webhooks?: WebhookConfig[];
     /** HMAC-SHA256 secret. When set, all webhook POSTs include `X-NGet-Signature: sha256=<hex>`. */
     webhookSecret?: string;
+    /** Max webhook delivery attempts (default: 3). */
+    webhookMaxAttempts?: number;
+    /** Backoff delays in ms per attempt (default: [0, 500, 1000]). */
+    webhookBackoffMs?: number[];
 }
 
 export class EventSink {
@@ -64,6 +68,8 @@ export class EventSink {
     private readonly _out: NodeJS.WriteStream;
     private readonly _webhooks: WebhookConfig[];
     private readonly _webhookSecret: string;
+    private readonly _maxAttempts: number;
+    private readonly _backoffMs: number[];
     private readonly _inflight: Promise<void>[] = [];
 
     constructor(options: NgetEmitterOptions) {
@@ -71,8 +77,10 @@ export class EventSink {
         this.humanMode     = options.humanMode     ?? false;
         this.pipeMode      = options.pipeMode      ?? false;
         this.ui            = options.ui            ?? null;
-        this._webhooks     = options.webhooks      ?? [];
-        this._webhookSecret = options.webhookSecret ?? '';
+        this._webhooks     = options.webhooks           ?? [];
+        this._webhookSecret = options.webhookSecret    ?? '';
+        this._maxAttempts  = options.webhookMaxAttempts ?? DEFAULT_MAX_ATTEMPTS;
+        this._backoffMs    = options.webhookBackoffMs   ?? DEFAULT_BACKOFF_MS;
 
         // Route events to the right stream
         this._out = (this.humanMode || this.pipeMode)
@@ -129,9 +137,9 @@ export class EventSink {
             };
 
             const p = (async () => {
-                for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-                    if (BACKOFF_MS[attempt] > 0) {
-                        await sleep(BACKOFF_MS[attempt]);
+                for (let attempt = 0; attempt < this._maxAttempts; attempt++) {
+                    if (this._backoffMs[attempt] > 0) {
+                        await sleep(this._backoffMs[attempt]);
                     }
                     const controller = new AbortController();
                     const timer = setTimeout(() => controller.abort(), 2000);
@@ -150,8 +158,8 @@ export class EventSink {
                         }
                         if (res.status >= 500) {
                             // 5xx — server error, retry unless last attempt
-                            if (attempt < MAX_ATTEMPTS - 1) { continue; }
-                            process.stderr.write(`[nget] webhook POST to ${wh.url} failed after ${MAX_ATTEMPTS} attempts: HTTP ${res.status}\n`);
+                            if (attempt < this._maxAttempts - 1) { continue; }
+                            process.stderr.write(`[nget] webhook POST to ${wh.url} failed after ${this._maxAttempts} attempts: HTTP ${res.status}\n`);
                             return;
                         }
                         // 1xx/2xx/3xx — success or redirect, done
@@ -159,9 +167,9 @@ export class EventSink {
                     } catch (err: unknown) {
                         clearTimeout(timer);
                         // Network error — retry unless last attempt
-                        if (attempt < MAX_ATTEMPTS - 1) { continue; }
+                        if (attempt < this._maxAttempts - 1) { continue; }
                         const message = err instanceof Error ? err.message : String(err);
-                        process.stderr.write(`[nget] webhook POST to ${wh.url} failed after ${MAX_ATTEMPTS} attempts: ${message}\n`);
+                        process.stderr.write(`[nget] webhook POST to ${wh.url} failed after ${this._maxAttempts} attempts: ${message}\n`);
                     }
                 }
             })();
