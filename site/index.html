@@ -326,7 +326,7 @@
     <!-- <span>·</span>
     <a href="https://github.com/bingeboy/n-get/issues">Issues</a> -->
     <span>·</span>
-    <span>v1.10.2</span>
+    <span>v1.11.0</span>
     <span>·</span>
     <span>MIT</span>
   </nav>
@@ -358,6 +358,7 @@
           <tr><td>get_history</td>       <td>Download history with status and time filters</td></tr>
           <tr><td>get_capabilities</td>  <td>Full capabilities document</td></tr>
           <tr><td>get_instructions</td>  <td>AGENTS.md — the complete agent guide</td></tr>
+          <tr><td>get_agent_card</td>    <td>A2A 0.3.0 agent card — serve at /.well-known/agent.json</td></tr>
         </tbody>
       </table>
     </div>
@@ -422,6 +423,12 @@
 <span class="dim"># SFTP</span>
 <span class="hi">nget</span> sftp://user@host/path/file.tar.gz <span class="flag">--ssh-key</span> ~/.ssh/id_ed25519
 
+<span class="dim"># signed webhooks — receiver verifies X-NGet-Signature: sha256=&lt;hex&gt;</span>
+<span class="hi">nget</span> <span class="flag">--webhook</span> https://receiver/events <span class="flag">--webhook-secret</span> mysecret https://example.com/model.bin
+
+<span class="dim"># A2A 0.3.0 agent card — serve this at /.well-known/agent.json</span>
+<span class="hi">nget</span> <span class="flag">--agent-card</span>
+
 <span class="dim"># self-discovery</span>
 <span class="hi">nget</span> <span class="flag">--capabilities</span>
 <span class="hi">nget</span> <span class="flag">--openapi-spec</span>
@@ -438,7 +445,7 @@
     <span>·</span>
     <a href="https://github.com/bingeboy/n-get/blob/master/LICENSE">MIT</a>
   </nav>
-  <span>n-get v1.10.1 · Node.js ≥ 18</span>
+  <span>n-get v1.11.0 · Node.js ≥ 18</span>
 </footer>
 
 <script>
