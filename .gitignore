@@ -251,3 +251,5 @@ temp-downloads/
 # Local configuration overrides
 config/local.yaml
 config/local.yml
+get
+get.*
