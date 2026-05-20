@@ -742,6 +742,11 @@ async function download(urls: string[], destination: string, options: DownloadOp
     // Create download promises for all URLs
     const downloadPromises = urls.map(async(url: string, index: number) => {
         try {
+            if ((options as any).session?.isCancelled()) {
+                const err = Object.assign(new Error('Download cancelled'), { code: 'CANCELLED' });
+                (options as any).session.failDownload(url, err);
+                return { url, error: err.message, success: false };
+            }
             const downloadResult = await concurrencyLimiter.execute(
                 downloadFile,
                 url,
