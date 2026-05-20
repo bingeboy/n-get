@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="n-get — observable downloads for AI agents. NDJSON event stream, 9 MCP tools, webhook forwarding.">
+  <title>n-get</title>
+  <style>
+    :root {
+      --bg:      #080b10;
+      --surface: #0e1318;
+      --border:  #1a2030;
+      --green:   #00d4aa;
+      --blue:    #58a6ff;
+      --text:    #d8e0ea;
+      --muted:   #6e7a8a;
+      --code-bg: #0b0f16;
+      --red:     #c0392b;
+      --purple:  #7b2fff;
+      --orange:  #e07000;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Sludge atmosphere ──────────────────── */
+    @keyframes bg-breathe {
+      0%   { background-color: #080b10; }
+      25%  { background-color: #0a0816; }
+      50%  { background-color: #0d0b08; }
+      75%  { background-color: #08100f; }
+      100% { background-color: #080b10; }
+    }
+
+    @keyframes vignette-pulse {
+      0%, 100% { opacity: 0.7; }
+      50%       { opacity: 0.9; }
+    }
+
+    @keyframes scanline-drift {
+      from { background-position: 0 0; }
+      to   { background-position: 0 100vh; }
+    }
+
+    /* ── Logo animations ────────────────────── */
+    @keyframes flicker {
+      0%,18%,20%,22%,53%,55%,100% {
+        opacity: 1;
+        text-shadow:
+          0 0 20px rgba(0,212,170,0.5),
+          0 0 60px rgba(0,212,170,0.2),
+          0 0 120px rgba(0,212,170,0.05);
+      }
+      19%,21%,54% {
+        opacity: 0.5;
+        text-shadow: none;
+      }
+    }
+
+    @keyframes aberration {
+      0%   { text-shadow: -4px 0 rgba(192,57,43,0.7), 4px 0 rgba(88,166,255,0.7), 0 0 30px rgba(0,212,170,0.3); }
+      20%  { text-shadow: 3px 0 rgba(123,47,255,0.6), -3px 0 rgba(224,112,0,0.6), 0 0 40px rgba(0,212,170,0.2); }
+      40%  { text-shadow: -2px 0 rgba(192,57,43,0.8), 2px 0 rgba(88,166,255,0.8); }
+      60%  { text-shadow: 5px 0 rgba(224,112,0,0.5), -5px 0 rgba(123,47,255,0.5), 0 0 50px rgba(0,212,170,0.15); }
+      80%  { text-shadow: -3px 0 rgba(192,57,43,0.6), 3px 0 rgba(88,166,255,0.6), 0 0 25px rgba(0,212,170,0.4); }
+      100% { text-shadow: -4px 0 rgba(192,57,43,0.7), 4px 0 rgba(88,166,255,0.7), 0 0 30px rgba(0,212,170,0.3); }
+    }
+
+    @keyframes logo-drift {
+      0%,100% { transform: translate(0, 0) skewX(0deg); }
+      15%     { transform: translate(-2px, 1px) skewX(-0.5deg); }
+      30%     { transform: translate(1px, -1px) skewX(0.3deg); }
+      50%     { transform: translate(0, 2px) skewX(0deg); }
+      70%     { transform: translate(2px, 0) skewX(0.5deg); }
+      85%     { transform: translate(-1px, 1px) skewX(-0.2deg); }
+    }
+
+    /* ── Border pulse ───────────────────────── */
+    @keyframes border-seep {
+      0%,100% { border-color: #1a2030; }
+      33%     { border-color: #1e1530; }
+      66%     { border-color: #1a2820; }
+    }
+
+    body {
+      background-color: var(--bg);
+      animation: bg-breathe 24s ease-in-out infinite;
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+
+    /* scanlines */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent 0px,
+        transparent 3px,
+        rgba(0,0,0,0.07) 3px,
+        rgba(0,0,0,0.07) 4px
+      );
+      pointer-events: none;
+      z-index: 9998;
+      animation: scanline-drift 12s linear infinite;
+    }
+
+    /* vignette */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.75) 100%);
+      pointer-events: none;
+      z-index: 9997;
+      animation: vignette-pulse 18s ease-in-out infinite;
+    }
+
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { color: var(--green); text-decoration: none; }
+
+    /* ── Header ─────────────────────────────── */
+    header {
+      padding: 5rem 0 3.5rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      animation: border-seep 20s ease-in-out infinite;
+    }
+
+    .logo {
+      display: block;
+      font-size: clamp(2.5rem, 10vw, 5rem);
+      font-weight: 700;
+      color: var(--green);
+      line-height: 2.2;
+      letter-spacing: 0.05em;
+      margin-bottom: 1.25rem;
+      text-decoration: none;
+      animation:
+        aberration 7s ease-in-out infinite,
+        flicker 11s infinite,
+        logo-drift 19s ease-in-out infinite;
+    }
+
+    header p {
+      color: var(--muted);
+      font-size: 1.05rem;
+      max-width: 480px;
+      margin: 0 auto 2rem;
+    }
+
+    .install {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.7rem 1.25rem;
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 0.95rem;
+      animation: border-seep 20s ease-in-out infinite;
+    }
+
+    .install .prompt { color: var(--green); user-select: none; }
+
+    .copy-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.72rem;
+      padding: 0.15rem 0.5rem;
+      transition: border-color 0.3s, color 0.3s;
+    }
+    .copy-btn:hover, .copy-btn.copied { border-color: var(--green); color: var(--green); }
+
+    nav {
+      display: flex;
+      justify-content: center;
+      gap: 1.25rem;
+      flex-wrap: wrap;
+      margin-top: 1.75rem;
+      font-size: 0.85rem;
+    }
+
+    nav a { color: var(--muted); }
+    nav a:hover { color: var(--green); }
+    nav span { color: var(--border); }
+
+    /* ── Main sections ──────────────────────── */
+    section {
+      padding: 3.5rem 0;
+      border-bottom: 1px solid var(--border);
+      animation: border-seep 20s ease-in-out infinite;
+    }
+
+    section:last-of-type { border-bottom: none; }
+
+    h2 {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      margin-bottom: 1.25rem;
+    }
+
+    h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+      letter-spacing: -0.01em;
+      color: var(--text);
+    }
+
+    p { color: var(--muted); margin-bottom: 1.5rem; max-width: 600px; }
+
+    /* ── Code ───────────────────────────────── */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.25rem 1.5rem;
+      overflow-x: auto;
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 0.84rem;
+      line-height: 1.7;
+      margin-bottom: 1.5rem;
+      animation: border-seep 20s ease-in-out infinite;
+    }
+
+    code { font-family: inherit; }
+    p code, li code {
+      background: var(--code-bg);
+      border-radius: 3px;
+      color: var(--green);
+      font-size: 0.82em;
+      padding: 0.1rem 0.35rem;
+    }
+
+    .dim    { color: var(--muted); }
+    .hi     { color: var(--green); }
+    .flag   { color: #b8860b; }
+    .blue   { color: var(--blue); }
+    .red    { color: var(--red); }
+
+    /* ── Tables ─────────────────────────────── */
+    .table-wrap { overflow-x: auto; margin-bottom: 1.5rem; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+
+    th {
+      text-align: left;
+      padding: 0.55rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    td {
+      padding: 0.6rem 1rem;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      vertical-align: top;
+    }
+
+    td:first-child {
+      color: var(--text);
+      font-family: 'SF Mono', 'Cascadia Code', monospace;
+      font-size: 0.82rem;
+    }
+
+    tr:hover td { background: rgba(0,212,170,0.03); }
+
+    /* ── Footer ─────────────────────────────── */
+    footer {
+      padding: 2.5rem 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      color: var(--muted);
+      font-size: 0.82rem;
+      border-top: 1px solid var(--border);
+    }
+
+    footer nav { margin: 0; justify-content: flex-start; }
+
+    @media (max-width: 600px) {
+      header { padding: 3rem 0 2.5rem; }
+      .logo { font-size: clamp(1.8rem, 14vw, 3rem); }
+      section { padding: 2.5rem 0; }
+      pre { font-size: 0.78rem; padding: 1rem; }
+      footer { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo" aria-label="n-get">𝐍̴̡͉̞̿͐͝-̸̺͙̦̄̄̽́͝𝐆̸͕̟̺̽͑̈́𝐄̸̢̦͖ͤͤ̾̀̕ᴛ̵͙̫͖ⷮ͒̈́</span>
+  <p>Observable downloads for AI agents — NDJSON event stream, 9 MCP tools, webhook forwarding, HTTP&nbsp;+&nbsp;SFTP.</p>
+
+  <div class="install">
+    <span class="prompt">$</span>
+    <span>npm install -g n-get</span>
+    <button class="copy-btn" onclick="copy(this)">copy</button>
+  </div>
+
+  <nav aria-label="external links">
+    <a href="https://github.com/bingeboy/n-get">GitHub</a>
+    <span>·</span>
+    <a href="https://www.npmjs.com/package/n-get">npm</a>
+    <span>·</span>
+    <a href="https://github.com/bingeboy/n-get/issues">Issues</a>
+    <span>·</span>
+    <span>v1.10.1</span>
+    <span>·</span>
+    <span>MIT</span>
+  </nav>
+</header>
+
+<main>
+
+  <section id="mcp" aria-labelledby="mcp-heading">
+    <h2 id="mcp-heading">Primary interface</h2>
+    <h3>MCP server</h3>
+    <p>9 tools for direct agent control. No subprocess spawning, no output parsing.</p>
+
+    <pre><code>{
+  <span class="blue">"mcpServers"</span>: {
+    <span class="blue">"n-get"</span>: { <span class="blue">"command"</span>: <span class="hi">"nget-mcp"</span> }
+  }
+}</code></pre>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tool</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td>download_file</td>     <td>Download a single file</td></tr>
+          <tr><td>batch_download</td>    <td>Download multiple URLs concurrently</td></tr>
+          <tr><td>cancel_session</td>    <td>Kill a specific session; others continue</td></tr>
+          <tr><td>get_session</td>       <td>Full current state of one session</td></tr>
+          <tr><td>get_jobs</td>          <td>All active sessions across all processes</td></tr>
+          <tr><td>set_profile</td>       <td>Apply a config profile: fast / secure / bulk / careful</td></tr>
+          <tr><td>get_history</td>       <td>Download history with status and time filters</td></tr>
+          <tr><td>get_capabilities</td>  <td>Full capabilities document</td></tr>
+          <tr><td>get_instructions</td>  <td>AGENTS.md — the complete agent guide</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="events" aria-labelledby="events-heading">
+    <h2 id="events-heading">Observation</h2>
+    <h3>NDJSON events &amp; webhooks</h3>
+    <p>Every download and API call emits a structured JSON line to stdout. Forward all events to any HTTP receiver with <code>--webhook</code>.</p>
+
+    <pre><code><span class="dim">$</span> <span class="hi">nget</span> https://example.com/model.bin <span class="flag">--agent-id</span> my-agent <span class="flag">--webhook</span> https://receiver/events
+
+{"event":"session_start",    "sessionId":"s_abc", "agent":"my-agent"}
+{"event":"download_start",   "url":"https://example.com/model.bin"}
+{"event":"progress",         "bytes":524288, "total":1048576, "speed":"512KB/s"}
+<span class="hi">{"event":"checksum_complete", "algorithm":"sha256", "digest":"a3f9..."}</span>
+<span class="hi">{"event":"download_complete", "path":"./model.bin", "size":1048576}</span>
+{"event":"session_end",      "sessionId":"s_abc", "success":1, "errors":0}</code></pre>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Event</th><th>Key fields</th></tr></thead>
+        <tbody>
+          <tr><td>session_start</td>     <td>sessionId, agent, pid, startTime</td></tr>
+          <tr><td>download_queued</td>   <td>url</td></tr>
+          <tr><td>download_start</td>    <td>url</td></tr>
+          <tr><td>progress</td>          <td>bytes, total, speed</td></tr>
+          <tr><td>checksum_start</td>    <td>url, algorithm</td></tr>
+          <tr><td>checksum_complete</td> <td>url, algorithm, digest</td></tr>
+          <tr><td>download_complete</td> <td>url, path, size</td></tr>
+          <tr><td>download_error</td>    <td>url, error, code</td></tr>
+          <tr><td>session_end</td>       <td>sessionId, success, errors</td></tr>
+          <tr><td>fetch_start</td>       <td>url, method</td></tr>
+          <tr><td>fetch_complete</td>    <td>url, status, latencyMs, contentType</td></tr>
+          <tr><td>fetch_error</td>       <td>url, error, latencyMs</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><code><span class="dim"># filter events in a pipeline</span>
+<span class="hi">nget</span> https://example.com/data.zip <span class="dim">|</span> jq <span class="flag">'select(.event == "download_complete")'</span>
+
+<span class="dim"># webhook flags</span>
+<span class="hi">nget</span> <span class="flag">--webhook</span> https://receiver/events \
+     <span class="flag">--webhook-header</span> <span class="flag">'Authorization: Bearer token'</span> \
+     <span class="flag">--webhook-events</span> download_complete,download_error \
+     https://example.com/model.bin</code></pre>
+  </section>
+
+  <section id="cli" aria-labelledby="cli-heading">
+    <h2 id="cli-heading">CLI</h2>
+    <h3>Quick ref</h3>
+    <p>The CLI runs the same engine as the MCP server. <code>nget --help</code> for all flags. <code>nget instructions</code> for the full agent guide.</p>
+
+    <pre><code><span class="dim"># download</span>
+<span class="hi">nget</span> https://example.com/model.bin <span class="flag">-d</span> ./data <span class="flag">--agent-id</span> my-agent
+
+<span class="dim"># HTTP API call</span>
+<span class="hi">nget fetch</span> https://api.example.com/data.json
+<span class="hi">nget fetch</span> <span class="flag">--method POST --data</span> <span class="flag">'{"key":"val"}'</span> https://api.example.com/endpoint
+
+<span class="dim"># SFTP</span>
+<span class="hi">nget</span> sftp://user@host/path/file.tar.gz <span class="flag">--ssh-key</span> ~/.ssh/id_ed25519
+
+<span class="dim"># self-discovery</span>
+<span class="hi">nget</span> <span class="flag">--capabilities</span>
+<span class="hi">nget</span> <span class="flag">--openapi-spec</span>
+<span class="hi">nget</span> instructions</code></pre>
+  </section>
+
+</main>
+
+<footer>
+  <nav aria-label="footer links">
+    <a href="https://github.com/bingeboy/n-get">GitHub</a>
+    <span>·</span>
+    <a href="https://www.npmjs.com/package/n-get">npm</a>
+    <span>·</span>
+    <a href="https://github.com/bingeboy/n-get/blob/master/LICENSE">MIT</a>
+  </nav>
+  <span>n-get v1.10.1 · Node.js ≥ 18</span>
+</footer>
+
+<script>
+function copy(btn) {
+  navigator.clipboard.writeText('npm install -g n-get').then(() => {
+    btn.textContent = 'copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+</script>
+
+</body>
+</html>
