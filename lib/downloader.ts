@@ -2,7 +2,7 @@
  * @fileoverview Core download pipeline with HTTP/HTTPS and SFTP support
  * Handles concurrent downloads, resume functionality, progress tracking, and file streaming
  * Supports both individual and batch downloads with advanced error handling
- * @module downloadPipeline
+ * @module downloader
  */
 
 // node-fetch stays dynamic — ESM package

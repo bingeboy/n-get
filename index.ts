@@ -32,12 +32,12 @@ const LogsCommands       = require('./lib/cli/logsCommands');
 const HistoryCommands    = require('./lib/cli/historyCommands');
 
 // Migrated modules — import-style
-import download           = require('./lib/downloadPipeline');
+import download           = require('./lib/downloader');
 import ConfigManager      = require('./lib/config/ConfigManager');
 import { handleJobsCommand } from './lib/cli/jobsCommands.js';
 
 import type { DownloadOptions, WebhookConfig } from './types/index.js';
-import { NgetEmitter } from './lib/core/NgetEmitter.js';
+import { EventSink } from './lib/core/EventSink.js';
 
 // ─── Argv parsing ─────────────────────────────────────────────────────────────
 
@@ -382,7 +382,7 @@ async function main(): Promise<void> {
             }
 
             const fetchSessionId = (argv['session-id'] as string) || `fetch_${Date.now()}`;
-            const fetchEmitter = new NgetEmitter({
+            const fetchEmitter = new EventSink({
                 sessionId: fetchSessionId,
                 pipeMode: true,
                 webhooks: parseWebhookConfig(),

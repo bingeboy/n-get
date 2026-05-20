@@ -1,6 +1,6 @@
 'use strict';
 
-const { NgetEmitter, EVENT } = require('../lib/core/NgetEmitter');
+const { EventSink, EVENT } = require('../lib/core/EventSink');
 
 // ─── Stream capture helpers ───────────────────────────────────────────────────
 
@@ -45,29 +45,29 @@ function makeUi(overrides) {
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-describe('NgetEmitter', function () {
+describe('EventSink', function () {
 
     // ── Constructor ──────────────────────────────────────────────────────────
 
     describe('Constructor', function () {
         it('defaults humanMode and pipeMode to false', function () {
-            const emitter = new NgetEmitter({ sessionId: 'test-1' });
+            const emitter = new EventSink({ sessionId: 'test-1' });
             expect(emitter.humanMode).to.equal(false);
             expect(emitter.pipeMode).to.equal(false);
         });
 
         it('sets sessionId from options', function () {
-            const emitter = new NgetEmitter({ sessionId: 'my-session' });
+            const emitter = new EventSink({ sessionId: 'my-session' });
             expect(emitter.sessionId).to.equal('my-session');
         });
 
         it('sets humanMode when provided', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true });
             expect(emitter.humanMode).to.equal(true);
         });
 
         it('sets pipeMode when provided', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', pipeMode: true });
+            const emitter = new EventSink({ sessionId: 's', pipeMode: true });
             expect(emitter.pipeMode).to.equal(true);
         });
 
@@ -75,7 +75,7 @@ describe('NgetEmitter', function () {
             const stdout = captureStream(process.stdout);
             const stderr = captureStream(process.stderr);
             try {
-                const emitter = new NgetEmitter({ sessionId: 'agent-mode' });
+                const emitter = new EventSink({ sessionId: 'agent-mode' });
                 emitter.emit('info', { message: 'hello' });
                 expect(stdout.output).to.include('hello');
                 expect(stderr.output).to.equal('');
@@ -89,7 +89,7 @@ describe('NgetEmitter', function () {
             const stdout = captureStream(process.stdout);
             const stderr = captureStream(process.stderr);
             try {
-                const emitter = new NgetEmitter({ sessionId: 's', humanMode: true });
+                const emitter = new EventSink({ sessionId: 's', humanMode: true });
                 emitter.emit('warning', { message: 'watch out' });
                 expect(stdout.output).to.equal('');
                 expect(stderr.output).to.include('watch out');
@@ -103,7 +103,7 @@ describe('NgetEmitter', function () {
             const stdout = captureStream(process.stdout);
             const stderr = captureStream(process.stderr);
             try {
-                const emitter = new NgetEmitter({ sessionId: 's', pipeMode: true });
+                const emitter = new EventSink({ sessionId: 's', pipeMode: true });
                 emitter.emit('info', { message: 'piped' });
                 expect(stdout.output).to.equal('');
                 expect(stderr.output).to.include('piped');
@@ -115,14 +115,14 @@ describe('NgetEmitter', function () {
 
         it('accepts a ui object', function () {
             const ui = makeUi();
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true, ui });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true, ui });
             // Should not throw
-            expect(emitter).to.be.instanceof(NgetEmitter);
+            expect(emitter).to.be.instanceof(EventSink);
         });
 
         it('works without a ui object (ui defaults to null)', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true });
-            expect(emitter).to.be.instanceof(NgetEmitter);
+            const emitter = new EventSink({ sessionId: 's', humanMode: true });
+            expect(emitter).to.be.instanceof(EventSink);
         });
     });
 
@@ -140,7 +140,7 @@ describe('NgetEmitter', function () {
         });
 
         it('returns an object with event, ts, and session fields', function () {
-            const emitter = new NgetEmitter({ sessionId: 'sess-42' });
+            const emitter = new EventSink({ sessionId: 'sess-42' });
             const result = emitter.emit('info', { message: 'test' });
 
             expect(result).to.have.property('event', 'info');
@@ -149,7 +149,7 @@ describe('NgetEmitter', function () {
         });
 
         it('merges extra payload into the returned event', function () {
-            const emitter = new NgetEmitter({ sessionId: 's' });
+            const emitter = new EventSink({ sessionId: 's' });
             const result = emitter.emit('info', { message: 'msg', extra: 'data' });
 
             expect(result.message).to.equal('msg');
@@ -158,7 +158,7 @@ describe('NgetEmitter', function () {
 
         it('ts is close to Date.now()', function () {
             const before = Date.now();
-            const emitter = new NgetEmitter({ sessionId: 's' });
+            const emitter = new EventSink({ sessionId: 's' });
             const result = emitter.emit('info', {});
             const after = Date.now();
 
@@ -167,7 +167,7 @@ describe('NgetEmitter', function () {
         });
 
         it('in agent mode writes a JSON line to stdout', function () {
-            const emitter = new NgetEmitter({ sessionId: 's' });
+            const emitter = new EventSink({ sessionId: 's' });
             emitter.emit('info', { message: 'agent-output' });
 
             const parsed = JSON.parse(stdout.output.trim());
@@ -176,7 +176,7 @@ describe('NgetEmitter', function () {
         });
 
         it('in agent mode the JSON line ends with newline', function () {
-            const emitter = new NgetEmitter({ sessionId: 's' });
+            const emitter = new EventSink({ sessionId: 's' });
             emitter.emit('info', {});
             expect(stdout.output).to.match(/\n$/);
         });
@@ -184,7 +184,7 @@ describe('NgetEmitter', function () {
         it('in humanMode calls _renderHuman instead of writing JSON', function () {
             const stderr = captureStream(process.stderr);
             try {
-                const emitter = new NgetEmitter({ sessionId: 's', humanMode: true });
+                const emitter = new EventSink({ sessionId: 's', humanMode: true });
                 emitter.emit('warning', { message: 'no-json' });
                 // stderr should have plain text, not JSON
                 expect(stderr.output).to.not.match(/^\{/);
@@ -197,7 +197,7 @@ describe('NgetEmitter', function () {
         it('returns the event even in humanMode', function () {
             const stderr = captureStream(process.stderr);
             try {
-                const emitter = new NgetEmitter({ sessionId: 's', humanMode: true });
+                const emitter = new EventSink({ sessionId: 's', humanMode: true });
                 const result = emitter.emit('warning', { message: 'check-return' });
                 expect(result.event).to.equal('warning');
             } finally {
@@ -232,7 +232,7 @@ describe('NgetEmitter', function () {
 
         beforeEach(function () {
             stdout = captureStream(process.stdout);
-            emitter = new NgetEmitter({ sessionId: 'typed-tests' });
+            emitter = new EventSink({ sessionId: 'typed-tests' });
         });
 
         afterEach(function () {
@@ -397,7 +397,7 @@ describe('NgetEmitter', function () {
             const stdout = captureStream(process.stdout);
             const stderr = captureStream(process.stderr);
             try {
-                const emitter = new NgetEmitter({ sessionId: 's' });
+                const emitter = new EventSink({ sessionId: 's' });
                 emitter.info('agent-stdout');
                 expect(stdout.output).to.include('agent-stdout');
                 expect(stderr.output).to.equal('');
@@ -411,7 +411,7 @@ describe('NgetEmitter', function () {
             const stdout = captureStream(process.stdout);
             const stderr = captureStream(process.stderr);
             try {
-                const emitter = new NgetEmitter({ sessionId: 's', humanMode: true });
+                const emitter = new EventSink({ sessionId: 's', humanMode: true });
                 emitter.warn('human-stderr');
                 expect(stderr.output).to.include('human-stderr');
                 expect(stdout.output).to.equal('');
@@ -425,7 +425,7 @@ describe('NgetEmitter', function () {
             const stdout = captureStream(process.stdout);
             const stderr = captureStream(process.stderr);
             try {
-                const emitter = new NgetEmitter({ sessionId: 's', pipeMode: true });
+                const emitter = new EventSink({ sessionId: 's', pipeMode: true });
                 emitter.info('pipe-stderr');
                 expect(stderr.output).to.include('pipe-stderr');
                 expect(stdout.output).to.equal('');
@@ -452,19 +452,19 @@ describe('NgetEmitter', function () {
         });
 
         it('session_start: calls ui.displayBanner()', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true, ui });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true, ui });
             emitter.sessionStart();
             expect(ui._calls.displayBanner).to.have.length(1);
         });
 
         it('session_start: does not write to stream when ui present', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true, ui });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true, ui });
             emitter.sessionStart();
             expect(stderr.output).to.equal('');
         });
 
         it('download_start: calls ui.displayDownloadStart() with correct args (filename branch)', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true, ui });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true, ui });
             emitter.downloadStart('https://x.com/file.zip', {
                 filename: 'file.zip',
                 bytes_total: 1024,
@@ -484,14 +484,14 @@ describe('NgetEmitter', function () {
         });
 
         it('download_start: falls back to url when filename is absent', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true, ui });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true, ui });
             emitter.downloadStart('https://x.com/file.zip');
             const args = ui._calls.displayDownloadStart[0];
             expect(args[0]).to.equal('https://x.com/file.zip');
         });
 
         it('download_start: defaults bytes_total/index/total/resumed/resume_from when absent', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true, ui });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true, ui });
             emitter.downloadStart('https://x.com/f');
             const args = ui._calls.displayDownloadStart[0];
             expect(args[1]).to.equal(0);   // bytes_total default
@@ -502,7 +502,7 @@ describe('NgetEmitter', function () {
         });
 
         it('download_complete: calls ui.displayDownloadComplete() with correct args (filename branch)', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true, ui });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true, ui });
             emitter.downloadComplete('https://x.com/f', {
                 filename: 'file.zip',
                 bytes_total: 2048,
@@ -518,28 +518,28 @@ describe('NgetEmitter', function () {
         });
 
         it('download_complete: falls back to url when filename absent', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true, ui });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true, ui });
             emitter.downloadComplete('https://x.com/f.zip', { bytes_total: 100 });
             const args = ui._calls.displayDownloadComplete[0];
             expect(args[0]).to.equal('https://x.com/f.zip');
         });
 
         it('download_complete: falls back to size when bytes_total absent', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true, ui });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true, ui });
             emitter.downloadComplete('https://x.com/f', { size: 512 });
             const args = ui._calls.displayDownloadComplete[0];
             expect(args[1]).to.equal(512);
         });
 
         it('download_complete: defaults to 0 bytes when neither bytes_total nor size present', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true, ui });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true, ui });
             emitter.downloadComplete('https://x.com/f');
             const args = ui._calls.displayDownloadComplete[0];
             expect(args[1]).to.equal(0);
         });
 
         it('download_error: calls ui.displayError() with error message and url', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true, ui });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true, ui });
             const err = new Error('Connection reset');
             emitter.downloadError('https://x.com/fail', err);
             expect(ui._calls.displayError).to.have.length(1);
@@ -549,21 +549,21 @@ describe('NgetEmitter', function () {
         });
 
         it('warning: calls ui.displayWarning() with message', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true, ui });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true, ui });
             emitter.warn('Be careful');
             expect(ui._calls.displayWarning).to.have.length(1);
             expect(ui._calls.displayWarning[0][0]).to.equal('Be careful');
         });
 
         it('info: calls ui.displayInfo() with message', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true, ui });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true, ui });
             emitter.info('Status update');
             expect(ui._calls.displayInfo).to.have.length(1);
             expect(ui._calls.displayInfo[0][0]).to.equal('Status update');
         });
 
         it('session_end with stats: calls ui.displaySummary() with mapped fields', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true, ui });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true, ui });
             const stats = {
                 total: 5,
                 success: 4,
@@ -588,13 +588,13 @@ describe('NgetEmitter', function () {
         });
 
         it('session_end without stats: does not call ui.displaySummary()', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true, ui });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true, ui });
             emitter.sessionEnd({});
             expect(ui._calls.displaySummary).to.have.length(0);
         });
 
         it('progress: silent — no ui call and no stream output', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true, ui });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true, ui });
             emitter.progress('https://x.com/f', 50, 100, 25);
             // No ui methods should have been called
             expect(ui._calls.displayBanner).to.have.length(0);
@@ -609,21 +609,21 @@ describe('NgetEmitter', function () {
         });
 
         it('checksum_start: silent — no ui call and no stream output', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true, ui });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true, ui });
             emitter.checksumStart('/tmp/file', ['md5']);
             expect(Object.values(ui._calls).flat()).to.have.length(0);
             expect(stderr.output).to.equal('');
         });
 
         it('checksum_complete: silent — no ui call and no stream output', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true, ui });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true, ui });
             emitter.checksumComplete('/tmp/file', { md5: 'abc' });
             expect(Object.values(ui._calls).flat()).to.have.length(0);
             expect(stderr.output).to.equal('');
         });
 
         it('download_queued: silent — no ui call and no stream output', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true, ui });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true, ui });
             emitter.downloadQueued('https://x.com/f');
             expect(Object.values(ui._calls).flat()).to.have.length(0);
             expect(stderr.output).to.equal('');
@@ -644,76 +644,76 @@ describe('NgetEmitter', function () {
         });
 
         it('session_start: no output (no ui, no fallback for session_start)', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true });
             emitter.sessionStart();
             expect(stderr.output).to.equal('');
         });
 
         it('download_start: writes ">> starting  <url>" to stderr', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true });
             emitter.downloadStart('https://x.com/file.zip');
             expect(stderr.output).to.include('>> starting  https://x.com/file.zip');
         });
 
         it('download_complete: writes "[OK] <url>  (<size> bytes)" to stderr', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true });
             emitter.downloadComplete('https://x.com/done.zip', { size: 1024 });
             expect(stderr.output).to.include('[OK] https://x.com/done.zip');
             expect(stderr.output).to.include('1024 bytes');
         });
 
         it('download_complete: uses 0 bytes when size absent', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true });
             emitter.downloadComplete('https://x.com/done.zip');
             expect(stderr.output).to.include('0 bytes');
         });
 
         it('download_error: writes "[ERR] <url>: <message>" to stderr', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true });
             const err = new Error('Timeout');
             emitter.downloadError('https://x.com/fail', err);
             expect(stderr.output).to.include('[ERR] https://x.com/fail: Timeout');
         });
 
         it('warning: writes "[WARN] <message>" to stderr', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true });
             emitter.warn('Low disk space');
             expect(stderr.output).to.include('[WARN] Low disk space');
         });
 
         it('info: writes "[INFO] <message>" to stderr', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true });
             emitter.info('Connecting...');
             expect(stderr.output).to.include('[INFO] Connecting...');
         });
 
         it('session_end with stats but no ui: no output', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true });
             const stats = { total: 1, success: 1, errors: 0, resumed: 0, bytes: 100, duration: 200, avg_speed: 500, file_paths: [] };
             emitter.sessionEnd({ stats });
             expect(stderr.output).to.equal('');
         });
 
         it('session_end without stats and no ui: no output', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true });
             emitter.sessionEnd({});
             expect(stderr.output).to.equal('');
         });
 
         it('progress: silent — no stream output', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true });
             emitter.progress('https://x.com/f', 100, 200, 50);
             expect(stderr.output).to.equal('');
         });
 
         it('checksum_start: silent — no stream output', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true });
             emitter.checksumStart('/tmp/f', ['sha256']);
             expect(stderr.output).to.equal('');
         });
 
         it('checksum_complete: silent — no stream output', function () {
-            const emitter = new NgetEmitter({ sessionId: 's', humanMode: true });
+            const emitter = new EventSink({ sessionId: 's', humanMode: true });
             emitter.checksumComplete('/tmp/f', { sha256: 'abc' });
             expect(stderr.output).to.equal('');
         });
@@ -725,7 +725,7 @@ describe('NgetEmitter', function () {
         it('emit() with no payload uses empty object default', function () {
             const stdout = captureStream(process.stdout);
             try {
-                const emitter = new NgetEmitter({ sessionId: 'edge' });
+                const emitter = new EventSink({ sessionId: 'edge' });
                 const result = emitter.emit('info');
                 expect(result.event).to.equal('info');
                 expect(result.session).to.equal('edge');
@@ -737,7 +737,7 @@ describe('NgetEmitter', function () {
         it('sessionStart() with no args uses empty default', function () {
             const stdout = captureStream(process.stdout);
             try {
-                const emitter = new NgetEmitter({ sessionId: 's' });
+                const emitter = new EventSink({ sessionId: 's' });
                 const result = emitter.sessionStart();
                 expect(result.event).to.equal('session_start');
             } finally {
@@ -748,7 +748,7 @@ describe('NgetEmitter', function () {
         it('sessionEnd() with no args uses empty default', function () {
             const stdout = captureStream(process.stdout);
             try {
-                const emitter = new NgetEmitter({ sessionId: 's' });
+                const emitter = new EventSink({ sessionId: 's' });
                 const result = emitter.sessionEnd();
                 expect(result.event).to.equal('session_end');
             } finally {
@@ -759,7 +759,7 @@ describe('NgetEmitter', function () {
         it('downloadQueued() with no extra data uses empty default', function () {
             const stdout = captureStream(process.stdout);
             try {
-                const emitter = new NgetEmitter({ sessionId: 's' });
+                const emitter = new EventSink({ sessionId: 's' });
                 const result = emitter.downloadQueued('https://example.com/f');
                 expect(result.event).to.equal('download_queued');
             } finally {
@@ -770,7 +770,7 @@ describe('NgetEmitter', function () {
         it('downloadStart() with no extra data uses empty default', function () {
             const stdout = captureStream(process.stdout);
             try {
-                const emitter = new NgetEmitter({ sessionId: 's' });
+                const emitter = new EventSink({ sessionId: 's' });
                 const result = emitter.downloadStart('https://example.com/f');
                 expect(result.event).to.equal('download_start');
             } finally {
@@ -781,7 +781,7 @@ describe('NgetEmitter', function () {
         it('downloadComplete() with no extra data uses empty default', function () {
             const stdout = captureStream(process.stdout);
             try {
-                const emitter = new NgetEmitter({ sessionId: 's' });
+                const emitter = new EventSink({ sessionId: 's' });
                 const result = emitter.downloadComplete('https://example.com/f');
                 expect(result.event).to.equal('download_complete');
             } finally {
@@ -792,7 +792,7 @@ describe('NgetEmitter', function () {
         it('warn() with no extra data uses empty default', function () {
             const stdout = captureStream(process.stdout);
             try {
-                const emitter = new NgetEmitter({ sessionId: 's' });
+                const emitter = new EventSink({ sessionId: 's' });
                 const result = emitter.warn('heads up');
                 expect(result.event).to.equal('warning');
             } finally {
@@ -803,7 +803,7 @@ describe('NgetEmitter', function () {
         it('info() with no extra data uses empty default', function () {
             const stdout = captureStream(process.stdout);
             try {
-                const emitter = new NgetEmitter({ sessionId: 's' });
+                const emitter = new EventSink({ sessionId: 's' });
                 const result = emitter.info('status');
                 expect(result.event).to.equal('info');
             } finally {
@@ -814,7 +814,7 @@ describe('NgetEmitter', function () {
         it('progress() pct is 0 when bytesReceived is 0 and bytesTotal > 0', function () {
             const stdout = captureStream(process.stdout);
             try {
-                const emitter = new NgetEmitter({ sessionId: 's' });
+                const emitter = new EventSink({ sessionId: 's' });
                 const result = emitter.progress('https://x.com/f', 0, 1000, 0);
                 expect(result.pct).to.equal(0);
             } finally {
@@ -825,7 +825,7 @@ describe('NgetEmitter', function () {
         it('progress() pct is 100 when fully downloaded', function () {
             const stdout = captureStream(process.stdout);
             try {
-                const emitter = new NgetEmitter({ sessionId: 's' });
+                const emitter = new EventSink({ sessionId: 's' });
                 const result = emitter.progress('https://x.com/f', 1000, 1000, 500);
                 expect(result.pct).to.equal(100);
             } finally {
@@ -836,7 +836,7 @@ describe('NgetEmitter', function () {
         it('agent mode JSON output is valid NDJSON (parseable)', function () {
             const stdout = captureStream(process.stdout);
             try {
-                const emitter = new NgetEmitter({ sessionId: 'ndjson-test' });
+                const emitter = new EventSink({ sessionId: 'ndjson-test' });
                 emitter.sessionStart({ agent: 'test-agent' });
                 emitter.info('line two');
                 const lines = stdout.output.trim().split('\n');
@@ -854,7 +854,7 @@ describe('NgetEmitter', function () {
             const stdout = captureStream(process.stdout);
             const stderr = captureStream(process.stderr);
             try {
-                const emitter = new NgetEmitter({ sessionId: 's', humanMode: true, pipeMode: true });
+                const emitter = new EventSink({ sessionId: 's', humanMode: true, pipeMode: true });
                 emitter.warn('both-modes');
                 expect(stderr.output).to.include('both-modes');
                 expect(stdout.output).to.equal('');
@@ -885,7 +885,7 @@ describe('NgetEmitter', function () {
 
             const stdout = captureStream(process.stdout);
             try {
-                const emitter = new NgetEmitter({
+                const emitter = new EventSink({
                     sessionId: 'test-wh',
                     webhooks: [{ url: `http://127.0.0.1:${port}/hook` }],
                 });
@@ -917,7 +917,7 @@ describe('NgetEmitter', function () {
 
             const stdout = captureStream(process.stdout);
             try {
-                const emitter = new NgetEmitter({
+                const emitter = new EventSink({
                     sessionId: 'test-wh-filter',
                     webhooks: [{ url: `http://127.0.0.1:${port}/hook`, events: ['download_complete'] }],
                 });

@@ -1,7 +1,7 @@
 
 const fs = require('node:fs').promises;
 const path = require('node:path');
-const download = require('../lib/downloadPipeline');
+const download = require('../lib/downloader');
 
 describe('Download Pipeline Module', () => {
     const testDir = path.join(__dirname, 'temp');

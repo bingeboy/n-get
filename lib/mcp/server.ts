@@ -26,7 +26,7 @@ const pkg                      = require('../../package.json');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const CapabilitiesService      = require('../services/CapabilitiesService');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const downloadPipeline         = require('../downloadPipeline');
+const downloadPipeline         = require('../downloader');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const ConfigManager            = require('../config/ConfigManager');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
