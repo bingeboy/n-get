@@ -429,6 +429,25 @@ export function createServer() {
         }
     );
 
+    // ── get_agent_card ────────────────────────────────────────────────────────
+
+    server.tool(
+        'get_agent_card',
+        'Return the A2A 0.3.0 agent card for n-get. Describes agent skills, transport, and protocol version for A2A-compatible orchestrators.',
+        {
+            endpoint_url: (z as any).string().optional().describe('Override the default endpoint URL in the card (e.g. the public URL of your n-get MCP endpoint)'),
+        },
+        ({ endpoint_url }: { endpoint_url?: string }) => {
+            const caps = new CapabilitiesService({});
+            return {
+                content: [{
+                    type: 'text' as const,
+                    text: JSON.stringify(caps.toA2ACard(endpoint_url)),
+                }],
+            };
+        }
+    );
+
     return server;
 }
 

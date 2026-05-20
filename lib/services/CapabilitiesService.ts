@@ -367,7 +367,12 @@ class CapabilitiesService {
                 schemas: true
             },
             eventDriven: {
-                webhooks: 'supported',
+                webhooks: {
+                    supported: true,
+                    signing: 'hmac-sha256',
+                    signatureHeader: 'X-NGet-Signature',
+                    signatureFormat: 'sha256=<hex>',
+                },
                 callbacks: false,
                 progressEvents: true
             },
@@ -508,6 +513,9 @@ class CapabilitiesService {
             {             long: 'webhook',        arg: '<url>',      description: 'POST all NDJSON events to this URL (repeatable)',             group: 'webhook' },
             {             long: 'webhook-header', arg: '<header>',   description: "Extra header for all webhook POSTs, e.g. 'Authorization: Bearer ...' (repeatable)", group: 'webhook' },
             {             long: 'webhook-events', arg: '<list>',     description: 'Comma-separated event types to POST (default: all)',          group: 'webhook' },
+            {             long: 'webhook-secret', arg: '<secret>',   description: 'HMAC-SHA256 secret — adds X-NGet-Signature: sha256=<hex> to every webhook POST', group: 'webhook' },
+            // agent-card
+            {             long: 'agent-card',                        description: 'Print A2A 0.3.0 agent card as JSON and exit',                 group: 'agent' },
         ];
     }
 
@@ -542,12 +550,20 @@ class CapabilitiesService {
                 description: 'POST each NDJSON event as JSON to the given URL (fire-and-forget, 2 s timeout). Repeat for multiple receivers. Filter with --webhook-events.',
                 filterFlag:  '--webhook-events <comma-list>',
                 authFlag:    '--webhook-header "Name: value"',
+                signing:     'hmac-sha256',
+                signingFlag: '--webhook-secret <secret>',
+                signatureHeader: 'X-NGet-Signature',
                 events: [
                     'session_start', 'download_queued', 'download_start', 'progress',
                     'checksum_start', 'checksum_complete', 'download_complete',
                     'download_error', 'session_end',
                     'fetch_start', 'fetch_complete', 'fetch_error'
                 ]
+            },
+            a2a: {
+                command:     'nget --agent-card',
+                description: 'A2A 0.3.0 agent card (JSON). Describes n-get skills and transport for A2A-compatible orchestrators.',
+                protocolVersion: '0.3.0',
             }
         };
     }
@@ -586,6 +602,46 @@ class CapabilitiesService {
                 { description: 'HTTP fetch with structured JSON output',                command: 'nget fetch https://api.example.com/data' },
                 { description: 'HTTP POST with body and agent tracking',                command: 'nget fetch --method POST --data \'{"key":"val"}\' --agent-id my-agent https://api.example.com/endpoint' }
             ]
+        };
+    }
+
+    /**
+     * Build an A2A 0.3.0 agent card for n-get.
+     *
+     * @param endpointUrl - Optional URL where the A2A endpoint is hosted.
+     *   Falls back to 'https://your-host/a2a' as a placeholder.
+     */
+    toA2ACard(endpointUrl?: string): AnyObj {
+        return {
+            name:        'n-get',
+            description: 'Observable downloads for AI agents — NDJSON event stream, webhook forwarding, HTTP + SFTP.',
+            version:     this.version,
+            protocolVersion: '0.3.0',
+            url:         endpointUrl || 'https://your-host/a2a',
+            preferredTransport: 'JSONRPC',
+            capabilities: { streaming: true },
+            defaultInputModes:  ['application/json'],
+            defaultOutputModes: ['application/json', 'text/event-stream'],
+            skills: [
+                {
+                    id:          'download',
+                    name:        'Download File',
+                    description: 'Download a file over HTTP/HTTPS or SFTP with streaming NDJSON events, resume support, and checksum verification.',
+                    tags:        ['file-transfer', 'http', 'sftp', 'streaming', 'observable'],
+                },
+                {
+                    id:          'batch_download',
+                    name:        'Batch Download',
+                    description: 'Download multiple URLs concurrently with per-file progress events and a session summary.',
+                    tags:        ['file-transfer', 'batch', 'concurrent', 'observable'],
+                },
+                {
+                    id:          'fetch',
+                    name:        'Fetch HTTP API',
+                    description: 'Make HTTP API calls (GET/POST/PUT/DELETE) with structured JSON output and NDJSON event emission.',
+                    tags:        ['http', 'api', 'fetch', 'observable'],
+                },
+            ],
         };
     }
 
