@@ -537,12 +537,14 @@ async function downloadHttpFile(
         const diff = process.hrtime(startTime);
         const durationMs = (diff[0] * 1e9 + diff[1]) / 1e6;
         const durationSeconds = durationMs / 1000;
-        const downloadedBytes = isResume ? remainingSize : totalSize;
+        // Use actual bytes written for chunked responses where Content-Length is absent
+        const actualBytes = (writeStream as fs.WriteStream).bytesWritten ?? totalSize;
+        const downloadedBytes = actualBytes > 0 ? actualBytes : (isResume ? remainingSize : totalSize);
         const speed = downloadedBytes > 0 ? downloadedBytes / durationSeconds : 0;
 
         // Display completion with metrics (not in quiet mode)
         if (!quietMode) {
-            emitter.downloadComplete(url, { filename, size: totalSize, bytes_total: totalSize, duration_ms: durationMs, speed_bps: speed });
+            emitter.downloadComplete(url, { filename, size: downloadedBytes, bytes_total: downloadedBytes, duration_ms: durationMs, speed_bps: speed });
         }
 
         // Clean up resume metadata on successful completion (not applicable for stdout)
@@ -568,11 +570,11 @@ async function downloadHttpFile(
             }
         }
 
-        session.completeDownload(url, { path: outputToStdout ? 'stdout' : writePath as string, size: totalSize, duration: durationMs, speed });
+        session.completeDownload(url, { path: outputToStdout ? 'stdout' : writePath as string, size: downloadedBytes, duration: durationMs, speed });
 
         return {
             path: outputToStdout ? 'stdout' : writePath,
-            size: totalSize,
+            size: downloadedBytes,
             duration: durationMs,
             speed,
             resumed: isResume,
