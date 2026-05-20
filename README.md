@@ -87,6 +87,7 @@ nget https://example.com/data.zip | jq 'select(.event == "download_complete")'
 - `--webhook-header 'Name: value'` — add a custom header to all webhook POSTs (repeatable)
 - `--webhook-events <list>` — comma-separated event types to forward; defaults to all
 - `--webhook-secret <secret>` — HMAC-SHA256 sign every POST with `X-NGet-Signature: sha256=<hex>`; receivers verify with `timingSafeEqual`
+- Retry behaviour is configurable via `webhooks.retry.maxAttempts` and `webhooks.retry.backoffMs` in config — defaults to 3 attempts with [0, 500, 1000] ms backoff
 
 **Agent discovery:**
 - `--agent-card` — outputs an A2A 1.0 agent card (JSON) to stdout; serve at `/.well-known/agent.json` for orchestrator discovery
@@ -130,7 +131,7 @@ n-get ships a standalone MCP server as the `nget-mcp` binary. Add it to your Cla
 }
 ```
 
-The MCP server exposes 10 tools for direct agent control:
+The MCP server exposes 11 tools for direct agent control:
 
 | Tool | What it does |
 |---|---|
@@ -143,6 +144,7 @@ The MCP server exposes 10 tools for direct agent control:
 | `set_profile` | Apply a config profile (fast/secure/bulk/careful) |
 | `get_history` | Flat download history with filtering |
 | `get_instructions` | Return AGENTS.md — the full agent guide |
+| `fetch_http` | Make an HTTP API call (GET/POST/PUT/DELETE/PATCH) without leaving the MCP loop |
 | `get_agent_card` | Return the A2A 1.0 agent card JSON |
 
 ## Configuration
