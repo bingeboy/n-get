@@ -1,3 +1,55 @@
+# Release Notes - v1.10.0
+
+## Overview
+Largest feature release since 1.7.0. Four additions land together: auto-generated `--help` (no more drift), webhook event forwarding for AI observability, five new MCP tools for agent-side session control, and a Vitest migration that cuts cold test time in half. All additive — no breaking changes.
+
+## New Features
+
+### Webhook event forwarding (`--webhook`)
+Every NDJSON event n-get emits (session_start, download_start, progress, download_complete, etc.) is now POSTed to configurable URLs in real time — fire-and-forget, 2 s timeout, best-effort. Pairs with any event store or agent orchestrator.
+
+- `--webhook <url>` (repeatable) — POST events to one or more receivers
+- `--webhook-header 'Name: value'` (repeatable) — custom headers on all POSTs
+- `--webhook-events <comma-list>` — filter to specific event types only
+- `webhooks.default` in config for persistent per-machine webhook registration
+- `nget fetch` now emits `fetch_start`, `fetch_complete`, `fetch_error` through the same sink — API calls are as observable as file downloads
+- `NgetEmitter.flush()` — drains in-flight POSTs before process exit (prevents lost events on fast `nget fetch` calls)
+- `--capabilities` reports `agentIntegration.eventDriven.webhooks: "supported"` and `discovery.webhooks` subsection
+
+### 5 new MCP tools
+The MCP server grows from 4 tools to 9. New tools give agents direct session control without subprocess spawning:
+
+| Tool | What it does |
+|---|---|
+| `cancel_session(sessionId)` | Kills a specific download session; others continue |
+| `get_session(sessionId)` | Returns full current state of one session |
+| `set_profile(profileName)` | Applies fast/secure/bulk/careful config profile process-wide |
+| `get_history(destination?, limit?, status?, since?)` | Flat MCP-schema download history |
+| `get_instructions()` | Returns AGENTS.md — the agent usage guide |
+
+Session cancellation is in-process and immediate: `cancel_session` sets a flag checked between downloads in any active batch; other sessions are unaffected.
+
+### Auto-generated `--help` (no more drift)
+`CapabilitiesService.getCLIFlags()` is now the single source of truth for all 32 CLI flags. `toHelpSummary()` derives `--help` output from it directly — the same way `toMarkdown()` drives AGENTS.md. A drift-guard test asserts every flag in `getCLIFlags()` appears in `--help` stdout.
+
+### Vitest migration
+Test runner replaced mocha + chai with Vitest. Cold run time: ~2 s (was ~8 s). Vitest globals (`describe`, `it`, `expect`, `beforeAll`, `afterAll`) available without imports; mocha-compat aliases (`before`/`after`) provided via setup file.
+
+## Bug fixes
+- `test/chdirSpec.js`, `test/getDestinationSpec.js`: replaced hardcoded `temp/` directory assumption with `fs.mkdtempSync` — tests were failing in any checkout where the `temp/` dir didn't exist
+
+## Breaking Changes
+None. All CLI flags, NDJSON event names, library exports, and MCP tool names from 1.9.1 are unchanged.
+
+## Tests
+449 passing, 0 failing (up from 420 in 1.8.0).
+
+---
+
+**Full Changelog**: [Compare v1.9.1...v1.10.0](https://github.com/bingeboy/n-get/compare/v1.9.1...v1.10.0)
+
+---
+
 # Release Notes - v1.8.0
 
 ## Overview
