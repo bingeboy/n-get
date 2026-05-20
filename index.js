@@ -77,7 +77,7 @@ const argv = (0, minimist_1.default)(process.argv.slice(2), {
         'recursive', 'no-parent', 'quiet', 'verbose',
         'json', 'csv', 'text', 'confirm', 'force',
         'metadata', 'checksums', 'no-checksums',
-        'capabilities', 'openapi-spec',
+        'capabilities', 'openapi-spec', 'agent-card',
         'human', // human-readable output (progress bars + banners)
     ],
     string: [
@@ -89,7 +89,7 @@ const argv = (0, minimist_1.default)(process.argv.slice(2), {
         'session-id', 'request-id', 'conversation-id', 'output-format',
         'agent-id',
         'method', 'data', 'header',
-        'webhook', 'webhook-header', 'webhook-events',
+        'webhook', 'webhook-header', 'webhook-events', 'webhook-secret',
     ],
     alias: {
         d: 'destination',
@@ -197,9 +197,9 @@ async function main() {
         // Initialize ConfigManager
         try {
             const outputToStdout = argv['output-file'] === '-';
-            // --capabilities and --openapi-spec need config to read live values
+            // --capabilities, --openapi-spec, and --agent-card need config to read live values
             // but their output should be clean machine-readable spec only.
-            const isInfoOnlyFlag = !!(argv.capabilities || argv['openapi-spec']);
+            const isInfoOnlyFlag = !!(argv.capabilities || argv['openapi-spec'] || argv['agent-card']);
             const shouldSuppressLogs = argv.quiet || outputToStdout || isInfoOnlyFlag;
             let configDir;
             const packageConfigDir = path.join(__dirname, 'config');
@@ -267,10 +267,12 @@ async function main() {
             const events = argv['webhook-events']
                 ? argv['webhook-events'].split(',').map((e) => e.trim()).filter(Boolean)
                 : [];
+            const webhookSecret = argv['webhook-secret'] || '';
             return rawUrls.map((url) => ({
                 url,
                 headers: Object.keys(headers).length > 0 ? headers : undefined,
                 events: events.length > 0 ? events : undefined,
+                webhookSecret: webhookSecret || undefined,
             }));
         }
         // ─── Subcommands ──────────────────────────────────────────────────────
@@ -304,6 +306,19 @@ async function main() {
             }
             catch (err) {
                 console.error('Error generating OpenAPI specification:', err.message);
+                process.exit(1);
+            }
+        }
+        if (argv['agent-card']) {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const CapabilitiesService = require('./lib/services/CapabilitiesService');
+            const capabilitiesService = new CapabilitiesService({ configManager, logger: console });
+            try {
+                console.log(JSON.stringify(capabilitiesService.toA2ACard(), null, 2));
+                process.exit(0);
+            }
+            catch (err) {
+                console.error('Error generating agent card:', err.message);
                 process.exit(1);
             }
         }
