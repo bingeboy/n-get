@@ -1,3 +1,32 @@
+# Release Notes - v1.13.0
+
+## Overview
+Full TypeScript migration complete. Dropped legacy recursive web crawling — n-get is now purely agentic. A2A discovery leads the docs.
+
+## Changes
+
+### TypeScript migration complete
+All 14 remaining JS-only files migrated to TypeScript. The entire `lib/` directory is now TS-sourced. No more `.js`-only modules.
+
+### Dropped: recursive web crawling
+`lib/recursiveCrawler` + `lib/recursiveDownloader` deleted (~1,000 lines). Removed CLI flags: `--recursive` / `-R`, `--level`, `--no-parent` / `-np`, `--accept`, `--reject`. Agents receive explicit URLs from the LLM — HTML crawling is a legacy wget workflow with no place in an agentic tool.
+
+### Docs
+- A2A 0.3.0 discovery now leads both the README and site (above MCP)
+- `.gitignore` updated to exclude stray download artifacts
+
+## Breaking Changes
+`--recursive` / `-R` removed. No migration path — use explicit URL lists instead.
+
+## Tests
+479 passing, 0 failing — unchanged.
+
+---
+
+**Full Changelog**: [Compare v1.12.0...v1.13.0](https://github.com/bingeboy/n-get/compare/v1.12.0...v1.13.0)
+
+---
+
 # Release Notes - v1.12.0
 
 ## Overview
