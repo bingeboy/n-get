@@ -1,3 +1,26 @@
+# Release Notes - v1.10.1
+
+## Overview
+Patch release. No feature or API changes. Fixes 6 Dependabot security alerts (all devDependencies, never exposed to npm consumers) and replaces a stale README with accurate 1.10.0 documentation.
+
+## Changes
+
+- **README overhaul** — quick start fixed (`nget --stdout` never existed; replaced with `nget fetch`), webhook flags documented, all 12 NDJSON events listed (including `fetch_start/complete/error`), all 9 MCP tools listed, programmatic API path corrected (`require('n-get/lib/fetch')` → `const { fetch } = require('n-get')`), logo replaced with Zalgo ASCII heading
+- **Security: prune orphaned mocha tree** — mocha was removed from `package.json` during the 1.10.0 vitest migration but left in `node_modules`; `npm prune` removed it and its transitive dep `serialize-javascript` (high-severity RCE + DoS CVEs)
+- **Security: update transitive devDeps** — `npm audit fix` updated `hono`, `express-rate-limit`, `ip-address`; 0 vulnerabilities remaining
+
+## Breaking Changes
+None.
+
+## Tests
+449 passing, 0 failing — unchanged from 1.10.0.
+
+---
+
+**Full Changelog**: [Compare v1.10.0...v1.10.1](https://github.com/bingeboy/n-get/compare/v1.10.0...v1.10.1)
+
+---
+
 # Release Notes - v1.10.0
 
 ## Overview
