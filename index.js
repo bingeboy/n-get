@@ -371,7 +371,7 @@ async function main() {
         if (argv._.length > 0 && argv._[0] === 'fetch') {
             const fetchUrl = argv._[1];
             if (!fetchUrl) {
-                console.error('Error: fetch requires a URL. Usage: nget fetch [--method GET] [--data <json>] [--header "Key: Value"] <url>');
+                console.error('Error: fetch requires a URL. Usage: nget fetch [--method GET] [--data <json>] [--header "Key: Value"] [--header "Key2: Value2"] <url>');
                 process.exit(1);
             }
             // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -388,10 +388,12 @@ async function main() {
             }
             const headers = {};
             if (argv.header) {
-                const headerStr = argv.header;
-                const colonIdx = headerStr.indexOf(':');
-                if (colonIdx > 0) {
-                    headers[headerStr.slice(0, colonIdx).trim()] = headerStr.slice(colonIdx + 1).trim();
+                const rawH = Array.isArray(argv.header) ? argv.header : [argv.header];
+                for (const h of rawH) {
+                    const colonIdx = h.indexOf(':');
+                    if (colonIdx > 0) {
+                        headers[h.slice(0, colonIdx).trim()] = h.slice(colonIdx + 1).trim();
+                    }
                 }
             }
             const fetchSessionId = argv['session-id'] || `fetch_${Date.now()}`;
