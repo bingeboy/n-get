@@ -10,6 +10,7 @@
  */
 
 import * as crypto from 'node:crypto';
+import { setTimeout as sleep } from 'node:timers/promises';
 
 import type {
     NgetEventType,
@@ -22,6 +23,10 @@ import type {
 // UIManager is still .js — typed loosely until it migrates
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type UIManager = any;
+
+// ─── Webhook retry constants ──────────────────────────────────────────────────
+const MAX_ATTEMPTS = 3;
+const BACKOFF_MS = [0, 500, 1000];
 
 export const EVENT: Record<string, NgetEventType> = {
     SESSION_START:      'session_start',
@@ -117,23 +122,50 @@ export class EventSink {
                 sigHeaders['X-NGet-Signature'] = sig;
             }
 
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 2000);
-            const p = fetch(wh.url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...wh.headers,
-                    ...sigHeaders,
-                },
-                body,
-                signal: controller.signal,
-            })
-                .then(() => clearTimeout(timer))
-                .catch((err: Error) => {
-                    clearTimeout(timer);
-                    process.stderr.write(`[nget] webhook POST to ${wh.url} failed: ${err.message}\n`);
-                });
+            const headers = {
+                'Content-Type': 'application/json',
+                ...wh.headers,
+                ...sigHeaders,
+            };
+
+            const p = (async () => {
+                for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+                    if (BACKOFF_MS[attempt] > 0) {
+                        await sleep(BACKOFF_MS[attempt]);
+                    }
+                    const controller = new AbortController();
+                    const timer = setTimeout(() => controller.abort(), 2000);
+                    try {
+                        const res = await fetch(wh.url, {
+                            method: 'POST',
+                            headers,
+                            body,
+                            signal: controller.signal,
+                        });
+                        clearTimeout(timer);
+                        if (res.status >= 400 && res.status < 500) {
+                            // 4xx — client error, do not retry
+                            process.stderr.write(`[nget] webhook POST to ${wh.url} failed (${res.status}): not retrying\n`);
+                            return;
+                        }
+                        if (res.status >= 500) {
+                            // 5xx — server error, retry unless last attempt
+                            if (attempt < MAX_ATTEMPTS - 1) { continue; }
+                            process.stderr.write(`[nget] webhook POST to ${wh.url} failed after ${MAX_ATTEMPTS} attempts: HTTP ${res.status}\n`);
+                            return;
+                        }
+                        // 1xx/2xx/3xx — success or redirect, done
+                        return;
+                    } catch (err: unknown) {
+                        clearTimeout(timer);
+                        // Network error — retry unless last attempt
+                        if (attempt < MAX_ATTEMPTS - 1) { continue; }
+                        const message = err instanceof Error ? err.message : String(err);
+                        process.stderr.write(`[nget] webhook POST to ${wh.url} failed after ${MAX_ATTEMPTS} attempts: ${message}\n`);
+                    }
+                }
+            })();
+
             this._inflight.push(p);
         }
     }
