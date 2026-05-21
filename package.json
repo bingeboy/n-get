@@ -65,7 +65,6 @@
     "@types/ssh2-sftp-client": "^9.0.6",
     "cross-env": "^7.0.3",
     "eslint": "^9.31.0",
-    "nyc": "^15.1.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.6"
   }
