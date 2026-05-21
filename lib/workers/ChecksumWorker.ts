@@ -8,7 +8,7 @@
 
 import * as fs     from 'node:fs';
 import * as crypto from 'node:crypto';
-import { workerData, parentPort } from 'node:worker_threads';
+import { workerData, parentPort, isMainThread } from 'node:worker_threads';
 
 import type { ChecksumResult } from '../../types/index.js';
 
@@ -21,28 +21,28 @@ export type ChecksumWorkerOutput =
     | { ok: true;  checksums: ChecksumResult }
     | { ok: false; error: string };
 
-// ─── Worker entry point ───────────────────────────────────────────────────────
-// This file is loaded by worker_threads; the code below runs immediately.
+// ─── Exported core logic (testable without a worker thread) ───────────────────
 
-if (parentPort === null) {
-    // Guard: if someone accidentally require()s this file, do nothing.
-    process.exit(0);
-}
-
-const { filePath, algorithms } = workerData as ChecksumWorkerInput;
-
-try {
+export function computeChecksums(filePath: string, algorithms: string[]): ChecksumResult {
     const fileBuffer = fs.readFileSync(filePath);
     const checksums: ChecksumResult = {};
-
     for (const algo of algorithms) {
         checksums[algo] = crypto.createHash(algo).update(fileBuffer).digest('hex');
     }
+    return checksums;
+}
 
-    parentPort.postMessage({ ok: true, checksums });
-} catch (err) {
-    parentPort.postMessage({
-        ok:    false,
-        error: err instanceof Error ? err.message : String(err),
-    });
+// ─── Worker entry point ───────────────────────────────────────────────────────
+// Only runs when loaded as a worker thread, not when require()'d for testing.
+
+if (!isMainThread && parentPort !== null) {
+    const { filePath, algorithms } = workerData as ChecksumWorkerInput;
+    try {
+        parentPort.postMessage({ ok: true, checksums: computeChecksums(filePath, algorithms) });
+    } catch (err) {
+        parentPort.postMessage({
+            ok:    false,
+            error: err instanceof Error ? err.message : String(err),
+        });
+    }
 }
