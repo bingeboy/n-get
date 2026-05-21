@@ -6,8 +6,6 @@
 import {URL} from 'node:url';
 import * as path from 'node:path';
 
-// node-fetch is loaded dynamically; ui is .js — typed loosely
-const fetch = (...args: any[]) => import('node-fetch').then(({default: fetch}: any) => (fetch as any)(...args));
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const ui: any = require('./ui');
 
@@ -219,10 +217,17 @@ class RecursiveCrawler {
         }
 
         try {
-            const response: any = await fetch(robotsUrl, {
-                headers: {'User-Agent': this.options.userAgent},
-                timeout: 10000,
-            });
+            const robotsController = new AbortController();
+            const robotsTimer = setTimeout(() => robotsController.abort(), 10000);
+            let response: any;
+            try {
+                response = await fetch(robotsUrl, {
+                    headers: {'User-Agent': this.options.userAgent},
+                    signal: robotsController.signal,
+                });
+            } finally {
+                clearTimeout(robotsTimer);
+            }
 
             if (!response.ok) {
                 this.robotsCache.set(robotsUrl, true); // No robots.txt = allowed
@@ -418,13 +423,20 @@ class RecursiveCrawler {
             }
 
             // Fetch the page
-            const response: any = await fetch(url, {
-                headers: {
-                    'User-Agent': this.options.userAgent,
-                    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                },
-                timeout: 30000,
-            });
+            const pageController = new AbortController();
+            const pageTimer = setTimeout(() => pageController.abort(), 30000);
+            let response: any;
+            try {
+                response = await fetch(url, {
+                    headers: {
+                        'User-Agent': this.options.userAgent,
+                        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    },
+                    signal: pageController.signal,
+                });
+            } finally {
+                clearTimeout(pageTimer);
+            }
 
             if (!response.ok) {
                 ui.displayWarning(`HTTP ${response.status} for: ${url}`);

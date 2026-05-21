@@ -204,8 +204,6 @@ class ResumeManager {
      */
     async testRangeSupport(url: string): Promise<RangeSupportResult> {
         try {
-            const fetch = (...args: any[]) => import('node-fetch').then(({default: fetch}: any) => (fetch as any)(...args));
-
             const response: any = await fetch(url, {
                 method: 'HEAD',
                 headers: {
