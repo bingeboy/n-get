@@ -631,4 +631,132 @@ describe('MCP server', () => {
 
     }); // end 'MCP tools — Feature 3'
 
+    // ── fetch_http ────────────────────────────────────────────────────────────
+
+    describe('fetch_http', () => {
+
+        it('is registered as a tool', async () => {
+            const { client, cleanup } = await connect();
+            try {
+                const { tools } = await client.listTools();
+                const names = tools.map(t => t.name);
+                expect(names).to.include('fetch_http');
+            } finally {
+                await cleanup();
+            }
+        });
+
+        it('returns isError=true when the request fails', async () => {
+            const { client, cleanup } = await connect();
+            try {
+                const result = await client.callTool({
+                    name: 'fetch_http',
+                    arguments: { url: 'https://this-host-does-not-exist.invalid/api' },
+                });
+                expect(result.isError).to.equal(true);
+                const parsed = JSON.parse(result.content[0].text);
+                expect(parsed).to.have.property('error').that.is.a('string');
+            } finally {
+                await cleanup();
+            }
+        });
+
+        it('passes method and body through (error path still validates shape)', async () => {
+            const { client, cleanup } = await connect();
+            try {
+                const result = await client.callTool({
+                    name: 'fetch_http',
+                    arguments: {
+                        url: 'https://this-host-does-not-exist.invalid/api',
+                        method: 'POST',
+                        body: JSON.stringify({ key: 'value' }),
+                    },
+                });
+                expect(result.isError).to.equal(true);
+                const parsed = JSON.parse(result.content[0].text);
+                expect(parsed).to.have.property('error');
+            } finally {
+                await cleanup();
+            }
+        });
+
+        it('rejects invalid method values at MCP layer', async () => {
+            const { client, cleanup } = await connect();
+            try {
+                const result = await client.callTool({
+                    name: 'fetch_http',
+                    arguments: { url: 'https://example.com', method: 'INVALID' },
+                });
+                expect(result.isError).to.equal(true);
+            } finally {
+                await cleanup();
+            }
+        });
+    });
+
+    // ── get_agent_card ────────────────────────────────────────────────────────
+
+    describe('get_agent_card', () => {
+
+        it('is registered as a tool', async () => {
+            const { client, cleanup } = await connect();
+            try {
+                const { tools } = await client.listTools();
+                const names = tools.map(t => t.name);
+                expect(names).to.include('get_agent_card');
+            } finally {
+                await cleanup();
+            }
+        });
+
+        it('returns a valid A2A 1.0 agent card', async () => {
+            const { client, cleanup } = await connect();
+            try {
+                const { raw, parsed } = await callTool(client, 'get_agent_card', {});
+                expect(raw.isError).to.not.equal(true);
+                expect(parsed).to.have.property('id');
+                expect(parsed).to.have.property('name');
+                expect(parsed).to.have.property('protocolVersion', '1.0');
+                expect(parsed).to.have.property('skills').that.is.an('array');
+            } finally {
+                await cleanup();
+            }
+        });
+
+        it('card skills include download, batch_download, fetch', async () => {
+            const { client, cleanup } = await connect();
+            try {
+                const { parsed } = await callTool(client, 'get_agent_card', {});
+                const skillIds = parsed.skills.map(s => s.id);
+                expect(skillIds).to.include('download');
+                expect(skillIds).to.include('batch_download');
+                expect(skillIds).to.include('fetch');
+            } finally {
+                await cleanup();
+            }
+        });
+
+        it('accepts an endpoint_url override', async () => {
+            const { client, cleanup } = await connect();
+            try {
+                const { parsed } = await callTool(client, 'get_agent_card', {
+                    endpoint_url: 'https://my-endpoint.example.com/a2a',
+                });
+                expect(parsed).to.have.property('url', 'https://my-endpoint.example.com/a2a');
+            } finally {
+                await cleanup();
+            }
+        });
+
+        it('is not marked as an error', async () => {
+            const { client, cleanup } = await connect();
+            try {
+                const { raw } = await callTool(client, 'get_agent_card', {});
+                expect(raw.isError).to.not.equal(true);
+            } finally {
+                await cleanup();
+            }
+        });
+    });
+
 });
