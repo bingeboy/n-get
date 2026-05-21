@@ -88,12 +88,13 @@ export class DownloadSession {
         this.configManager = options.configManager ?? null;
         this.startTime     = Date.now();
 
+        const configWebhooks = this._parseConfigWebhooks();
         this.emitter = new EventSink({
             sessionId:           this.id,
             humanMode:           this.humanMode,
             pipeMode:            this.pipeMode,
             ui:                  options.ui ?? null,
-            webhooks:            options.webhooks ?? [],
+            webhooks:            [...configWebhooks, ...(options.webhooks ?? [])],
             webhookSecret:       (this.configManager?.get('webhooks.secret')             as string)   ?? '',
             webhookMaxAttempts:  (this.configManager?.get('webhooks.retry.maxAttempts') as number)   ?? undefined,
             webhookBackoffMs:    (this.configManager?.get('webhooks.retry.backoffMs')   as number[]) ?? undefined,
@@ -186,6 +187,28 @@ export class DownloadSession {
     }
 
     // ─── Private ─────────────────────────────────────────────────────────────
+
+    private _parseConfigWebhooks(): WebhookConfig[] {
+        if (!this.configManager) { return []; }
+        const raw = this.configManager.get('webhooks.default');
+        if (!Array.isArray(raw) || raw.length === 0) { return []; }
+        return (raw as unknown[]).reduce<WebhookConfig[]>((acc, entry) => {
+            if (typeof entry === 'string' && entry) {
+                acc.push({ url: entry });
+            } else if (entry && typeof entry === 'object') {
+                const e = entry as { url?: string; secret?: string; headers?: Record<string, string>; events?: string[] };
+                if (e.url) {
+                    acc.push({
+                        url:           e.url,
+                        webhookSecret: e.secret || undefined,
+                        headers:       e.headers,
+                        events:        e.events,
+                    });
+                }
+            }
+            return acc;
+        }, []);
+    }
 
     private _flushStatus(): void {
         if (!this._active) { return; }
