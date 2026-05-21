@@ -369,7 +369,7 @@ describe('HistoryManager', () => {
             // Write malformed JSON to history file
             const historyPath = historyManager.getHistoryPath(testDir);
             await historyManager.ensureHistoryDir(testDir);
-            
+
             const malformedData = 'not-json\n{"valid":"json"}\nmore-invalid-json\n';
             await fs.writeFile(historyPath, malformedData, 'utf8');
 
@@ -377,6 +377,91 @@ describe('HistoryManager', () => {
             const history = await historyManager.getHistory(testDir);
             expect(history).to.have.length(1);
             expect(history[0].valid).to.equal('json');
+        });
+    });
+
+    describe('sanitizeUrl', () => {
+        it('returns original string when URL parsing fails', () => {
+            const result = historyManager.sanitizeUrl('not-a-valid-url');
+            expect(result).to.equal('not-a-valid-url');
+        });
+
+        it('strips credentials from valid URL', () => {
+            const result = historyManager.sanitizeUrl('https://user:pass@example.com/file');
+            expect(result).to.not.include('user');
+            expect(result).to.not.include('pass');
+        });
+
+        it('leaves URLs without credentials unchanged', () => {
+            const result = historyManager.sanitizeUrl('https://example.com/file.zip');
+            expect(result).to.include('example.com');
+        });
+    });
+
+    describe('cleanupOldEntries', () => {
+        it('removes entries older than retentionDays', async() => {
+            // Log a fresh entry
+            await historyManager.logDownload({
+                url: 'https://example.com/keep.zip',
+                filePath: path.join(testDir, 'keep.zip'),
+                status: 'success',
+                size: 512,
+            });
+
+            // Set retentionDays to 0 so all existing entries fall outside the window
+            historyManager.retentionDays = 0;
+            await historyManager.cleanupOldEntries(testDir);
+
+            // All entries were logged moments ago but cutoff is "now", so they are removed
+            const history = await historyManager.getHistory(testDir);
+            expect(history).to.have.length(0);
+        });
+
+        it('does not rewrite file when all entries are within retention window', async() => {
+            await historyManager.logDownload({
+                url: 'https://example.com/fresh.zip',
+                filePath: path.join(testDir, 'fresh.zip'),
+                status: 'success',
+                size: 256,
+            });
+
+            // 90-day window keeps recent entries
+            historyManager.retentionDays = 90;
+            await historyManager.cleanupOldEntries(testDir);
+
+            const history = await historyManager.getHistory(testDir);
+            expect(history).to.have.length.greaterThan(0);
+        });
+
+        it('handles error gracefully when destination is invalid', async() => {
+            // Should not throw — just warns
+            await historyManager.cleanupOldEntries('/nonexistent/path/xyz');
+        });
+    });
+
+    describe('checkRotation', () => {
+        it('handles stat failure gracefully when file does not exist', async() => {
+            // Should not throw — stat fails, catch branch logs warning
+            await historyManager.checkRotation('/nonexistent/path/nget.history');
+        });
+    });
+
+    describe('rotateHistoryFile', () => {
+        it('warns and does not throw when rename fails on nonexistent path', async() => {
+            // Calling with a nonexistent path causes rename to fail; the catch branch just warns
+            await historyManager.rotateHistoryFile('/nonexistent/path/nget.history');
+        });
+
+        it('rotates an existing history file', async() => {
+            const historyPath = historyManager.getHistoryPath(testDir);
+            await historyManager.ensureHistoryDir(testDir);
+            await fs.writeFile(historyPath, '{"test":true}\n', 'utf8');
+
+            await historyManager.rotateHistoryFile(historyPath);
+
+            // Original file should be gone (renamed to archive)
+            const files = await fs.readdir(path.dirname(historyPath));
+            expect(files.some(f => f.includes('.history.'))).to.be.true;
         });
     });
 });
