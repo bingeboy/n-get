@@ -6,8 +6,6 @@
 
 // Use Node.js built-in fetch (available in Node 18+)
 import ConfigManager = require('./config/ConfigManager');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { getHttpAgent } = require('./downloader');
 
 // Initialize configuration
 let configManager: InstanceType<typeof ConfigManager> | null;
@@ -110,6 +108,9 @@ async function ngetFetch(url: string, options: FetchOptions = {}): Promise<Fetch
     const requestTimeout: number = timeout ||
         (configManager ? (configManager.get('http.timeout', 30000) as number) : 30000);
 
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), requestTimeout);
+
     // Build fetch options
     const fetchOptions: Record<string, unknown> & { headers: Record<string, string>; method: string } = {
         method: method.toUpperCase(),
@@ -119,8 +120,7 @@ async function ngetFetch(url: string, options: FetchOptions = {}): Promise<Fetch
                 'N-Get-Enterprise/2.0',
             ...headers
         },
-        agent: getHttpAgent ? getHttpAgent(url) : undefined,
-        timeout: requestTimeout
+        signal: controller.signal,
     };
 
     // Add body for non-GET requests
@@ -137,6 +137,7 @@ async function ngetFetch(url: string, options: FetchOptions = {}): Promise<Fetch
 
     try {
         const response = await fetch(url, fetchOptions);
+        clearTimeout(timer);
         const latencyMs = Date.now() - startTime;
 
         // Parse response data
@@ -153,7 +154,6 @@ async function ngetFetch(url: string, options: FetchOptions = {}): Promise<Fetch
             url: response.url,
             ok: response.ok,
             latencyMs,
-            // Additional n-get specific fields
             config: {
                 method: fetchOptions.method,
                 url,
@@ -162,9 +162,9 @@ async function ngetFetch(url: string, options: FetchOptions = {}): Promise<Fetch
             }
         };
     } catch (error: unknown) {
+        clearTimeout(timer);
         const latencyMs = Date.now() - startTime;
         const err = error as Error & { code?: string };
-        // Enhance error with request details
         const baseError = new Error(`Request failed: ${err.message}`);
         const enhancedError = baseError as typeof baseError & Record<string, unknown>;
         enhancedError['code'] = err.code || 'REQUEST_FAILED';

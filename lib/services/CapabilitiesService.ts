@@ -885,7 +885,6 @@ class CapabilitiesService {
     getKeyDependencies(): AnyObj {
         const deps = packageJson.dependencies || {};
         return {
-            'node-fetch': deps['node-fetch'],
             'ssh2': deps['ssh2'],
             'joi': deps['joi'],
             'js-yaml': deps['js-yaml'],

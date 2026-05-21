@@ -5,9 +5,6 @@
  * @module downloader
  */
 
-// node-fetch stays dynamic — ESM package
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const fetch = (...args: [unknown, ...unknown[]]) => import('node-fetch').then(({default: f}) => (f as (...a: unknown[]) => Promise<unknown>)(...args));
 
 import * as fs   from 'node:fs';
 import * as path from 'node:path';
@@ -455,7 +452,6 @@ async function downloadHttpFile(
 
             response = await fetch(url, {
                 headers: rangeHeaders,
-                agent: getHttpAgent(url, agentOptions),
             });
 
             // Validate range response
@@ -468,9 +464,7 @@ async function downloadHttpFile(
             writeStream = fs.createWriteStream(writePath as string, {flags: 'a'});
         } else {
             // New download
-            response = await fetch(url, {
-                agent: getHttpAgent(url, agentOptions),
-            });
+            response = await fetch(url, {});
 
             if (!response.ok) {
                 throw DownloadError.httpError(response.status, response.statusText, url);
