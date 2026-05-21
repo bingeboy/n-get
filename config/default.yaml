@@ -193,8 +193,13 @@ profiles:
 
 # Webhook event forwarding
 webhooks:
-  default: []                 # Array of webhook URLs for all nget runs on this machine
-  secret: ''                  # HMAC-SHA256 signing secret. When set, all webhook POSTs include X-NGet-Signature: sha256=<hex>.
+  default: []                 # Webhook endpoints applied to every nget run on this machine.
+                              # Each entry is a URL string or an object:
+                              #   - url: https://receiver.example.com/hook
+                              #     secret: per-url-hmac-secret   # overrides global secret below
+                              #     headers: { X-Source: nget }   # merged with global headers
+                              #     events: [download_complete, download_error]  # subset filter
+  secret: ''                  # Global HMAC-SHA256 signing secret. Per-URL secret takes precedence when set.
   retry:
     maxAttempts: 3            # Max delivery attempts per webhook POST (1 = no retry)
     backoffMs: [0, 500, 1000] # Delay before each attempt in ms (length must equal maxAttempts)
