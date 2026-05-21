@@ -186,6 +186,11 @@ export class DownloadSession {
         return this._cancelled;
     }
 
+    /** Resolves when all pending status-file writes have completed. */
+    flushStatus(): Promise<void> {
+        return this._writeChain.catch(() => { /* ignore write errors */ });
+    }
+
     // ─── Private ─────────────────────────────────────────────────────────────
 
     private _parseConfigWebhooks(): WebhookConfig[] {

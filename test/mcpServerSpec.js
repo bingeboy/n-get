@@ -23,9 +23,6 @@ const { DownloadSession, ACTIVE_DIR } = require('../lib/core/DownloadSession.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function flushIO() {
-    return new Promise(resolve => setTimeout(resolve, 50));
-}
 
 function cleanSession(id) {
     try { fs.unlinkSync(path.join(ACTIVE_DIR, `${id}.json`)); } catch { /* ok */ }
@@ -99,7 +96,7 @@ describe('MCP server', () => {
             const session = new DownloadSession({ sessionId: id, quietMode: true });
             session.start();
             session.queueDownload('https://example.com/a.bin');
-            await flushIO();
+            await session.flushStatus();
 
             const { client, cleanup } = await connect();
             try {
@@ -120,7 +117,7 @@ describe('MCP server', () => {
             const session = new DownloadSession({ sessionId: id, agentId: 'test-agent', quietMode: true });
             session.start();
             session.queueDownload('https://example.com/b.bin');
-            await flushIO();
+            await session.flushStatus();
 
             const { client, cleanup } = await connect();
             try {
@@ -148,12 +145,12 @@ describe('MCP server', () => {
             const session = new DownloadSession({ sessionId: id, quietMode: true });
             session.start();
             session.queueDownload('https://example.com/c.bin');
-            await flushIO();
+            await session.flushStatus();
             session.updateDownload('https://example.com/c.bin', { status: 'complete' });
             session.queueDownload('https://example.com/d.bin');
-            await flushIO();
+            await session.flushStatus();
             session.updateDownload('https://example.com/d.bin', { status: 'error' });
-            await flushIO();
+            await session.flushStatus();
 
             const { client, cleanup } = await connect();
             try {
@@ -240,8 +237,7 @@ describe('MCP server', () => {
                         session_id: id,
                     },
                 });
-                await flushIO();
-                // Session file should be gone after end()
+                // session.end() drains the write chain before unlinking — no flush needed
                 const exists = fs.existsSync(path.join(ACTIVE_DIR, `${id}.json`));
                 expect(exists).to.equal(false);
             } finally {
@@ -350,7 +346,7 @@ describe('MCP server', () => {
                         session_id: id,
                     },
                 });
-                await flushIO();
+                // session.end() drains the write chain before unlinking — no flush needed
                 const exists = fs.existsSync(path.join(ACTIVE_DIR, `${id}.json`));
                 expect(exists).to.equal(false);
             } finally {
@@ -436,7 +432,7 @@ describe('MCP server', () => {
                 cleanSession(id);
                 const session = new DownloadSession({ sessionId: id, quietMode: true });
                 session.start();
-                await flushIO();
+                await session.flushStatus();
 
                 const { client, cleanup } = await connect();
                 try {
@@ -486,7 +482,7 @@ describe('MCP server', () => {
                 const session = new DownloadSession({ sessionId: id, agentId: 'test-agent', quietMode: true });
                 session.start();
                 session.queueDownload('https://example.com/file.bin');
-                await flushIO();
+                await session.flushStatus();
 
                 const { client, cleanup } = await connect();
                 try {
