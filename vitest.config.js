@@ -16,6 +16,13 @@ module.exports = defineConfig({
     ],
     testTimeout: 15000,
     globals: true,
-    setupFiles: ['test/vitest-setup.js']
+    setupFiles: ['test/vitest-setup.js'],
+    coverage: {
+      provider: 'v8',
+      include: ['lib/**/*.js', 'index.js'],
+      exclude: ['lib/**/*.ts', 'node_modules/**', 'test/**'],
+      reporter: ['text', 'lcov'],
+      reportsDirectory: 'coverage'
+    }
   }
 });
