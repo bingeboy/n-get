@@ -247,7 +247,7 @@ export function createServer() {
             const session = sessions.get(sessionId);
             if (session) {
                 session.cancel();
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await session.flushStatus();
                 return {
                     content: [{
                         type: 'text' as const,

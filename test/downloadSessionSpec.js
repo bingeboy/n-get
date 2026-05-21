@@ -22,11 +22,6 @@ const {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Wait for the async fire-and-forget fs.writeFile to settle. */
-function flushIO() {
-    return new Promise(resolve => setTimeout(resolve, 50));
-}
-
 /** Read the status JSON written by a session (synchronous, after flushIO). */
 function readStatusFile(sessionId) {
     const file = path.join(ACTIVE_DIR, `${sessionId}.json`);
@@ -150,7 +145,7 @@ describe('DownloadSession', () => {
         it('writes a status JSON file to ACTIVE_DIR', async () => {
             const s = makeSession({ sessionId: 'start-writes', quietMode: true });
             s.start();
-            await flushIO();
+            await s.flushStatus();
             const data = readStatusFile('start-writes');
             expect(data.sessionId).to.equal('start-writes');
             expect(data.pid).to.equal(process.pid);
@@ -179,7 +174,7 @@ describe('DownloadSession', () => {
         it('writes version to the status file on disk', async () => {
             const s = makeSession({ sessionId: 'start-version-file', quietMode: true });
             s.start();
-            await flushIO();
+            await s.flushStatus();
             const data = readStatusFile('start-version-file');
             expect(data.version).to.equal(EXPECTED_VERSION);
             await s.end();
@@ -225,7 +220,7 @@ describe('DownloadSession', () => {
         it('removes the status file', async () => {
             const s = makeSession({ sessionId: 'end-removes', quietMode: true });
             s.start();
-            await flushIO();
+            await s.flushStatus();
             expect(fs.existsSync(path.join(ACTIVE_DIR, 'end-removes.json'))).to.be.true;
             await s.end();
             expect(fs.existsSync(path.join(ACTIVE_DIR, 'end-removes.json'))).to.be.false;
@@ -234,7 +229,7 @@ describe('DownloadSession', () => {
         it('does not throw when the status file is already gone', async () => {
             const s = makeSession({ sessionId: 'end-idempotent', quietMode: true });
             s.start();
-            await flushIO();
+            await s.flushStatus();
             cleanFile('end-idempotent');
             try { await s.end(); } catch (e) { expect.fail('should not throw: ' + e.message); }
         });
@@ -273,7 +268,7 @@ describe('DownloadSession', () => {
             const s = makeSession({ sessionId: 'queue-test', quietMode: true });
             s.start();
             s.queueDownload('https://example.com/file.zip');
-            await flushIO();
+            await s.flushStatus();
             const data = readStatusFile('queue-test');
             expect(data.downloads['https://example.com/file.zip']).to.exist;
             expect(data.downloads['https://example.com/file.zip'].status).to.equal('queued');
@@ -285,7 +280,7 @@ describe('DownloadSession', () => {
             s.start();
             s.queueDownload('https://example.com/a.txt');
             s.queueDownload('https://example.com/b.txt');
-            await flushIO();
+            await s.flushStatus();
             const data = readStatusFile('queue-flush');
             expect(Object.keys(data.downloads)).to.have.length(2);
             await s.end();
@@ -317,9 +312,9 @@ describe('DownloadSession', () => {
             const s = makeSession({ sessionId: 'update-merge', quietMode: true });
             s.start();
             s.queueDownload('https://example.com/f.zip');
-            await flushIO();
+            await s.flushStatus();
             s.updateDownload('https://example.com/f.zip', { status: 'active', bytes_received: 512 });
-            await flushIO();
+            await s.flushStatus();
             const data = readStatusFile('update-merge');
             const entry = data.downloads['https://example.com/f.zip'];
             expect(entry.status).to.equal('active');
@@ -331,7 +326,7 @@ describe('DownloadSession', () => {
             const s = makeSession({ sessionId: 'update-create', quietMode: true });
             s.start();
             s.updateDownload('https://example.com/new.zip', { status: 'active' });
-            await flushIO();
+            await s.flushStatus();
             const data = readStatusFile('update-create');
             expect(data.downloads['https://example.com/new.zip']).to.exist;
             expect(data.downloads['https://example.com/new.zip'].status).to.equal('active');
@@ -342,13 +337,13 @@ describe('DownloadSession', () => {
             const s = makeSession({ sessionId: 'update-ts', quietMode: true });
             s.start();
             s.queueDownload('https://example.com/ts.zip');
-            await flushIO();
+            await s.flushStatus();
             const before = readStatusFile('update-ts').downloads['https://example.com/ts.zip'].updatedAt;
 
             await new Promise(r => setTimeout(r, 5));
 
             s.updateDownload('https://example.com/ts.zip', { status: 'active' });
-            await flushIO();
+            await s.flushStatus();
             const after = readStatusFile('update-ts').downloads['https://example.com/ts.zip'].updatedAt;
 
             expect(after).to.not.equal(before);
@@ -368,7 +363,7 @@ describe('DownloadSession', () => {
                 size:  2048,
                 speed: 1024,
             });
-            await flushIO();
+            await s.flushStatus();
             const data  = readStatusFile('complete-test');
             const entry = data.downloads['https://example.com/done.zip'];
             expect(entry.status).to.equal('complete');
@@ -382,7 +377,7 @@ describe('DownloadSession', () => {
             const s = makeSession({ sessionId: 'complete-no-queue', quietMode: true });
             s.start();
             s.completeDownload('https://example.com/direct.zip', { path: '/tmp/direct.zip', size: 100 });
-            await flushIO();
+            await s.flushStatus();
             const data = readStatusFile('complete-no-queue');
             expect(data.downloads['https://example.com/direct.zip'].status).to.equal('complete');
             await s.end();
@@ -397,7 +392,7 @@ describe('DownloadSession', () => {
             s.start();
             const err = new Error('Connection refused');
             s.failDownload('https://example.com/bad.zip', err);
-            await flushIO();
+            await s.flushStatus();
             const data  = readStatusFile('fail-test');
             const entry = data.downloads['https://example.com/bad.zip'];
             expect(entry.status).to.equal('error');
@@ -411,7 +406,7 @@ describe('DownloadSession', () => {
             s.start();
             const err = Object.assign(new Error('ECONNREFUSED'), { code: 'ECONNREFUSED' });
             s.failDownload('https://example.com/coded.zip', err);
-            await flushIO();
+            await s.flushStatus();
             const data  = readStatusFile('fail-code');
             const entry = data.downloads['https://example.com/coded.zip'];
             expect(entry.code).to.equal('ECONNREFUSED');
@@ -426,7 +421,7 @@ describe('DownloadSession', () => {
             const s = makeSession({ sessionId: 'flush-before-start', quietMode: true });
             // updateDownload internally calls _flushStatus but _active is false
             s.updateDownload('https://example.com/x.zip', { status: 'active' });
-            await flushIO();
+            await s.flushStatus();
             expect(fs.existsSync(path.join(ACTIVE_DIR, 'flush-before-start.json'))).to.be.false;
         });
 
@@ -436,7 +431,7 @@ describe('DownloadSession', () => {
             await s.end();
             // update after end — _active is false
             s.updateDownload('https://example.com/y.zip', { status: 'active' });
-            await flushIO();
+            await s.flushStatus();
             // File should have been deleted by end() and not re-created
             expect(fs.existsSync(path.join(ACTIVE_DIR, 'flush-after-end.json'))).to.be.false;
         });
@@ -455,7 +450,7 @@ describe('DownloadSession', () => {
         it('returns parsed sessions for running sessions', async () => {
             const s = makeSession({ sessionId: 'read-sess-1', quietMode: true });
             s.start();
-            await flushIO();
+            await s.flushStatus();
             const sessions = readActiveSessions();
             const found = sessions.find(s => s.sessionId === 'read-sess-1');
             expect(found).to.exist;
@@ -468,7 +463,7 @@ describe('DownloadSession', () => {
             const s2 = makeSession({ sessionId: 'read-multi-2', quietMode: true });
             s1.start();
             s2.start();
-            await flushIO();
+            await Promise.all([s1.flushStatus(), s2.flushStatus()]);
             const sessions = readActiveSessions();
             const ids = sessions.map(s => s.sessionId);
             expect(ids).to.include('read-multi-1');
@@ -486,7 +481,7 @@ describe('DownloadSession', () => {
 
             const s = makeSession({ sessionId: 'read-valid-alongside', quietMode: true });
             s.start();
-            await flushIO();
+            await s.flushStatus();
 
             const sessions = readActiveSessions();
             const ids = sessions.map(s => s.sessionId);
@@ -507,7 +502,7 @@ describe('DownloadSession', () => {
         it('keeps files whose PID is the current (live) process', async () => {
             const s = makeSession({ sessionId: 'prune-keep', quietMode: true });
             s.start();
-            await flushIO();
+            await s.flushStatus();
             pruneDeadSessions();
             expect(fs.existsSync(path.join(ACTIVE_DIR, 'prune-keep.json'))).to.be.true;
             await s.end();

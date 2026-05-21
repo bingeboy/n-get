@@ -137,6 +137,7 @@ export class DownloadSession {
         await this._writeChain.catch(() => { /* ignore write errors */ });
         try { fs.unlinkSync(this._statusFile); } catch { /* already gone */ }
         this.emitter.sessionEnd(summary);
+        await this.emitter.flush();
         try { await this.logger.shutdown(); } catch { /* non-fatal */ }
     }
 

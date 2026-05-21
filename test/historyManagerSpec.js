@@ -156,12 +156,14 @@ describe('HistoryManager', () => {
                     status: 'success',
                     size: 1024,
                     duration: 2000,
+                    timestamp: '2026-01-01T00:00:02.000Z',
                 },
                 {
                     url: 'https://example.com/file2.pdf',
                     filePath: path.join(testDir, 'file2.pdf'),
                     status: 'failed',
                     error: 'Connection timeout',
+                    timestamp: '2026-01-01T00:00:01.000Z',
                 },
                 {
                     url: 'https://test.com/document.doc',
@@ -169,13 +171,12 @@ describe('HistoryManager', () => {
                     status: 'success',
                     size: 2048,
                     duration: 3000,
+                    timestamp: '2026-01-01T00:00:00.000Z',
                 },
             ];
 
             for (const entry of entries) {
                 await historyManager.logDownload(entry);
-                // Small delay to ensure different timestamps
-                await new Promise(resolve => setTimeout(resolve, 10));
             }
         });
 

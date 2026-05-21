@@ -122,7 +122,7 @@ class HistoryManager {
             await this.ensureHistoryDir(destination);
 
             const historyEntry: HistoryEntry = {
-                timestamp: new Date().toISOString(),
+                timestamp: (entry as { timestamp?: string }).timestamp ?? new Date().toISOString(),
                 url: this.sanitizeUrl(entry.url),
                 filePath: entry.filePath,
                 status: entry.status,
