@@ -90,18 +90,19 @@ describe('HistoryCommands CLI', () => {
                     status: 'success',
                     size: 1024,
                     duration: 2000,
+                    timestamp: '2026-01-01T00:00:01.000Z',
                 },
                 {
                     url: 'https://example.com/file2.pdf',
                     filePath: path.join(testDir, 'file2.pdf'),
                     status: 'failed',
                     error: 'HTTP 404 Not Found',
+                    timestamp: '2026-01-01T00:00:00.000Z',
                 },
             ];
 
             for (const entry of entries) {
                 await historyManager.logDownload(entry);
-                await new Promise(resolve => setTimeout(resolve, 10));
             }
         });
 

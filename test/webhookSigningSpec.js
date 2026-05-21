@@ -73,7 +73,7 @@ describe('Webhook HMAC signing', () => {
             });
 
             emitter.emit('info', { message: 'signed event' });
-            await new Promise(r => setTimeout(r, 300));
+            await emitter.flush();
         } finally {
             stdout.restore();
         }
@@ -104,7 +104,7 @@ describe('Webhook HMAC signing', () => {
             });
 
             emitter.emit('download_complete', { url: 'http://example.com/file.zip' });
-            await new Promise(r => setTimeout(r, 300));
+            await emitter.flush();
         } finally {
             stdout.restore();
         }
@@ -132,7 +132,7 @@ describe('Webhook HMAC signing', () => {
             });
 
             emitter.emit('info', { message: 'unsigned event' });
-            await new Promise(r => setTimeout(r, 300));
+            await emitter.flush();
         } finally {
             stdout.restore();
         }
@@ -155,7 +155,7 @@ describe('Webhook HMAC signing', () => {
             });
 
             emitter.emit('info', { message: 'also unsigned' });
-            await new Promise(r => setTimeout(r, 300));
+            await emitter.flush();
         } finally {
             stdout.restore();
         }
