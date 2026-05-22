@@ -173,6 +173,10 @@ function getUniqueFilename(originalPath: string): string {
 // Note: bytesToSize function moved to ui.js module
 
 // Create a progress tracking transform stream with resume support
+interface ProgressTracker extends Transform {
+    getBytesDownloaded(): number;
+}
+
 function createProgressTracker(
     progressBar: unknown,
     fileSize: number,
@@ -180,7 +184,7 @@ function createProgressTracker(
     configManager: unknown = null,
     emitter: unknown = null,
     url: string = '',
-): Transform {
+): ProgressTracker {
     let downloaded = startByte; // Start from resume position
     let chunkCount = 0;
     let lastUpdate = Date.now();
@@ -193,7 +197,7 @@ function createProgressTracker(
     const chunkSize = cm ?
         cm.get('downloads.chunkSize', 50) as number : 50;
 
-    return new Transform({
+    const tracker = new Transform({
         transform(chunk, encoding, callback) {
             downloaded += chunk.length;
             chunkCount++;
@@ -220,7 +224,10 @@ function createProgressTracker(
 
             callback(null, chunk);
         },
-    });
+    }) as ProgressTracker;
+
+    tracker.getBytesDownloaded = () => downloaded;
+    return tracker;
 }
 
 // Determine protocol and delegate to appropriate downloader
@@ -531,9 +538,8 @@ async function downloadHttpFile(
         const diff = process.hrtime(startTime);
         const durationMs = (diff[0] * 1e9 + diff[1]) / 1e6;
         const durationSeconds = durationMs / 1000;
-        // Use actual bytes written for chunked responses where Content-Length is absent
-        const actualBytes = (writeStream as fs.WriteStream).bytesWritten ?? totalSize;
-        const downloadedBytes = actualBytes > 0 ? actualBytes : (isResume ? remainingSize : totalSize);
+        // getBytesDownloaded() is authoritative for chunked responses where Content-Length is absent
+        const downloadedBytes = progressTracker.getBytesDownloaded() || (writeStream as fs.WriteStream).bytesWritten || totalSize;
         const speed = downloadedBytes > 0 ? downloadedBytes / durationSeconds : 0;
 
         // Display completion with metrics (not in quiet mode)
@@ -552,7 +558,7 @@ async function downloadHttpFile(
             try {
                 finalizedMetadata = await metadataService.finalizeMetadata(enhancedMetadata, {
                     success: true,
-                    actualSize: totalSize,
+                    actualSize: downloadedBytes,
                     resumed: isResume,
                     resumeFromByte: startByte
                 });
