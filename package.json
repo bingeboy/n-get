@@ -1,6 +1,6 @@
 {
   "name": "n-get",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "homepage": "https://n-get.design-87b.workers.dev/",
   "description": "Observable downloads for AI agents. NDJSON event stream, MCP server, OpenAPI spec, session visibility, HTTP + SFTP with resume.",
   "repository": {
