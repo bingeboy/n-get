@@ -57,7 +57,7 @@ class OutputFormatterService {
             _schema: {
                 version: '1.0.0',
                 format: format,
-                spec: 'https://docs.nget.dev/schemas/download-response'
+                spec: 'https://github.com/bingeboy/n-get'
             }
         };
 

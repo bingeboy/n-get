@@ -106,7 +106,7 @@ This API is optimized for AI agent integration with features including:
             contact: {
                 name: 'N-Get Support',
                 url: packageJson.homepage || 'https://github.com/bingeboy/n-get',
-                email: 'support@nget.dev'
+                email: 'design@jpmcgarrity.com'
             },
             license: {
                 name: packageJson.license || 'MIT',
