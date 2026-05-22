@@ -49,6 +49,7 @@ const argv = minimist(process.argv.slice(2), {
         'metadata', 'checksums', 'no-checksums',
         'capabilities', 'openapi-spec', 'agent-card',
         'human',    // human-readable output (progress bars + banners)
+        'raw',      // fetch: output response body only, no NDJSON envelope
     ],
     string: [
         'd', 'destination', 'ssh-key', 'ssh-password', 'ssh-passphrase',
@@ -380,6 +381,7 @@ async function main(): Promise<void> {
                 }
             }
 
+            const rawMode = !!(argv.raw);
             const fetchSessionId = (argv['session-id'] as string) || `fetch_${Date.now()}`;
             const fetchEmitter = new EventSink({
                 sessionId: fetchSessionId,
@@ -387,37 +389,46 @@ async function main(): Promise<void> {
                 webhooks: parseWebhookConfig(),
             });
 
-            fetchEmitter.fetchStart(fetchUrl, method, data !== undefined);
+            if (!rawMode) fetchEmitter.fetchStart(fetchUrl, method, data !== undefined);
 
             ngetFetch(fetchUrl, { method, body: data, headers, agentId: argv['agent-id'] })
                 .then(async (resp: { ok: boolean; status: number; statusText: string; data: unknown; headers: Record<string, string>; url: string; latencyMs: number }) => {
                     const contentType = resp.headers['content-type'] ?? null;
-                    fetchEmitter.fetchComplete(fetchUrl, method, resp.status, resp.statusText, resp.latencyMs, contentType);
-                    console.log(JSON.stringify({
-                        ok: resp.ok,
-                        status: resp.status,
-                        statusText: resp.statusText,
-                        data: resp.data,
-                        headers: resp.headers,
-                        url: resp.url,
-                        latencyMs: resp.latencyMs,
-                        agentId: (argv['agent-id'] as string) || null
-                    }));
-                    await fetchEmitter.flush();
+                    if (rawMode) {
+                        const out = typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data);
+                        console.log(out);
+                    } else {
+                        fetchEmitter.fetchComplete(fetchUrl, method, resp.status, resp.statusText, resp.latencyMs, contentType);
+                        console.log(JSON.stringify({
+                            ok: resp.ok,
+                            status: resp.status,
+                            statusText: resp.statusText,
+                            data: resp.data,
+                            headers: resp.headers,
+                            url: resp.url,
+                            latencyMs: resp.latencyMs,
+                            agentId: (argv['agent-id'] as string) || null
+                        }));
+                        await fetchEmitter.flush();
+                    }
                     process.exit(resp.ok ? 0 : 1);
                 })
                 .catch(async (err: Error & { code?: string; latencyMs?: number }) => {
-                    fetchEmitter.fetchError(fetchUrl, method, err.message, err.latencyMs ?? null);
-                    console.log(JSON.stringify({
-                        ok: false,
-                        status: 0,
-                        error: err.message,
-                        code: err.code,
-                        url: fetchUrl,
-                        latencyMs: err.latencyMs ?? null,
-                        agentId: (argv['agent-id'] as string) || null
-                    }));
-                    await fetchEmitter.flush();
+                    if (rawMode) {
+                        process.stderr.write(`error: ${err.message}\n`);
+                    } else {
+                        fetchEmitter.fetchError(fetchUrl, method, err.message, err.latencyMs ?? null);
+                        console.log(JSON.stringify({
+                            ok: false,
+                            status: 0,
+                            error: err.message,
+                            code: err.code,
+                            url: fetchUrl,
+                            latencyMs: err.latencyMs ?? null,
+                            agentId: (argv['agent-id'] as string) || null
+                        }));
+                        await fetchEmitter.flush();
+                    }
                     process.exit(1);
                 });
             return;
