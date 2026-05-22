@@ -1,19 +1,5 @@
 # n-get Feature Pipeline
 
-## In Progress
-
-### Coverage — close the gaps
-**Baseline:** 51% statements (post DownloadError). Target: 80%+.
-
-| Module | Coverage | Priority |
-|---|---|---|
-| `server.js` (MCP) | 61% | High — agents hit this directly |
-| `ChecksumWorker.js` | 0% | Medium — worker thread harness needed |
-| `OutputFormatterService.js` | 14% | Low |
-| `Logger.js` | 65% | Low |
-
----
-
 ## Queued
 
 ### OAuth for A2A
@@ -30,11 +16,13 @@ PR webhook → Cloudflare Worker → n-get A2A → diff review via `fetch_http` 
 
 ---
 
-## Shipped (≤ 2.1.0)
+## Shipped (≤ 2.2.0)
 
+- Coverage tooling + service layer at 90% (SecurityService 96%, OpenAPIService 100%, HistoryManager 90%, MetadataService 89%, Logger 87%) — 947 unit tests
+- 5 new MCP tools: `cancel_session`, `get_session`, `set_profile`, `get_history`, `get_instructions` — 11 tools total
 - HMAC webhook signing (`--webhook-secret`, per-URL secrets, config wiring)
 - A2A 1.0 agent card (`--agent-card`, `get_agent_card` MCP tool)
-- `fetch_http` MCP tool (11th tool)
+- `fetch_http` MCP tool
 - Webhook retry configurable (`webhooks.retry.maxAttempts` / `backoffMs`)
 - Repeatable `--header` flag
 - Event-driven tests — all arbitrary `setTimeout`-as-sleep eliminated
