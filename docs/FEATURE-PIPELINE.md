@@ -8,9 +8,6 @@ Add OAuth 2.0 bearer token support to the A2A agent card so orchestrators can au
 ### Auto-help from CapabilitiesService
 `nget --help` generated from the same source as `--capabilities` so help text never drifts from actual capabilities. Eliminates the hand-maintained flag descriptions in `index.ts`.
 
-### TypeScript migration — remaining .js-only files
-`lib/ui.js`, `lib/sftpManager.js`, `lib/downloader.js`, `lib/recursiveCrawler.js` still have no `.ts` source. Migrate in-place (no logic changes).
-
 ### Internal review agent (non-public)
 PR webhook → Cloudflare Worker → n-get A2A → diff review via `fetch_http` → GitHub comment. Dogfoods the full stack. Design: generic webhook payload, not GitHub-specific, so it ports to any git host.
 
@@ -20,6 +17,7 @@ PR webhook → Cloudflare Worker → n-get A2A → diff review via `fetch_http` 
 
 - Coverage tooling + service layer at 90% (SecurityService 96%, OpenAPIService 100%, HistoryManager 90%, MetadataService 89%, Logger 87%) — 947 unit tests
 - 5 new MCP tools: `cancel_session`, `get_session`, `set_profile`, `get_history`, `get_instructions` — 11 tools total
+- TypeScript migration complete — all modules have `.ts` source
 - HMAC webhook signing (`--webhook-secret`, per-URL secrets, config wiring)
 - A2A 1.0 agent card (`--agent-card`, `get_agent_card` MCP tool)
 - `fetch_http` MCP tool
