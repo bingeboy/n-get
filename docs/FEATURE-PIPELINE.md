@@ -33,6 +33,5 @@ PR webhook → Cloudflare Worker → n-get A2A → diff review via `fetch_http` 
 
 ## Notes
 
-- Bug tracker: `http://100.84.91.125:8787`
 - GitHub Issues go public once repo goes public
 - Review agent is internal/non-public until the git-host portability story is solid
