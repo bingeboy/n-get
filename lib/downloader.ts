@@ -13,7 +13,6 @@ import { promisify } from 'node:util';
 import { Transform } from 'node:stream';
 import * as http  from 'node:http';
 import * as https from 'node:https';
-import 'colors';
 
 const streamPipeline = promisify(pipeline);
 
