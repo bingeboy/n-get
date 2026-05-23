@@ -1,0 +1,6 @@
+#!/bin/sh
+branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+if [ "$branch" = "master" ]; then
+  echo "blocked: direct commits to master are not allowed. branch first."
+  exit 1
+fi
