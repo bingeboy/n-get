@@ -8,6 +8,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {Transform} from 'node:stream';
 
+interface ProgressBar {
+    update(value: number, payload?: Record<string, unknown>): void;
+    stop(): void;
+}
+
 import SftpClient = require('ssh2-sftp-client');
 import ui = require('./ui');
 import DownloadError from './errors/DownloadError';
@@ -314,7 +319,7 @@ class SftpManager {
     /**
      * Create progress tracking transform for SFTP
      */
-    createSftpProgressTracker(progressBar: import('cli-progress').SingleBar | null, totalSize: number, startByte: number = 0): Transform {
+    createSftpProgressTracker(progressBar: ProgressBar | null, totalSize: number, startByte: number = 0): Transform {
         let downloaded = startByte;
         let lastUpdate = Date.now();
         let chunkCount = 0;
@@ -412,7 +417,7 @@ class SftpManager {
             }
 
             // Create progress bar for large files (not in stdout mode)
-            let progressBar: import('cli-progress').SingleBar | null = null;
+            let progressBar: ProgressBar | null = null;
             if (!quietMode && !stdoutMode && totalSize > 1024) {
                 progressBar = ui.createProgressBar(config.filename, totalSize);
                 if (isResume) {
