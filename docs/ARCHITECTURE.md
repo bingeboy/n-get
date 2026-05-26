@@ -283,8 +283,7 @@ n-get/
 │   │   ├── OutputFormatterService.js ← Batch result formatting (pending migration)
 │   │   ├── CapabilitiesService.js  ← --capabilities flag output (pending migration)
 │   │   ├── OpenAPIService.js       ← --openapi-spec flag output (pending migration)
-│   │   ├── HistoryManager.ts       ← ~/.nget/nget.history JSONL
-│   │   └── ResilientDownloadService.js ← Retry/backoff logic (pending migration)
+│   │   └── HistoryManager.ts       ← ~/.nget/nget.history JSONL
 │   ├── errors/
 │   │   └── DownloadError.ts        ← Structured error with codes, severity, recovery actions
 │   ├── downloadPipeline.ts         ← Core download orchestration (HTTP + SFTP)
@@ -423,8 +422,7 @@ These modules have no tests yet:
 The following files are still `.js` — pending migration in order of dependency:
 
 1. `lib/services/MetadataService.js`
-2. `lib/services/ResilientDownloadService.js`
-3. `lib/services/OutputFormatterService.js`
+2. `lib/services/OutputFormatterService.js`
 4. `lib/services/CapabilitiesService.js`
 5. `lib/services/OpenAPIService.js`
 6. `lib/resumeManager.js`
