@@ -22,11 +22,11 @@ function fail(msg, hint) {
     process.exit(1);
 }
 
-// 1. Must be on master
+// 1. Must be on master or a release branch
 const branch = run('git branch --show-current');
-if (branch !== 'master') {
-    fail(`Must release from master (currently on "${branch}")`,
-         'Run: git checkout master');
+if (branch !== 'master' && !branch.startsWith('release/')) {
+    fail(`Must release from master or a release/* branch (currently on "${branch}")`,
+         'Run: git checkout -b release/x.y.z master');
 }
 
 // 2. Working tree must be clean
