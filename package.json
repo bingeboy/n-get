@@ -45,9 +45,9 @@
   "author": "bingeboy",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "joi": "^18.2.1",
-    "js-yaml": "^4.1.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "joi": "^18.2.3",
+    "js-yaml": "^4.3.1",
     "minimist": "^1.2.8",
     "ssh2": "^1.17.0",
     "ssh2-sftp-client": "^12.1.1"
@@ -58,11 +58,11 @@
     "nget-mcp": "./lib/mcp/server.js"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
+    "@types/node": "^25.9.5",
     "@types/ssh2-sftp-client": "^9.0.6",
-    "@vitest/coverage-v8": "^4.1.7",
-    "eslint": "^9.39.4",
+    "@vitest/coverage-v8": "^4.1.10",
+    "eslint": "^9.39.5",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.10"
   }
 }
