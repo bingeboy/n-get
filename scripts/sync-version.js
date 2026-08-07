@@ -25,7 +25,7 @@ const targets = [
 ];
 
 for (const { file, pattern } of targets) {
-    if (!fs.existsSync(file)) continue;
+    if (!fs.existsSync(file)) {continue;}
     const original = fs.readFileSync(file, 'utf8');
     const updated  = original.replace(pattern, (match) => {
         // Preserve leading 'v' or lack thereof

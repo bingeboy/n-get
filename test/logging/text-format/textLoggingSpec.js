@@ -49,7 +49,7 @@ describe('Text Logging Format Environment Variable', () => {
         if (tempLogDir && fs.existsSync(tempLogDir)) {
             try {
                 fs.rmSync(tempLogDir, {recursive: true, force: true});
-            } catch (error) {
+            } catch {
                 // Ignore cleanup errors
             }
         }
@@ -58,7 +58,7 @@ describe('Text Logging Format Environment Variable', () => {
         if (logger && typeof logger.shutdown === 'function') {
             try {
                 logger.shutdown();
-            } catch (error) {
+            } catch {
                 // Ignore cleanup errors
             }
         }
@@ -334,7 +334,7 @@ describe('Text Logging Format Environment Variable', () => {
             
             expect(lines).to.have.length(3);
             
-            lines.forEach((line, index) => {
+            lines.forEach((line) => {
                 expect(line).to.match(/^\[.*\] INFO: Download/);
                 expect(line).to.include('file1.zip');
             });
@@ -379,7 +379,7 @@ describe('Text Logging Format Environment Variable', () => {
             expect(consoleOutput).to.have.length(3);
             
             // All should be in human-readable text format
-            consoleOutput.forEach((output, index) => {
+            consoleOutput.forEach((output) => {
                 expect(output).to.match(/^\[.*\] INFO: /);
                 expect(() => JSON.parse(output)).to.throw();
             });

@@ -11,7 +11,6 @@ const EXPECTED_VERSION = require('../package.json').version;
 
 const fs   = require('node:fs');
 const path = require('node:path');
-const os   = require('node:os');
 
 const {
     DownloadSession,
@@ -112,9 +111,9 @@ describe('DownloadSession', () => {
         it('accepts a configManager and uses it to configure services', () => {
             const configManager = {
                 get: (key, def) => {
-                    if (key === 'logging')  return { level: 'debug', format: 'json', outputs: ['console'] };
-                    if (key === 'security') return {};
-                    if (key === 'security.enableIntegrityChecks') return true;
+                    if (key === 'logging')  {return { level: 'debug', format: 'json', outputs: ['console'] };}
+                    if (key === 'security') {return {};}
+                    if (key === 'security.enableIntegrityChecks') {return true;}
                     return def;
                 },
                 getConfig: () => ({}),

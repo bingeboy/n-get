@@ -43,7 +43,7 @@ describe('ConfigManager', () => {
                 if (config && typeof config.cleanup === 'function') {
                     return Promise.resolve(config.cleanup());
                 }
-            } catch (error) {
+            } catch {
                 // Ignore cleanup errors
                 return Promise.resolve();
             }
@@ -52,7 +52,7 @@ describe('ConfigManager', () => {
 
         try {
             await Promise.all(cleanupPromises);
-        } catch (_) {
+        } catch {
             // Even if cleanup fails, continue with test cleanup
         }
 
@@ -531,7 +531,7 @@ describe('ConfigManager', () => {
                 try {
                     await config.applyProfile('invalid');
                     expect.fail('Should have thrown an error');
-                } catch (error) {
+                } catch {
                     // Configuration should be rolled back
                     expect(config.get('http.timeout')).to.equal(originalTimeout);
                 }
@@ -773,7 +773,7 @@ describe('ConfigManager', () => {
             // Trigger a validation error
             try {
                 config.set('http.timeout', -1000);
-            } catch (error) {
+            } catch {
                 // Expected error
             }
             

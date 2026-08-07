@@ -47,7 +47,7 @@ describe('CSV Logging Format Environment Variable', () => {
         if (tempLogDir && fs.existsSync(tempLogDir)) {
             try {
                 fs.rmSync(tempLogDir, {recursive: true, force: true});
-            } catch (error) {
+            } catch {
                 // Ignore cleanup errors
             }
         }
@@ -56,7 +56,7 @@ describe('CSV Logging Format Environment Variable', () => {
         if (logger && typeof logger.shutdown === 'function') {
             try {
                 logger.shutdown();
-            } catch (error) {
+            } catch {
                 // Ignore cleanup errors
             }
         }

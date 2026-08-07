@@ -160,7 +160,7 @@ describe('nget fetch --webhook event emission', () => {
 
         try {
             // Use a URL that will definitely fail (nothing listening on port 1)
-            const result = await runNget([
+            await runNget([
                 'fetch', 'http://127.0.0.1:1',
                 '--webhook', `http://127.0.0.1:${port}/events`,
             ], 15000);

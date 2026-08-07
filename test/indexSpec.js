@@ -136,7 +136,7 @@ describe('Main CLI Application', () => {
             // Check that file exists with custom name
             try {
                 await fs.access(customFilePath);
-            } catch (error) {
+            } catch {
                 // Check if file was created with URL-extracted name instead (bug behavior)
                 const urlExtractedPath = path.join(testDir, 'uuid');
                 try {
@@ -166,7 +166,7 @@ describe('Main CLI Application', () => {
             // Check that file exists with custom name
             try {
                 await fs.access(customFilePath);
-            } catch (error) {
+            } catch {
                 // Check if file was created with URL-extracted name instead (bug behavior)
                 const urlExtractedPath = path.join(testDir, 'json');
                 try {

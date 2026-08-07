@@ -501,7 +501,7 @@ describe('ConfigCommands CLI', () => {
             configCommands.configManager = null; // Reset cached instance
             const originalInit = configCommands.initializeConfigManager;
             
-            configCommands.initializeConfigManager = (options) => {
+            configCommands.initializeConfigManager = (_options) => {
                 const ConfigManager = require('../lib/config/ConfigManager');
                 return new ConfigManager({
                     environment: 'development',

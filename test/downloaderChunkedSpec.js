@@ -35,7 +35,7 @@ beforeAll(() => new Promise((resolve) => {
 
 afterAll(() => new Promise((resolve) => {
     // Windows may hold a brief lock on the downloaded file; ignore cleanup errors
-    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
     server.close(resolve);
 }));
 
