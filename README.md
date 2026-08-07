@@ -12,7 +12,7 @@ Downloads that agents can actually see. Structured NDJSON events, concurrent, re
 npm install -g n-get
 ```
 
-Requires Node.js >= 18.0.0.
+Requires Node.js >= 22.0.0.
 
 ## Quick start
 

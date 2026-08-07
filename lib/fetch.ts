@@ -4,7 +4,7 @@
  * @module fetch
  */
 
-// Use Node.js built-in fetch (available in Node 18+)
+// Use Node.js built-in fetch (stable since Node 21; baseline is Node 22+)
 import ConfigManager = require('./config/ConfigManager');
 
 // Initialize configuration
