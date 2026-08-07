@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  schedule:
+    # Weekly, so new advisories surface without waiting for a PR.
+    - cron: '0 6 * * 1'
+
+# Cancel superseded runs on the same branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (node ${{ matrix.node }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Matches engines.node (>=22.0.0). Node 20 is EOL as of 2026-04-30.
+        node: ['22', '24']
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # Unit suite only. vitest.config.js excludes the network-dependent
+      # specs (indexSpec, fetchSpec, pipeSpec, recursivePipeSpec, stdoutSpec,
+      # webhookSpec, downloadSpec) — those need a live network and are run
+      # explicitly, not in CI.
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # Compiled .js sits next to its .ts (outDir: ".") and is committed, so a
+      # stale build is invisible until something breaks. Fail if a fresh build
+      # does not match what is checked in. Linux only — CRLF normalisation on
+      # Windows produces false diffs.
+      - name: Verify committed build output is current
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          if ! git diff --exit-code; then
+            echo "::error::Committed build output is stale. Run 'npm run build' and commit the result."
+            exit 1
+          fi
+
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # Fails on high/critical only. Moderate and low are reported by the
+      # step output without blocking unrelated work.
+      - name: Audit (high and above)
+        run: npm audit --audit-level=high
