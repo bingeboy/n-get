@@ -1,9 +1,10 @@
-const nget = require('../index.js');
+// The library entry (package.json "main"), not ../index.js — that is the CLI
+// entry, which runs the program on require rather than exporting an API.
+const nget = require('../lib/index.js');
 
 describe('N-Get Fetch API', () => {
     describe('Basic functionality', () => {
         it('should fetch JSON data and parse it automatically', async function() {
-            this.timeout(10000);
             
             const response = await nget.fetch('https://httpbin.org/json');
             
@@ -24,7 +25,6 @@ describe('N-Get Fetch API', () => {
         });
 
         it('should fetch plain text content', async function() {
-            this.timeout(10000);
             
             const response = await nget.fetch('https://httpbin.org/robots.txt');
             
@@ -36,7 +36,6 @@ describe('N-Get Fetch API', () => {
         });
 
         it('should handle different HTTP status codes', async function() {
-            this.timeout(10000);
             
             const response = await nget.fetch('https://httpbin.org/status/404');
             
@@ -48,7 +47,6 @@ describe('N-Get Fetch API', () => {
 
     describe('HTTP methods', () => {
         it('should support POST requests with JSON data', async function() {
-            this.timeout(10000);
             
             const postData = { name: 'test', value: 123 };
             const response = await nget.fetch('https://httpbin.org/post', {
@@ -63,7 +61,6 @@ describe('N-Get Fetch API', () => {
         });
 
         it('should support PUT requests', async function() {
-            this.timeout(10000);
             
             const putData = { name: 'updated', value: 456 };
             const response = await nget.fetch('https://httpbin.org/put', {
@@ -77,7 +74,6 @@ describe('N-Get Fetch API', () => {
         });
 
         it('should support DELETE requests', async function() {
-            this.timeout(10000);
             
             const response = await nget.fetch('https://httpbin.org/delete', {
                 method: 'DELETE'
@@ -91,7 +87,6 @@ describe('N-Get Fetch API', () => {
 
     describe('Request options', () => {
         it('should support custom headers', async function() {
-            this.timeout(10000);
             
             const customHeaders = {
                 'X-Custom-Header': 'test-value',
@@ -108,7 +103,6 @@ describe('N-Get Fetch API', () => {
         });
 
         it('should support string body content', async function() {
-            this.timeout(10000);
             
             const textData = 'This is plain text data';
             const response = await nget.fetch('https://httpbin.org/post', {
@@ -126,7 +120,6 @@ describe('N-Get Fetch API', () => {
 
     describe('Error handling', () => {
         it('should throw meaningful errors for invalid URLs', async function() {
-            this.timeout(10000);
             
             try {
                 await nget.fetch('https://this-domain-definitely-does-not-exist-12345.com');
@@ -140,7 +133,6 @@ describe('N-Get Fetch API', () => {
         });
 
         it('should handle network timeouts', async function() {
-            this.timeout(10000);
             
             try {
                 await nget.fetch('https://httpbin.org/delay/5', {
@@ -155,7 +147,6 @@ describe('N-Get Fetch API', () => {
 
     describe('Configuration integration', () => {
         it('should work with configuration profiles', async function() {
-            this.timeout(10000);
             
             const response = await nget.fetch('https://httpbin.org/user-agent', {
                 configProfile: 'fetch'
@@ -170,7 +161,6 @@ describe('N-Get Fetch API', () => {
 
     describe('Response format', () => {
         it('should provide both data and text properties', async function() {
-            this.timeout(10000);
             
             const response = await nget.fetch('https://httpbin.org/json');
             
@@ -184,7 +174,6 @@ describe('N-Get Fetch API', () => {
         });
 
         it('should handle non-JSON responses gracefully', async function() {
-            this.timeout(10000);
             
             const response = await nget.fetch('https://httpbin.org/html');
             
@@ -198,7 +187,6 @@ describe('N-Get Fetch API', () => {
 
     describe('Axios compatibility', () => {
         it('should provide axios-like response structure', async function() {
-            this.timeout(10000);
             
             const response = await nget.fetch('https://httpbin.org/get');
             

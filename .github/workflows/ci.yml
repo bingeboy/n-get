@@ -42,8 +42,20 @@ jobs:
       # specs (indexSpec, fetchSpec, pipeSpec, recursivePipeSpec, stdoutSpec,
       # webhookSpec, downloadSpec) — those need a live network and are run
       # explicitly, not in CI.
+      # JUnit output as well as the console reporter: the suite writes NDJSON
+      # to stdout, which buries the failure block and makes an intermittent
+      # failure hard to read after the fact. A machine-readable file is
+      # uploaded below so a flake can be identified rather than guessed at.
       - name: Test
-        run: npm test
+        run: npm test -- --reporter=default --reporter=junit --outputFile.junit=./test-results.xml
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-node${{ matrix.node }}-${{ matrix.os }}
+          path: test-results.xml
+          retention-days: 14
 
       - name: Build
         run: npm run build

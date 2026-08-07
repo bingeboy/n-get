@@ -4,7 +4,6 @@ const path = require('node:path');
 describe('Stdout Mode Tests', () => {
     describe('--stdout flag', () => {
         it('should output content to stdout instead of file', function() {
-            this.timeout(10000);
 
             const output = execSync('node index.js --stdout https://httpbin.org/json', {
                 cwd: path.join(__dirname, '..'),
@@ -18,7 +17,6 @@ describe('Stdout Mode Tests', () => {
         });
 
         it('should reject multiple URLs with --stdout', function() {
-            this.timeout(5000);
 
             try {
                 execSync('node index.js --stdout https://httpbin.org/json https://httpbin.org/uuid 2>&1', {
@@ -34,7 +32,6 @@ describe('Stdout Mode Tests', () => {
         });
 
         it('should reject conflicting options with --stdout and -o', function() {
-            this.timeout(5000);
 
             try {
                 execSync('node index.js --stdout -o output.txt https://httpbin.org/json 2>&1', {
@@ -50,7 +47,6 @@ describe('Stdout Mode Tests', () => {
         });
 
         it('should reject recursive mode with --stdout', function() {
-            this.timeout(5000);
 
             try {
                 execSync('node index.js --stdout --recursive https://example.com 2>&1', {
@@ -68,7 +64,6 @@ describe('Stdout Mode Tests', () => {
 
     describe('Configuration-based stdout mode', () => {
         it('should work with NGET_DOWNLOADS_ENABLESTDOUT environment variable', function() {
-            this.timeout(10000);
 
             const output = execSync('node index.js https://httpbin.org/uuid', {
                 cwd: path.join(__dirname, '..'),
@@ -87,7 +82,6 @@ describe('Stdout Mode Tests', () => {
 
         it.skip('should work with fetch profile', function() {
             // Skip this test for now due to environment config conflicts
-            this.timeout(10000);
 
             const output = execSync('node index.js --config-ai-profile=fetch https://httpbin.org/ip', {
                 cwd: path.join(__dirname, '..'),
@@ -106,7 +100,6 @@ describe('Stdout Mode Tests', () => {
 
     describe('Stdout mode behavior', () => {
         it('should not show progress bars in stdout mode', function() {
-            this.timeout(10000);
 
             const output = execSync('node index.js --stdout https://httpbin.org/json', {
                 cwd: path.join(__dirname, '..'),
@@ -120,7 +113,6 @@ describe('Stdout Mode Tests', () => {
         });
 
         it('should work with API endpoints', function() {
-            this.timeout(10000);
 
             const output = execSync('node index.js --stdout https://httpbin.org/get', {
                 cwd: path.join(__dirname, '..'),
@@ -134,7 +126,6 @@ describe('Stdout Mode Tests', () => {
         });
 
         it('should handle binary content gracefully', function() {
-            this.timeout(10000);
 
             // This should not crash, even with binary content
             const output = execSync('node index.js --stdout https://httpbin.org/base64/SFRUUEJJTiBpcyBhd2Vzb21l', {
@@ -149,7 +140,6 @@ describe('Stdout Mode Tests', () => {
 
     describe('Help and documentation', () => {
         it('should include --stdout in help output', function() {
-            this.timeout(5000);
 
             const output = execSync('node index.js --help', {
                 cwd: path.join(__dirname, '..'),
@@ -162,7 +152,6 @@ describe('Stdout Mode Tests', () => {
         });
 
         it('should include stdout examples in help', function() {
-            this.timeout(5000);
 
             const output = execSync('node index.js --help', {
                 cwd: path.join(__dirname, '..'),

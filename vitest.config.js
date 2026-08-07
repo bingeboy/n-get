@@ -3,9 +3,10 @@ const { defineConfig } = require('vitest/config');
 module.exports = defineConfig({
   test: {
     include: ['test/**/*.js'],
+    // Network-dependent specs live in the integration suite instead — see
+    // vitest.integration.config.js and `npm run test:integration`.
     exclude: [
       'test/vitest-setup.js',
-      'test/downloadSpec.js',
       'test/indexSpec.js',
       'test/pipeSpec.js',
       'test/recursivePipeSpec.js',

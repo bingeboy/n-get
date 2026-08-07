@@ -35,6 +35,7 @@
     "build:docs": "node scripts/gen-agents-md.js",
     "test": "vitest run",
     "test:unit": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.js",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "lint": "eslint . && echo '✓ No linting errors found!'",

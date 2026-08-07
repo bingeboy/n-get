@@ -528,13 +528,20 @@ describe('ConfigManager', () => {
 
                 const originalTimeout = config.get('http.timeout');
 
+                // Do not put expect.fail() inside the try: its AssertionError
+                // would be caught below and swallowed, and the rollback
+                // assertion would then pass trivially, so the test could never
+                // fail. Record whether it threw, assert outside.
+                let threw = false;
                 try {
                     await config.applyProfile('invalid');
-                    expect.fail('Should have thrown an error');
                 } catch {
-                    // Configuration should be rolled back
-                    expect(config.get('http.timeout')).to.equal(originalTimeout);
+                    threw = true;
                 }
+
+                expect(threw, 'applyProfile should reject an invalid profile').to.be.true;
+                // Configuration should be rolled back
+                expect(config.get('http.timeout')).to.equal(originalTimeout);
             });
 
             it('should update metrics on profile application', async() => {

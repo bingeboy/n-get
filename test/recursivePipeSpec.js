@@ -31,7 +31,6 @@ describe('Download Pipeline Module', () => {
 
     describe('#download()', () => {
         it('should download a single file successfully', async function() {
-            this.timeout(10000); // Increase timeout for network requests
 
             const urls = ['https://httpbin.org/json'];
             const results = await download(urls, testDir);
@@ -48,7 +47,6 @@ describe('Download Pipeline Module', () => {
         });
 
         it('should download multiple files successfully', async function() {
-            this.timeout(15000);
 
             const urls = [
                 'https://httpbin.org/uuid',
@@ -71,7 +69,6 @@ describe('Download Pipeline Module', () => {
         });
 
         it('should handle invalid URLs gracefully', async function() {
-            this.timeout(10000);
 
             const urls = ['https://invalid-domain-that-should-not-exist.com/file.txt'];
             const results = await download(urls, testDir);
@@ -91,7 +88,6 @@ describe('Download Pipeline Module', () => {
         });
 
         it('should handle mix of valid and invalid URLs', async function() {
-            this.timeout(15000);
 
             const urls = [
                 'https://httpbin.org/json',
@@ -105,7 +101,6 @@ describe('Download Pipeline Module', () => {
         });
 
         it('should handle 404 errors', async function() {
-            this.timeout(10000);
 
             const urls = ['https://httpbin.org/status/404'];
             const results = await download(urls, testDir);
@@ -116,7 +111,6 @@ describe('Download Pipeline Module', () => {
         });
 
         it('should handle duplicate filenames with incremental postfix', async function() {
-            this.timeout(15000);
 
             // First, download a file normally
             const urls = ['https://httpbin.org/json'];
