@@ -17,9 +17,10 @@ const {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function flushIO() {
-    return new Promise(resolve => setTimeout(resolve, 50));
-}
+// DownloadSession.flushStatus() resolves when every pending status-file write
+// has completed. Prefer it over sleeping: _flushStatus() serialises writes onto
+// an internal promise chain, and flushStatus() awaits that chain, so this is
+// exact rather than a guess. A fixed sleep races a slow disk under load.
 
 function cleanFile(sessionId) {
     try { fs.unlinkSync(path.join(ACTIVE_DIR, `${sessionId}.json`)); } catch { /* ok */ }
@@ -76,7 +77,7 @@ describe('handleJobsCommand', () => {
             createdIds.push(id);
             const s = makeSession({ sessionId: id });
             s.start();
-            await flushIO();
+            await s.flushStatus();
 
             let output;
             try {
@@ -97,7 +98,7 @@ describe('handleJobsCommand', () => {
             const s = makeSession({ sessionId: id, agentId: 'test-agent' });
             s.start();
             s.queueDownload('https://example.com/a.txt');
-            await flushIO();
+            await s.flushStatus();
 
             let output;
             try {
@@ -124,15 +125,15 @@ describe('handleJobsCommand', () => {
             const s = makeSession({ sessionId: id });
             s.start();
             s.queueDownload('https://example.com/q.txt');
-            await flushIO();
+            await s.flushStatus();
             s.updateDownload('https://example.com/q.txt', { status: 'active' });
-            await flushIO();
+            await s.flushStatus();
             s.updateDownload('https://example.com/q.txt', { status: 'complete' });
-            await flushIO();
+            await s.flushStatus();
             s.queueDownload('https://example.com/e.txt');
-            await flushIO();
+            await s.flushStatus();
             s.updateDownload('https://example.com/e.txt', { status: 'error' });
-            await flushIO();
+            await s.flushStatus();
 
             let output;
             try {
@@ -171,7 +172,7 @@ describe('handleJobsCommand', () => {
             createdIds.push(id);
             const s = makeSession({ sessionId: id });
             s.start();
-            await flushIO();
+            await s.flushStatus();
 
             let stdoutOut;
             try {
@@ -191,7 +192,7 @@ describe('handleJobsCommand', () => {
             const s = makeSession({ sessionId: id });
             s.start();
             s.queueDownload('https://example.com/file.zip');
-            await flushIO();
+            await s.flushStatus();
 
             let stderrOut;
             try {
@@ -211,7 +212,7 @@ describe('handleJobsCommand', () => {
             s.start();
             s.queueDownload('https://example.com/a.zip');
             s.queueDownload('https://example.com/b.zip');
-            await flushIO();
+            await s.flushStatus();
 
             let stderrOut;
             try {

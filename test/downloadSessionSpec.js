@@ -339,7 +339,16 @@ describe('DownloadSession', () => {
             await s.flushStatus();
             const before = readStatusFile('update-ts').downloads['https://example.com/ts.zip'].updatedAt;
 
-            await new Promise(r => setTimeout(r, 5));
+            // Wait until the wall clock has actually advanced past `before`,
+            // rather than sleeping 5ms and assuming it did. updatedAt is
+            // new Date().toISOString() (millisecond precision), and Date.now()
+            // granularity on Windows can be coarser than a 5ms sleep — so the
+            // old fixed sleep could leave both timestamps identical and fail
+            // this assertion for reasons unrelated to the code under test.
+            const beforeMs = Date.parse(before);
+            while (Date.now() <= beforeMs) {
+                await new Promise(r => setTimeout(r, 1));
+            }
 
             s.updateDownload('https://example.com/ts.zip', { status: 'active' });
             await s.flushStatus();
