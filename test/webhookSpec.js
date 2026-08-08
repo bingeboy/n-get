@@ -12,8 +12,13 @@ const http    = require('node:http');
 const { execFile } = require('node:child_process');
 const path    = require('node:path');
 
+// Local fixture server (test/fixtures/), started by globalSetup. Replaces
+// httpbin.org so the suite does not fail when a third-party host is down.
+const ORIGIN = require('./fixtures/origin').readOrigin();
+
+
 const NGET = path.join(__dirname, '..', 'index.js');
-const FIXTURE_URL = 'https://httpbin.org/get';  // public, reliable, small response
+const FIXTURE_URL = `${ORIGIN}/get`;  // public, reliable, small response
 
 function startReceiver(onEvent) {
     return new Promise((resolve) => {

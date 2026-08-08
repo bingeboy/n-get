@@ -3,6 +3,11 @@ const {execSync} = require('node:child_process');
 const path = require('node:path');
 const fs = require('node:fs').promises;
 
+// Local fixture server (test/fixtures/), started by globalSetup. Replaces
+// httpbin.org so the suite does not fail when a third-party host is down.
+const ORIGIN = require('./fixtures/origin').readOrigin();
+
+
 // Returns a boolean rather than throwing, so callers can branch without
 // wrapping expect.fail() in a try — an AssertionError thrown inside a try is
 // caught by that try's own catch, which inverts the reported diagnosis.
@@ -54,7 +59,7 @@ describe('Main CLI Application', () => {
 
         it('should handle single URL download', function() {
 
-            const output = execSync(`node index.js https://httpbin.org/json -d ${testDir}`, {
+            const output = execSync(`node index.js ${ORIGIN}/json -d ${testDir}`, {
                 cwd: path.join(__dirname, '..'),
                 encoding: 'utf8',
             });
@@ -67,7 +72,7 @@ describe('Main CLI Application', () => {
 
         it('should handle multiple URL downloads', function() {
 
-            const output = execSync(`node index.js https://httpbin.org/json https://httpbin.org/uuid -d ${testDir}`, {
+            const output = execSync(`node index.js ${ORIGIN}/json ${ORIGIN}/uuid -d ${testDir}`, {
                 cwd: path.join(__dirname, '..'),
                 encoding: 'utf8',
             });
@@ -81,7 +86,7 @@ describe('Main CLI Application', () => {
         it('should handle invalid destination gracefully', function() {
 
             try {
-                execSync('node index.js https://httpbin.org/json -d /nonexistent/path', {
+                execSync(`node index.js ${ORIGIN}/json -d /nonexistent/path`, {
                     cwd: path.join(__dirname, '..'),
                     encoding: 'utf8',
                 });
@@ -111,7 +116,7 @@ describe('Main CLI Application', () => {
 
         it('should handle mixed valid and invalid URLs', function() {
 
-            const output = execSync(`node index.js https://httpbin.org/json https://invalid-domain.com/file.txt -d ${testDir}`, {
+            const output = execSync(`node index.js ${ORIGIN}/json https://invalid-domain.com/file.txt -d ${testDir}`, {
                 cwd: path.join(__dirname, '..'),
                 encoding: 'utf8',
             });
@@ -129,7 +134,7 @@ describe('Main CLI Application', () => {
             const customFilename = 'test-custom-uuid.json';
             const customFilePath = path.join(testDir, customFilename);
 
-            const output = execSync(`node index.js https://httpbin.org/uuid -o ${customFilename} -d ${testDir}`, {
+            const output = execSync(`node index.js ${ORIGIN}/uuid -o ${customFilename} -d ${testDir}`, {
                 cwd: path.join(__dirname, '..'),
                 encoding: 'utf8',
             });
@@ -154,7 +159,7 @@ describe('Main CLI Application', () => {
             const customFilename = 'my-data.txt';
             const customFilePath = path.join(testDir, customFilename);
 
-            const output = execSync(`node index.js https://httpbin.org/json -o ${customFilename} -d ${testDir}`, {
+            const output = execSync(`node index.js ${ORIGIN}/json -o ${customFilename} -d ${testDir}`, {
                 cwd: path.join(__dirname, '..'),
                 encoding: 'utf8',
             });

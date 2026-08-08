@@ -258,3 +258,6 @@ get.*
 # test artifacts
 test/.nget/
 test/cli-test/.nget/
+
+# fixture server origin, written by integration globalSetup
+test/fixtures/.origin

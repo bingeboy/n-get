@@ -1,11 +1,16 @@
 const {execSync} = require('node:child_process');
 const path = require('node:path');
 
+// Local fixture server (test/fixtures/), started by globalSetup. Replaces
+// httpbin.org so the suite does not fail when a third-party host is down.
+const ORIGIN = require('./fixtures/origin').readOrigin();
+
+
 describe('Stdout Mode Tests', () => {
     describe('--stdout flag', () => {
         it('should output content to stdout instead of file', function() {
 
-            const output = execSync('node index.js --stdout https://httpbin.org/json', {
+            const output = execSync(`node index.js --stdout ${ORIGIN}/json`, {
                 cwd: path.join(__dirname, '..'),
                 encoding: 'utf8',
             });
@@ -19,7 +24,7 @@ describe('Stdout Mode Tests', () => {
         it('should reject multiple URLs with --stdout', function() {
 
             try {
-                execSync('node index.js --stdout https://httpbin.org/json https://httpbin.org/uuid 2>&1', {
+                execSync(`node index.js --stdout ${ORIGIN}/json ${ORIGIN}/uuid 2>&1`, {
                     cwd: path.join(__dirname, '..'),
                     encoding: 'utf8',
                     shell: true
@@ -34,7 +39,7 @@ describe('Stdout Mode Tests', () => {
         it('should reject conflicting options with --stdout and -o', function() {
 
             try {
-                execSync('node index.js --stdout -o output.txt https://httpbin.org/json 2>&1', {
+                execSync(`node index.js --stdout -o output.txt ${ORIGIN}/json 2>&1`, {
                     cwd: path.join(__dirname, '..'),
                     encoding: 'utf8',
                     shell: true
@@ -65,7 +70,7 @@ describe('Stdout Mode Tests', () => {
     describe('Configuration-based stdout mode', () => {
         it('should work with NGET_DOWNLOADS_ENABLESTDOUT environment variable', function() {
 
-            const output = execSync('node index.js https://httpbin.org/uuid', {
+            const output = execSync(`node index.js ${ORIGIN}/uuid`, {
                 cwd: path.join(__dirname, '..'),
                 encoding: 'utf8',
                 env: {
@@ -83,7 +88,7 @@ describe('Stdout Mode Tests', () => {
         it.skip('should work with fetch profile', function() {
             // Skip this test for now due to environment config conflicts
 
-            const output = execSync('node index.js --config-ai-profile=fetch https://httpbin.org/ip', {
+            const output = execSync(`node index.js --config-ai-profile=fetch ${ORIGIN}/ip`, {
                 cwd: path.join(__dirname, '..'),
                 encoding: 'utf8',
                 env: {
@@ -101,7 +106,7 @@ describe('Stdout Mode Tests', () => {
     describe('Stdout mode behavior', () => {
         it('should not show progress bars in stdout mode', function() {
 
-            const output = execSync('node index.js --stdout https://httpbin.org/json', {
+            const output = execSync(`node index.js --stdout ${ORIGIN}/json`, {
                 cwd: path.join(__dirname, '..'),
                 encoding: 'utf8',
             });
@@ -114,7 +119,7 @@ describe('Stdout Mode Tests', () => {
 
         it('should work with API endpoints', function() {
 
-            const output = execSync('node index.js --stdout https://httpbin.org/get', {
+            const output = execSync(`node index.js --stdout ${ORIGIN}/get`, {
                 cwd: path.join(__dirname, '..'),
                 encoding: 'utf8',
             });
@@ -128,7 +133,7 @@ describe('Stdout Mode Tests', () => {
         it('should handle binary content gracefully', function() {
 
             // This should not crash, even with binary content
-            const output = execSync('node index.js --stdout https://httpbin.org/base64/SFRUUEJJTiBpcyBhd2Vzb21l', {
+            const output = execSync(`node index.js --stdout ${ORIGIN}/base64/SFRUUEJJTiBpcyBhd2Vzb21l`, {
                 cwd: path.join(__dirname, '..'),
                 encoding: 'utf8',
             });
