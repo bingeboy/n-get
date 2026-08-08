@@ -1,9 +1,5 @@
 'use strict';
 
-const path = require('node:path');
-const fs   = require('node:fs');
-const os   = require('node:os');
-
 const MetadataService = require('../lib/services/MetadataService');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -18,7 +14,7 @@ function makeService(opts = {}) {
 
 function makeResponse(headersMap = {}, opts = {}) {
     const normalized = {};
-    for (const [k, v] of Object.entries(headersMap)) normalized[k.toLowerCase()] = v;
+    for (const [k, v] of Object.entries(headersMap)) {normalized[k.toLowerCase()] = v;}
     return {
         status:      opts.status      ?? 200,
         statusText:  opts.statusText  ?? 'OK',

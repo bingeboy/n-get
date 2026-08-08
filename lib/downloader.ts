@@ -20,20 +20,12 @@ import IPv6Utils    = require('./utils/ipv6Utils');
 // DownloadError is a class with static methods; esModuleInterop lets us import it directly
 import { DownloadError } from './errors/DownloadError';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const chdir             = require('./chdir');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const ui                = require('./ui');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const resumeManager     = require('./resumeManager');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const sftpManager       = require('./sftpManager');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const ConcurrencyLimiter = require('./concurrencyLimiter');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const OutputFormatterService = require('./services/OutputFormatterService');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const MetadataService   = require('./services/MetadataService');
 
 import HistoryManager   = require('./services/HistoryManager');
 import { DownloadSession } from './core/DownloadSession.js';
@@ -99,6 +91,12 @@ function initializeHttpAgents(configManager: unknown) {
  * @param {boolean} [options.forceIPv4=false] - Force IPv4-only connection
  * @returns {Object} The appropriate HTTP agent
  */
+// NOTE: currently unreachable. downloadHttpFile() builds `agentOptions` and sets
+// forceIPv6 for IPv6 URLs, but never passes it here, and nothing else calls this.
+// IPv6 connection forcing is therefore not actually wired up — requests fall back
+// to Node's default agent and DNS resolution. Kept rather than deleted because it
+// documents intended behaviour; wiring it up is a behaviour change, not a lint fix.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getHttpAgent(url: string, options: { forceIPv6?: boolean; forceIPv4?: boolean } = {}) {
     if (!httpAgent || !httpsAgent) {
         throw new Error('HTTP agents not initialized. Call initializeHttpAgents() first.');
@@ -264,7 +262,7 @@ async function downloadFile(
     const { quietMode = false, configManager } = options;
     const session: DownloadSession = (options._session as DownloadSession)
         ?? new DownloadSession({ quietMode, configManager, agentId: options.agentId ?? null }).start();
-    const { logger, securityService, metadataService } = session;
+    const { logger, securityService } = session;
     const correlationId = `dl-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     logger.setCorrelationId(correlationId);
 
@@ -517,7 +515,6 @@ async function downloadHttpFile(
         // Create progress bar if file size is known and file is large enough (not in quiet mode)
         let progressBar = null;
         const totalSize = fileSizeBytes;
-        const remainingSize = totalSize - startByte;
 
         if (!quietMode && totalSize > 1024) {
             progressBar = ui.createProgressBar(filename, totalSize);
@@ -662,6 +659,11 @@ async function download(urls: string[], destination: string, options: DownloadOp
     if (typeof options === 'boolean') {
         // Old format: recursivePipe(urls, destination, enableResume, sshOptions)
         enableResume = options;
+        // `arguments` is deliberate: this branch supports the legacy positional
+        // signature download(urls, destination, enableResume, sshOptions), where
+        // the 4th argument is not in the declared parameter list. Rest params
+        // would change the public signature.
+        // eslint-disable-next-line prefer-rest-params
         sshOptions = (arguments as unknown as unknown[])[3] as Record<string, unknown> || {};
         outputToStdout = false;
         quietMode = false;

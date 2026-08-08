@@ -12,15 +12,10 @@
  *   nget.version           // package.json version
  */
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const ConfigManager = require('./config/ConfigManager');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const CapabilitiesService = require('./services/CapabilitiesService');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const OpenAPIService = require('./services/OpenAPIService');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const fetchFn = require('./fetch');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const packageJson = require('../package.json');
 
 const noopLogger = { info() { /* noop */ }, debug() { /* noop */ }, warn() { /* noop */ }, error() { /* noop */ } };

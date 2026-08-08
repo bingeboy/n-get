@@ -44,7 +44,7 @@ describe('JSON Logging Format Environment Variable', () => {
         if (tempLogDir && fs.existsSync(tempLogDir)) {
             try {
                 fs.rmSync(tempLogDir, {recursive: true, force: true});
-            } catch (error) {
+            } catch {
                 // Ignore cleanup errors
             }
         }
@@ -53,7 +53,7 @@ describe('JSON Logging Format Environment Variable', () => {
         if (logger && typeof logger.shutdown === 'function') {
             try {
                 logger.shutdown();
-            } catch (error) {
+            } catch {
                 // Ignore cleanup errors
             }
         }
@@ -278,7 +278,7 @@ describe('JSON Logging Format Environment Variable', () => {
             
             expect(consoleOutput).to.have.length(3);
             
-            consoleOutput.forEach((output, index) => {
+            consoleOutput.forEach((output) => {
                 const parsed = JSON.parse(output);
                 expect(parsed).to.have.property('timestamp');
                 expect(parsed).to.have.property('level', 'INFO');

@@ -18,7 +18,7 @@ import ui = require('./ui');
 import DownloadError from './errors/DownloadError';
 import ConfigManager = require('./config/ConfigManager');
 // resumeManager is a .js module without types — typed as any (no TS equivalent exists)
-// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const resumeManager: any = require('./resumeManager');
 
 interface ParsedSftpConnection {

@@ -6,7 +6,6 @@
 import {URL} from 'node:url';
 import * as path from 'node:path';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const ui: any = require('./ui');
 
 interface RecursiveCrawlerOptions {

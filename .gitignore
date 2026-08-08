@@ -202,6 +202,7 @@ temp/
 
 # Test artifacts
 test-results/
+test-results.xml
 playwright-report/
 
 # Build artifacts
@@ -257,3 +258,6 @@ get.*
 # test artifacts
 test/.nget/
 test/cli-test/.nget/
+
+# fixture server origin, written by integration globalSetup
+test/fixtures/.origin

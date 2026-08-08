@@ -12,8 +12,13 @@ const http    = require('node:http');
 const { execFile } = require('node:child_process');
 const path    = require('node:path');
 
+// Local fixture server (test/fixtures/), started by globalSetup. Replaces
+// httpbin.org so the suite does not fail when a third-party host is down.
+const ORIGIN = require('./fixtures/origin').readOrigin();
+
+
 const NGET = path.join(__dirname, '..', 'index.js');
-const FIXTURE_URL = 'https://httpbin.org/get';  // public, reliable, small response
+const FIXTURE_URL = `${ORIGIN}/get`;  // public, reliable, small response
 
 function startReceiver(onEvent) {
     return new Promise((resolve) => {
@@ -160,7 +165,7 @@ describe('nget fetch --webhook event emission', () => {
 
         try {
             // Use a URL that will definitely fail (nothing listening on port 1)
-            const result = await runNget([
+            await runNget([
                 'fetch', 'http://127.0.0.1:1',
                 '--webhook', `http://127.0.0.1:${port}/events`,
             ], 15000);

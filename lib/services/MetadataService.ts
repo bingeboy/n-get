@@ -4,18 +4,11 @@
  * @module MetadataService
  */
 
-import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
-import { pipeline } from 'node:stream';
-import { promisify } from 'node:util';
 
-const streamPipeline = promisify(pipeline);
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { checksumPool } = require('../workers/ChecksumPool');
 
 // Load package.json to get version dynamically
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const packageJson = require('../../package.json');
 const NGET_VERSION: string = packageJson.version;
 

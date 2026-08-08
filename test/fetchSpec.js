@@ -1,11 +1,17 @@
-const nget = require('../index.js');
+// The library entry (package.json "main"), not ../index.js — that is the CLI
+// entry, which runs the program on require rather than exporting an API.
+const nget = require('../lib/index.js');
+
+// Local fixture server (test/fixtures/), started by globalSetup. Replaces
+// httpbin.org so the suite does not fail when a third-party host is down.
+const ORIGIN = require('./fixtures/origin').readOrigin();
+
 
 describe('N-Get Fetch API', () => {
     describe('Basic functionality', () => {
         it('should fetch JSON data and parse it automatically', async function() {
-            this.timeout(10000);
             
-            const response = await nget.fetch('https://httpbin.org/json');
+            const response = await nget.fetch(`${ORIGIN}/json`);
             
             expect(response).to.have.property('status', 200);
             expect(response).to.have.property('ok', true);
@@ -24,9 +30,8 @@ describe('N-Get Fetch API', () => {
         });
 
         it('should fetch plain text content', async function() {
-            this.timeout(10000);
             
-            const response = await nget.fetch('https://httpbin.org/robots.txt');
+            const response = await nget.fetch(`${ORIGIN}/robots.txt`);
             
             expect(response.status).to.equal(200);
             expect(response.ok).to.be.true;
@@ -36,9 +41,8 @@ describe('N-Get Fetch API', () => {
         });
 
         it('should handle different HTTP status codes', async function() {
-            this.timeout(10000);
             
-            const response = await nget.fetch('https://httpbin.org/status/404');
+            const response = await nget.fetch(`${ORIGIN}/status/404`);
             
             expect(response.status).to.equal(404);
             expect(response.ok).to.be.false;
@@ -48,10 +52,9 @@ describe('N-Get Fetch API', () => {
 
     describe('HTTP methods', () => {
         it('should support POST requests with JSON data', async function() {
-            this.timeout(10000);
             
             const postData = { name: 'test', value: 123 };
-            const response = await nget.fetch('https://httpbin.org/post', {
+            const response = await nget.fetch(`${ORIGIN}/post`, {
                 method: 'POST',
                 body: postData
             });
@@ -63,10 +66,9 @@ describe('N-Get Fetch API', () => {
         });
 
         it('should support PUT requests', async function() {
-            this.timeout(10000);
             
             const putData = { name: 'updated', value: 456 };
-            const response = await nget.fetch('https://httpbin.org/put', {
+            const response = await nget.fetch(`${ORIGIN}/put`, {
                 method: 'PUT',
                 body: putData
             });
@@ -77,9 +79,8 @@ describe('N-Get Fetch API', () => {
         });
 
         it('should support DELETE requests', async function() {
-            this.timeout(10000);
             
-            const response = await nget.fetch('https://httpbin.org/delete', {
+            const response = await nget.fetch(`${ORIGIN}/delete`, {
                 method: 'DELETE'
             });
             
@@ -91,14 +92,13 @@ describe('N-Get Fetch API', () => {
 
     describe('Request options', () => {
         it('should support custom headers', async function() {
-            this.timeout(10000);
             
             const customHeaders = {
                 'X-Custom-Header': 'test-value',
                 'User-Agent': 'N-Get-Test/1.0'
             };
             
-            const response = await nget.fetch('https://httpbin.org/headers', {
+            const response = await nget.fetch(`${ORIGIN}/headers`, {
                 headers: customHeaders
             });
             
@@ -108,10 +108,9 @@ describe('N-Get Fetch API', () => {
         });
 
         it('should support string body content', async function() {
-            this.timeout(10000);
             
             const textData = 'This is plain text data';
-            const response = await nget.fetch('https://httpbin.org/post', {
+            const response = await nget.fetch(`${ORIGIN}/post`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'text/plain'
@@ -126,7 +125,6 @@ describe('N-Get Fetch API', () => {
 
     describe('Error handling', () => {
         it('should throw meaningful errors for invalid URLs', async function() {
-            this.timeout(10000);
             
             try {
                 await nget.fetch('https://this-domain-definitely-does-not-exist-12345.com');
@@ -140,10 +138,9 @@ describe('N-Get Fetch API', () => {
         });
 
         it('should handle network timeouts', async function() {
-            this.timeout(10000);
             
             try {
-                await nget.fetch('https://httpbin.org/delay/5', {
+                await nget.fetch(`${ORIGIN}/delay/5`, {
                     timeout: 1000  // 1 second timeout
                 });
                 expect.fail('Should have thrown a timeout error');
@@ -155,9 +152,8 @@ describe('N-Get Fetch API', () => {
 
     describe('Configuration integration', () => {
         it('should work with configuration profiles', async function() {
-            this.timeout(10000);
             
-            const response = await nget.fetch('https://httpbin.org/user-agent', {
+            const response = await nget.fetch(`${ORIGIN}/user-agent`, {
                 configProfile: 'fetch'
             });
             
@@ -170,9 +166,8 @@ describe('N-Get Fetch API', () => {
 
     describe('Response format', () => {
         it('should provide both data and text properties', async function() {
-            this.timeout(10000);
             
-            const response = await nget.fetch('https://httpbin.org/json');
+            const response = await nget.fetch(`${ORIGIN}/json`);
             
             // Data should be parsed JSON object
             expect(response.data).to.be.an('object');
@@ -184,9 +179,8 @@ describe('N-Get Fetch API', () => {
         });
 
         it('should handle non-JSON responses gracefully', async function() {
-            this.timeout(10000);
             
-            const response = await nget.fetch('https://httpbin.org/html');
+            const response = await nget.fetch(`${ORIGIN}/html`);
             
             expect(response.status).to.equal(200);
             expect(response.data).to.be.a('string');
@@ -198,9 +192,8 @@ describe('N-Get Fetch API', () => {
 
     describe('Axios compatibility', () => {
         it('should provide axios-like response structure', async function() {
-            this.timeout(10000);
             
-            const response = await nget.fetch('https://httpbin.org/get');
+            const response = await nget.fetch(`${ORIGIN}/get`);
             
             // Check axios-like properties
             expect(response).to.have.property('data');

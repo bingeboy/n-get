@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    // Target Node 18+ — we can use all modern JS features
+    // Target Node 22+ — we can use all modern JS features
     "target": "ES2022",
     "module": "commonjs",
     "lib": ["ES2022"],

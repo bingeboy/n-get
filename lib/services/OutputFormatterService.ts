@@ -4,12 +4,10 @@
  * @module OutputFormatterService
  */
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const yaml = require('js-yaml');
 import * as path from 'node:path';
 
 // Load package.json to get version
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const packageJson = require('../../package.json');
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

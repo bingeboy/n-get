@@ -5,7 +5,7 @@ const path = require('node:path');
 const src  = path.join(__dirname, 'hooks', 'pre-commit');
 const dest = path.join(__dirname, '..', '.git', 'hooks', 'pre-commit');
 
-if (!fs.existsSync(path.join(__dirname, '..', '.git'))) process.exit(0);
+if (!fs.existsSync(path.join(__dirname, '..', '.git'))) {process.exit(0);}
 
 fs.copyFileSync(src, dest);
 fs.chmodSync(dest, 0o755);

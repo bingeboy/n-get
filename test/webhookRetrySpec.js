@@ -34,8 +34,7 @@ function captureStream(stream) {
 async function startStatusServer(statusSeq) {
     let callCount = 0;
     const server = http.createServer((req, res) => {
-        let body = '';
-        req.on('data', c => { body += c; });
+        req.on('data', () => {});
         req.on('end', () => {
             const status = statusSeq[callCount] !== undefined ? statusSeq[callCount] : 200;
             callCount++;
@@ -222,8 +221,7 @@ async function startHeaderCapture() {
     let lastHeaders = {};
     let callCount = 0;
     const server = http.createServer((req, res) => {
-        let body = '';
-        req.on('data', c => { body += c; });
+        req.on('data', () => {});
         req.on('end', () => {
             lastHeaders = req.headers;
             callCount++;
@@ -283,7 +281,6 @@ describe('per-URL webhook secrets', () => {
     it('falls back to global secret when per-URL secret is absent', async () => {
         const srv = await startHeaderCapture();
         const globalSecret = 'global-fallback-secret';
-        let capturedBody = '';
 
         // Restart server to also capture body for HMAC verification
         await srv.close();

@@ -1,6 +1,11 @@
 const fs = require('node:fs').promises;
 const path = require('node:path');
 const {spawn} = require('node:child_process');
+
+// Local fixture server (test/fixtures/), started by globalSetup. Replaces
+// httpbin.org so the suite does not fail when a third-party host is down.
+const ORIGIN = require('./fixtures/origin').readOrigin();
+
 // const download = require('../lib/downloader'); // TODO: Use in future tests
 
 describe('Pipe Functionality', () => {
@@ -32,15 +37,14 @@ describe('Pipe Functionality', () => {
 
     describe('Stdin URL Input (-i -)', () => {
         it('should read URLs from stdin and download files', function(done) {
-            this.timeout(15000);
 
             const child = spawn('node', [ngetPath, '-i', '-', '-d', testDir], {
                 stdio: ['pipe', 'pipe', 'pipe'],
             });
 
             // Send URLs to stdin
-            child.stdin.write('https://httpbin.org/json\n');
-            child.stdin.write('https://httpbin.org/uuid\n');
+            child.stdin.write(`${ORIGIN}/json\n`);
+            child.stdin.write(`${ORIGIN}/uuid\n`);
             child.stdin.end();
 
             let _stdout = '';
@@ -78,11 +82,10 @@ describe('Pipe Functionality', () => {
         });
 
         it('should read URLs from file with -i <filename>', function(done) {
-            this.timeout(15000);
 
             // Create a URLs file
             const urlsFile = path.join(testDir, 'test_urls.txt');
-            const urlsContent = 'https://httpbin.org/json\nhttps://httpbin.org/uuid\n';
+            const urlsContent = `${ORIGIN}/json\n${ORIGIN}/uuid\n`;
 
             fs.writeFile(urlsFile, urlsContent).then(() => {
                 const child = spawn('node', [ngetPath, '-i', urlsFile, '-d', testDir], {
@@ -126,7 +129,6 @@ describe('Pipe Functionality', () => {
         });
 
         it('should ignore comment lines (starting with #) in input', function(done) {
-            this.timeout(15000);
 
             const child = spawn('node', [ngetPath, '-i', '-', '-d', testDir], {
                 stdio: ['pipe', 'pipe', 'pipe'],
@@ -134,7 +136,7 @@ describe('Pipe Functionality', () => {
 
             // Send URLs with comments to stdin
             child.stdin.write('# This is a comment\n');
-            child.stdin.write('https://httpbin.org/json\n');
+            child.stdin.write(`${ORIGIN}/json\n`);
             child.stdin.write('# Another comment\n');
             child.stdin.end();
 
@@ -157,9 +159,8 @@ describe('Pipe Functionality', () => {
 
     describe('Stdout Output (-o -)', () => {
         it('should output downloaded content to stdout', function(done) {
-            this.timeout(15000);
 
-            const child = spawn('node', [ngetPath, '-o', '-', 'https://httpbin.org/json'], {
+            const child = spawn('node', [ngetPath, '-o', '-', `${ORIGIN}/json`], {
                 stdio: ['pipe', 'pipe', 'pipe'],
             });
 
@@ -192,9 +193,8 @@ describe('Pipe Functionality', () => {
         });
 
         it('should enable quiet mode automatically when using stdout', function(done) {
-            this.timeout(15000);
 
-            const child = spawn('node', [ngetPath, '-o', '-', 'https://httpbin.org/json'], {
+            const child = spawn('node', [ngetPath, '-o', '-', `${ORIGIN}/json`], {
                 stdio: ['pipe', 'pipe', 'pipe'],
             });
 
@@ -229,9 +229,8 @@ describe('Pipe Functionality', () => {
         });
 
         it('should reject multiple URLs when using stdout output', function(done) {
-            this.timeout(10000);
 
-            const child = spawn('node', [ngetPath, '-o', '-', 'https://httpbin.org/json', 'https://httpbin.org/uuid'], {
+            const child = spawn('node', [ngetPath, '-o', '-', `${ORIGIN}/json`, `${ORIGIN}/uuid`], {
                 stdio: ['pipe', 'pipe', 'pipe'],
             });
 
@@ -244,9 +243,8 @@ describe('Pipe Functionality', () => {
 
     describe('Quiet Mode (-q)', () => {
         it('should suppress all output except errors when using -q', function(done) {
-            this.timeout(15000);
 
-            const child = spawn('node', [ngetPath, '-q', 'https://httpbin.org/json', '-d', testDir], {
+            const child = spawn('node', [ngetPath, '-q', `${ORIGIN}/json`, '-d', testDir], {
                 stdio: ['pipe', 'pipe', 'pipe'],
             });
 
@@ -285,10 +283,9 @@ describe('Pipe Functionality', () => {
 
     describe('Pipe Chaining', () => {
         it('should work in a pipeline with other commands', function(done) {
-            this.timeout(15000);
 
             // Test: echo URL | nget -i - -o - | head -c 10
-            const echo = spawn('echo', ['https://httpbin.org/json']);
+            const echo = spawn('echo', [`${ORIGIN}/json`]);
             const nget = spawn('node', [ngetPath, '-i', '-', '-o', '-'], {
                 stdio: ['pipe', 'pipe', 'pipe'],
             });
@@ -318,13 +315,12 @@ describe('Pipe Functionality', () => {
 
     describe('Combined Features', () => {
         it('should handle stdin input with quiet mode', function(done) {
-            this.timeout(15000);
 
             const child = spawn('node', [ngetPath, '-i', '-', '-q', '-d', testDir], {
                 stdio: ['pipe', 'pipe', 'pipe'],
             });
 
-            child.stdin.write('https://httpbin.org/json\n');
+            child.stdin.write(`${ORIGIN}/json\n`);
             child.stdin.end();
 
             let _stdout = '';
@@ -358,7 +354,6 @@ describe('Pipe Functionality', () => {
 
     describe('Error Handling', () => {
         it('should handle invalid URLs gracefully in pipe mode', function(done) {
-            this.timeout(10000);
 
             const child = spawn('node', [ngetPath, '-i', '-', '-q'], {
                 stdio: ['pipe', 'pipe', 'pipe'],
@@ -374,7 +369,6 @@ describe('Pipe Functionality', () => {
         });
 
         it('should exit gracefully when stdin is not available without TTY error', function(done) {
-            this.timeout(5000);
 
             const child = spawn('node', [ngetPath, '-i', '-'], {
                 stdio: ['inherit', 'pipe', 'pipe'], // Inherit stdin to simulate TTY

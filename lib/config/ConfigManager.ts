@@ -229,7 +229,7 @@ class ConfigManager {
 
         for (const [key, value] of Object.entries(process.env)) {
             if (key.startsWith(prefix)) {
-                let configPath = key.slice(prefix.length).toLowerCase().split('_').map(this.toCamelCase);
+                const configPath = key.slice(prefix.length).toLowerCase().split('_').map(this.toCamelCase);
 
                 // Special handling for NGET_LOG_* variables to map to logging.*
                 if (configPath.length >= 1 && configPath[0] === 'log') {

@@ -2,10 +2,14 @@ const { defineConfig } = require('vitest/config');
 
 module.exports = defineConfig({
   test: {
-    include: ['test/**/*.js'],
+    // *Spec.js only. A bare test/**/*.js glob also matched helper modules such
+    // as test/fixtures/*, which contain no tests and are reported as failed
+    // files ("No test suite found").
+    include: ['test/**/*Spec.js'],
+    // Network-dependent specs live in the integration suite instead — see
+    // vitest.integration.config.js and `npm run test:integration`.
     exclude: [
       'test/vitest-setup.js',
-      'test/downloadSpec.js',
       'test/indexSpec.js',
       'test/pipeSpec.js',
       'test/recursivePipeSpec.js',

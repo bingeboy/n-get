@@ -4,11 +4,8 @@
  * @module OpenAPIService
  */
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 
 // Load package.json to get version dynamically
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const packageJson = require('../../package.json');
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,7 +44,7 @@ class OpenAPIService {
      * Generate complete OpenAPI 3.0.3 specification for n-get
      */
     generateSpec(options: GenerateSpecOptions = {}): AnyObj {
-        const { includeExamples = true, includeSchemas = true, format = 'json' } = options;
+        const { includeExamples = true, includeSchemas = true } = options;
 
         const spec: AnyObj = {
             openapi: '3.0.3',
@@ -878,7 +875,6 @@ This API is optimized for AI agent integration with features including:
             case 'json':
                 return JSON.stringify(spec, null, 2);
             case 'yaml': {
-                // eslint-disable-next-line @typescript-eslint/no-require-imports
                 const yaml = require('js-yaml');
                 return yaml.dump(spec, {
                     indent: 2,

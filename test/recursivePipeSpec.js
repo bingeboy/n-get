@@ -3,6 +3,11 @@ const fs = require('node:fs').promises;
 const path = require('node:path');
 const download = require('../lib/downloader');
 
+// Local fixture server (test/fixtures/), started by globalSetup. Replaces
+// httpbin.org so the suite does not fail when a third-party host is down.
+const ORIGIN = require('./fixtures/origin').readOrigin();
+
+
 describe('Download Pipeline Module', () => {
     const testDir = path.join(__dirname, 'temp');
 
@@ -31,9 +36,8 @@ describe('Download Pipeline Module', () => {
 
     describe('#download()', () => {
         it('should download a single file successfully', async function() {
-            this.timeout(10000); // Increase timeout for network requests
 
-            const urls = ['https://httpbin.org/json'];
+            const urls = [`${ORIGIN}/json`];
             const results = await download(urls, testDir);
 
             expect(results).to.have.length(1);
@@ -48,11 +52,10 @@ describe('Download Pipeline Module', () => {
         });
 
         it('should download multiple files successfully', async function() {
-            this.timeout(15000);
 
             const urls = [
-                'https://httpbin.org/uuid',
-                'https://httpbin.org/json',
+                `${ORIGIN}/uuid`,
+                `${ORIGIN}/json`,
             ];
             const results = await download(urls, testDir);
 
@@ -71,7 +74,6 @@ describe('Download Pipeline Module', () => {
         });
 
         it('should handle invalid URLs gracefully', async function() {
-            this.timeout(10000);
 
             const urls = ['https://invalid-domain-that-should-not-exist.com/file.txt'];
             const results = await download(urls, testDir);
@@ -91,10 +93,9 @@ describe('Download Pipeline Module', () => {
         });
 
         it('should handle mix of valid and invalid URLs', async function() {
-            this.timeout(15000);
 
             const urls = [
-                'https://httpbin.org/json',
+                `${ORIGIN}/json`,
                 'https://invalid-domain-that-should-not-exist.com/file.txt',
             ];
             const results = await download(urls, testDir);
@@ -105,9 +106,8 @@ describe('Download Pipeline Module', () => {
         });
 
         it('should handle 404 errors', async function() {
-            this.timeout(10000);
 
-            const urls = ['https://httpbin.org/status/404'];
+            const urls = [`${ORIGIN}/status/404`];
             const results = await download(urls, testDir);
 
             expect(results).to.have.length(1);
@@ -116,10 +116,9 @@ describe('Download Pipeline Module', () => {
         });
 
         it('should handle duplicate filenames with incremental postfix', async function() {
-            this.timeout(15000);
 
             // First, download a file normally
-            const urls = ['https://httpbin.org/json'];
+            const urls = [`${ORIGIN}/json`];
             const firstResult = await download(urls, testDir);
 
             expect(firstResult).to.have.length(1);

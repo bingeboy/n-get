@@ -24,7 +24,7 @@
     "LICENSE"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.0.0"
   },
   "scripts": {
     "start": "node index.js",
@@ -35,6 +35,7 @@
     "build:docs": "node scripts/gen-agents-md.js",
     "test": "vitest run",
     "test:unit": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.js",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "lint": "eslint . && echo '✓ No linting errors found!'",
@@ -63,6 +64,7 @@
     "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^9.39.5",
     "typescript": "^6.0.3",
+    "typescript-eslint": "^8.66.0",
     "vitest": "^4.1.10"
   }
 }

@@ -7,7 +7,6 @@
 import { URL } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
-import { isIP } from 'node:net';
 import DownloadError from '../errors/DownloadError.js';
 import IPv6Utils from '../utils/ipv6Utils.js';
 
@@ -318,7 +317,7 @@ class SecurityService {
                 }
             }
 
-        } catch (urlError) {
+        } catch {
             errors.push({
                 field: 'url',
                 code: 'MALFORMED_URL',
@@ -760,7 +759,7 @@ class SecurityService {
             limitPerMinute: this.securityConfig.rateLimitRequests,
         };
 
-        for (const [ip, requests] of this.rateLimiter.requests.entries()) {
+        for (const [, requests] of this.rateLimiter.requests.entries()) {
             const activeRequests = requests.filter(timestamp => timestamp > windowStart);
             stats.activeRequests += activeRequests.length;
         }

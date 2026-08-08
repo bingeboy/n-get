@@ -4,7 +4,7 @@
  * @module fetch
  */
 
-// Use Node.js built-in fetch (available in Node 18+)
+// Use Node.js built-in fetch (stable since Node 21; baseline is Node 22+)
 import ConfigManager = require('./config/ConfigManager');
 
 // Initialize configuration
@@ -13,7 +13,7 @@ try {
     configManager = new ConfigManager({
         logger: { info: () => {}, debug: () => {}, warn: () => {}, error: console.error }
     });
-} catch (error) {
+} catch {
     // Fallback if config fails to load
     configManager = null;
 }
@@ -99,7 +99,7 @@ async function ngetFetch(url: string, options: FetchOptions = {}): Promise<Fetch
     if (configProfile && configManager) {
         try {
             await configManager.applyProfile(configProfile);
-        } catch (error) {
+        } catch {
             // Continue if profile application fails
         }
     }

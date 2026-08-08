@@ -25,11 +25,9 @@ import SecurityService = require('../services/SecurityService');
 import MetadataService = require('../services/MetadataService');
 import ui = require('../ui');
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const NGET_VERSION = require('../../package.json').version as string;
 
 // Logger is still .js — loosely typed until it migrates
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const Logger = require('../services/Logger');
 
 export const ACTIVE_DIR = path.join(os.homedir(), '.nget', 'active');

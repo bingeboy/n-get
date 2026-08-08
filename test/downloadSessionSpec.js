@@ -11,7 +11,6 @@ const EXPECTED_VERSION = require('../package.json').version;
 
 const fs   = require('node:fs');
 const path = require('node:path');
-const os   = require('node:os');
 
 const {
     DownloadSession,
@@ -112,9 +111,9 @@ describe('DownloadSession', () => {
         it('accepts a configManager and uses it to configure services', () => {
             const configManager = {
                 get: (key, def) => {
-                    if (key === 'logging')  return { level: 'debug', format: 'json', outputs: ['console'] };
-                    if (key === 'security') return {};
-                    if (key === 'security.enableIntegrityChecks') return true;
+                    if (key === 'logging')  {return { level: 'debug', format: 'json', outputs: ['console'] };}
+                    if (key === 'security') {return {};}
+                    if (key === 'security.enableIntegrityChecks') {return true;}
                     return def;
                 },
                 getConfig: () => ({}),
@@ -340,7 +339,16 @@ describe('DownloadSession', () => {
             await s.flushStatus();
             const before = readStatusFile('update-ts').downloads['https://example.com/ts.zip'].updatedAt;
 
-            await new Promise(r => setTimeout(r, 5));
+            // Wait until the wall clock has actually advanced past `before`,
+            // rather than sleeping 5ms and assuming it did. updatedAt is
+            // new Date().toISOString() (millisecond precision), and Date.now()
+            // granularity on Windows can be coarser than a 5ms sleep — so the
+            // old fixed sleep could leave both timestamps identical and fail
+            // this assertion for reasons unrelated to the code under test.
+            const beforeMs = Date.parse(before);
+            while (Date.now() <= beforeMs) {
+                await new Promise(r => setTimeout(r, 1));
+            }
 
             s.updateDownload('https://example.com/ts.zip', { status: 'active' });
             await s.flushStatus();

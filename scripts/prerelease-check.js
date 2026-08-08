@@ -17,7 +17,7 @@ function run(cmd) {
 
 function fail(msg, hint) {
     console.error(`\n  ✖  ${msg}`);
-    if (hint) console.error(`     ${hint}`);
+    if (hint) {console.error(`     ${hint}`);}
     console.error('');
     process.exit(1);
 }

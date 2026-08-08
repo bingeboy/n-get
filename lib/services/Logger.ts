@@ -604,7 +604,6 @@ class Logger {
      * @param {string} [severity='info'] - Event severity
      */
     security(event: string, details: Record<string, unknown>, severity: string = 'info'): void {
-        (this as Record<string, unknown>)[severity] as (msg: string, meta: Record<string, unknown>) => void;
         (this as unknown as Record<string, (msg: string, meta: Record<string, unknown>) => void>)[severity](`Security: ${event}`, {
             security: true,
             event,

@@ -3,6 +3,23 @@ const {execSync} = require('node:child_process');
 const path = require('node:path');
 const fs = require('node:fs').promises;
 
+// Local fixture server (test/fixtures/), started by globalSetup. Replaces
+// httpbin.org so the suite does not fail when a third-party host is down.
+const ORIGIN = require('./fixtures/origin').readOrigin();
+
+
+// Returns a boolean rather than throwing, so callers can branch without
+// wrapping expect.fail() in a try — an AssertionError thrown inside a try is
+// caught by that try's own catch, which inverts the reported diagnosis.
+async function exists(filePath) {
+    try {
+        await fs.access(filePath);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 describe('Main CLI Application', () => {
     const testDir = path.join(__dirname, 'cli-test');
 
@@ -30,7 +47,6 @@ describe('Main CLI Application', () => {
 
     describe('CLI argument parsing', () => {
         it('should show error message when no arguments provided', function() {
-            this.timeout(5000);
 
             try {
                 execSync('node index.js', {cwd: path.join(__dirname, '..')});
@@ -42,9 +58,8 @@ describe('Main CLI Application', () => {
         });
 
         it('should handle single URL download', function() {
-            this.timeout(15000);
 
-            const output = execSync(`node index.js https://httpbin.org/json -d ${testDir}`, {
+            const output = execSync(`node index.js ${ORIGIN}/json -d ${testDir}`, {
                 cwd: path.join(__dirname, '..'),
                 encoding: 'utf8',
             });
@@ -56,9 +71,8 @@ describe('Main CLI Application', () => {
         });
 
         it('should handle multiple URL downloads', function() {
-            this.timeout(20000);
 
-            const output = execSync(`node index.js https://httpbin.org/json https://httpbin.org/uuid -d ${testDir}`, {
+            const output = execSync(`node index.js ${ORIGIN}/json ${ORIGIN}/uuid -d ${testDir}`, {
                 cwd: path.join(__dirname, '..'),
                 encoding: 'utf8',
             });
@@ -70,10 +84,9 @@ describe('Main CLI Application', () => {
         });
 
         it('should handle invalid destination gracefully', function() {
-            this.timeout(5000);
 
             try {
-                execSync('node index.js https://httpbin.org/json -d /nonexistent/path', {
+                execSync(`node index.js ${ORIGIN}/json -d /nonexistent/path`, {
                     cwd: path.join(__dirname, '..'),
                     encoding: 'utf8',
                 });
@@ -87,7 +100,6 @@ describe('Main CLI Application', () => {
 
     describe('Error handling', () => {
         it('should handle network errors gracefully', function() {
-            this.timeout(10000);
 
             try {
                 execSync('node index.js https://invalid-domain-that-should-not-exist.com/file.txt', {
@@ -103,9 +115,8 @@ describe('Main CLI Application', () => {
         });
 
         it('should handle mixed valid and invalid URLs', function() {
-            this.timeout(15000);
 
-            const output = execSync(`node index.js https://httpbin.org/json https://invalid-domain.com/file.txt -d ${testDir}`, {
+            const output = execSync(`node index.js ${ORIGIN}/json https://invalid-domain.com/file.txt -d ${testDir}`, {
                 cwd: path.join(__dirname, '..'),
                 encoding: 'utf8',
             });
@@ -119,12 +130,11 @@ describe('Main CLI Application', () => {
 
     describe('Output filename (-o flag)', () => {
         it('should use custom filename when -o parameter is specified', async function() {
-            this.timeout(15000);
 
             const customFilename = 'test-custom-uuid.json';
             const customFilePath = path.join(testDir, customFilename);
 
-            const output = execSync(`node index.js https://httpbin.org/uuid -o ${customFilename} -d ${testDir}`, {
+            const output = execSync(`node index.js ${ORIGIN}/uuid -o ${customFilename} -d ${testDir}`, {
                 cwd: path.join(__dirname, '..'),
                 encoding: 'utf8',
             });
@@ -134,27 +144,22 @@ describe('Main CLI Application', () => {
             expect(cleanOutput).to.include('Successful: 1/1');
 
             // Check that file exists with custom name
-            try {
-                await fs.access(customFilePath);
-            } catch (error) {
+            if (!await exists(customFilePath)) {
                 // Check if file was created with URL-extracted name instead (bug behavior)
-                const urlExtractedPath = path.join(testDir, 'uuid');
-                try {
-                    await fs.access(urlExtractedPath);
+                if (await exists(path.join(testDir, 'uuid'))) {
                     expect.fail(`Bug reproduced: File was created as 'uuid' instead of '${customFilename}'. The -o parameter was ignored.`);
-                } catch {
+                } else {
                     expect.fail(`Neither custom filename '${customFilename}' nor URL-extracted filename 'uuid' was found.`);
                 }
             }
         });
 
         it('should use custom filename with different extension when -o parameter is specified', async function() {
-            this.timeout(15000);
 
             const customFilename = 'my-data.txt';
             const customFilePath = path.join(testDir, customFilename);
 
-            const output = execSync(`node index.js https://httpbin.org/json -o ${customFilename} -d ${testDir}`, {
+            const output = execSync(`node index.js ${ORIGIN}/json -o ${customFilename} -d ${testDir}`, {
                 cwd: path.join(__dirname, '..'),
                 encoding: 'utf8',
             });
@@ -164,15 +169,11 @@ describe('Main CLI Application', () => {
             expect(cleanOutput).to.include('Successful: 1/1');
 
             // Check that file exists with custom name
-            try {
-                await fs.access(customFilePath);
-            } catch (error) {
+            if (!await exists(customFilePath)) {
                 // Check if file was created with URL-extracted name instead (bug behavior)
-                const urlExtractedPath = path.join(testDir, 'json');
-                try {
-                    await fs.access(urlExtractedPath);
+                if (await exists(path.join(testDir, 'json'))) {
                     expect.fail(`Bug reproduced: File was created as 'json' instead of '${customFilename}'. The -o parameter was ignored.`);
-                } catch {
+                } else {
                     expect.fail(`Neither custom filename '${customFilename}' nor URL-extracted filename 'json' was found.`);
                 }
             }

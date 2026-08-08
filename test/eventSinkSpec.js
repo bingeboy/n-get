@@ -2,6 +2,24 @@
 
 const { EventSink, EVENT } = require('../lib/core/EventSink');
 
+/**
+ * Poll until `predicate()` is truthy, or throw once `timeoutMs` elapses.
+ *
+ * Webhook delivery has no completion signal to await, so these tests used to
+ * sleep a fixed 300ms and hope. That passes on an idle machine and fails on a
+ * loaded one — a false negative with no diagnostic. Polling returns as soon as
+ * the event actually lands, so the fast path is faster and the slow path still
+ * succeeds instead of flaking.
+ */
+async function waitFor(predicate, timeoutMs = 5000, intervalMs = 10) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        if (predicate()) { return; }
+        await new Promise(r => setTimeout(r, intervalMs));
+    }
+    throw new Error(`waitFor: condition not met within ${timeoutMs}ms`);
+}
+
 // ─── Stream capture helpers ───────────────────────────────────────────────────
 
 function captureStream(stream) {
@@ -891,7 +909,7 @@ describe('EventSink', function () {
                 });
 
                 emitter.emit('info', { message: 'hello' });
-                await new Promise(r => setTimeout(r, 300));
+                await waitFor(() => received.length >= 1);
             } finally {
                 stdout.restore();
             }
@@ -924,7 +942,10 @@ describe('EventSink', function () {
 
                 emitter.emit('info', { message: 'should be filtered' });
                 emitter.emit('download_complete', { url: 'http://example.com/file.zip' });
-                await new Promise(r => setTimeout(r, 300));
+                // The filter is applied before dispatch, so a filtered event is
+                // never sent at all — once the allowed one lands, nothing else
+                // can arrive late.
+                await waitFor(() => received.length >= 1);
             } finally {
                 stdout.restore();
             }
