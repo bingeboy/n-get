@@ -5,7 +5,6 @@
  */
 
 const { URL } = require('node:url');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const IPv6Utils = require('./utils/ipv6Utils');
 
 /**
@@ -36,7 +35,7 @@ function requestUri(reqUrl: string): string {
 
         // Invalid protocol, treat as missing protocol
         throw new Error('Invalid protocol');
-    } catch (error) {
+    } catch {
         // If parsing fails, might be missing protocol or malformed IPv6
         try {
             // Check if this looks like an IPv6 address

@@ -7,9 +7,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 
 // These modules are .js — typed loosely
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const RecursiveCrawler = require('./recursiveCrawler');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const ui: any = require('./ui');
 
 interface RecursiveDownloaderOptions {
@@ -344,7 +342,6 @@ class RecursiveDownloader {
      * Download a single file to a specific path
      */
     async downloadSingleFile(url: string, targetPath: string, index: number, total: number, enableResume: boolean, sshOptions: any): Promise<any> {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const {downloadFile} = require('./downloader');
 
         // Get the directory and filename

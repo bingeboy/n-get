@@ -4,11 +4,8 @@
  * @module CapabilitiesService
  */
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 
 // Load package.json to get version and dependencies
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const packageJson = require('../../package.json');
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -276,8 +273,6 @@ class CapabilitiesService {
      * Get configuration capabilities
      */
     getConfigurationCapabilities(): AnyObj {
-        const config = this.configManager ? this.configManager.getConfig() : {};
-
         return {
             sources: ['file', 'environment', 'cli'],
             formats: ['yaml'],
@@ -773,7 +768,6 @@ class CapabilitiesService {
      */
     toHelpSummary(): string {
         const flags = this.getCLIFlags();
-        const d = this.getDiscoveryInfo();
         const examples = this.getUsageExamples();
 
         const groupLabels: Record<string, string> = {
@@ -931,7 +925,6 @@ class CapabilitiesService {
             case 'json':
                 return JSON.stringify(capabilities, null, 2);
             case 'yaml': {
-                // eslint-disable-next-line @typescript-eslint/no-require-imports
                 const yaml = require('js-yaml');
                 return yaml.dump(capabilities, {
                     indent: 2,

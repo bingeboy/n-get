@@ -274,7 +274,7 @@ class ConfigCommands {
      * Validate current configuration
      * Usage: nget config validate
      */
-    async validate(args: string[] = [], cliOptions: any = {}): Promise<void> {
+    async validate(_args: string[] = [], cliOptions: any = {}): Promise<void> {
         const configManager = this.initializeConfigManager(cliOptions);
 
         if (!cliOptions.quiet) {
@@ -283,8 +283,9 @@ class ConfigCommands {
         }
 
         try {
-            // Validation happens automatically during initialization
-            const config = configManager.getConfig();
+            // Validation happens automatically during initialization; calling
+            // getConfig() is what surfaces a validation error.
+            configManager.getConfig();
             // getMetrics() returns Record<string,unknown> — cast for display-only access
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const metrics = configManager.getMetrics() as Record<string, any>;

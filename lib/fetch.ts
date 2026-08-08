@@ -13,7 +13,7 @@ try {
     configManager = new ConfigManager({
         logger: { info: () => {}, debug: () => {}, warn: () => {}, error: console.error }
     });
-} catch (error) {
+} catch {
     // Fallback if config fails to load
     configManager = null;
 }
@@ -99,7 +99,7 @@ async function ngetFetch(url: string, options: FetchOptions = {}): Promise<Fetch
     if (configProfile && configManager) {
         try {
             await configManager.applyProfile(configProfile);
-        } catch (error) {
+        } catch {
             // Continue if profile application fails
         }
     }

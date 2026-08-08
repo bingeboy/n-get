@@ -15,25 +15,15 @@
  *   get_capabilities  — return n-get's capabilities document
  */
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { McpServer }            = require('@modelcontextprotocol/sdk/server/mcp.js');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { z }                    = require('zod');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const pkg                      = require('../../package.json');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const CapabilitiesService      = require('../services/CapabilitiesService');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const downloadPipeline         = require('../downloader');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const ConfigManager            = require('../config/ConfigManager');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const HistoryManager           = require('../services/HistoryManager');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const fs                       = require('node:fs');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const path                     = require('node:path');
 
 import { DownloadSession, readActiveSessions, pruneDeadSessions } from '../core/DownloadSession.js';

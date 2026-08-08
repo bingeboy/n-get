@@ -9,7 +9,6 @@ import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 
 // ui is still .js — typed loosely
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const ui: any = require('./ui');
 
 interface ResumeMetadata {

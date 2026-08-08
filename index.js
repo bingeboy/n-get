@@ -49,20 +49,12 @@ const path = __importStar(require("node:path"));
 const readline = __importStar(require("node:readline"));
 const minimist_1 = __importDefault(require("minimist"));
 // Not-yet-migrated JS modules
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const chdir = require('./lib/chdir');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const uriManager = require('./lib/uriManager');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const ui = require('./lib/ui');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const resumeManager = require('./lib/resumeManager');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const ConfigCommands = require('./lib/cli/configCommands');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const LogsCommands = require('./lib/cli/logsCommands');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const HistoryCommands = require('./lib/cli/historyCommands');
 // Migrated modules — import-style
 const download = require("./lib/downloader");
@@ -118,7 +110,6 @@ const reqUrls = [];
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function showHelp() {
     ui.displayBanner();
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const CapabilitiesService = require('./lib/services/CapabilitiesService');
     console.log(new CapabilitiesService().toHelpSummary());
 }
@@ -178,14 +169,12 @@ async function main() {
             process.exit(0);
         }
         if (argv.version) {
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
             const packageJson = require('./package.json');
             console.log(packageJson.version);
             process.exit(0);
         }
         // instructions — print AGENTS.md (auto-generated). No config init needed.
         if (argv._.length > 0 && argv._[0] === 'instructions') {
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
             const nodeFs = require('node:fs');
             const file = path.join(__dirname, 'AGENTS.md');
             process.stdout.write(nodeFs.readFileSync(file, 'utf8'));
@@ -274,7 +263,6 @@ async function main() {
         }
         // ─── Subcommands ──────────────────────────────────────────────────────
         if (argv.capabilities) {
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
             const CapabilitiesService = require('./lib/services/CapabilitiesService');
             const capabilitiesService = new CapabilitiesService({ configManager, logger: console });
             const format = argv['output-format'] || 'json';
@@ -290,9 +278,7 @@ async function main() {
             }
         }
         if (argv['openapi-spec']) {
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
             const OpenAPIService = require('./lib/services/OpenAPIService');
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
             const CapabilitiesService = require('./lib/services/CapabilitiesService');
             const capabilitiesService = new CapabilitiesService({ configManager, logger: console });
             const openAPIService = new OpenAPIService({ configManager, capabilitiesService, logger: console });
@@ -307,7 +293,6 @@ async function main() {
             }
         }
         if (argv['agent-card']) {
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
             const CapabilitiesService = require('./lib/services/CapabilitiesService');
             const capabilitiesService = new CapabilitiesService({ configManager, logger: console });
             try {
@@ -375,7 +360,6 @@ async function main() {
                 console.error('Error: fetch requires a URL. Usage: nget fetch [--method GET] [--data <json>] [--header "Key: Value"] [--header "Key2: Value2"] <url>');
                 process.exit(1);
             }
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
             const ngetFetch = require('./lib/fetch');
             const method = argv.method || 'GET';
             let data = undefined;

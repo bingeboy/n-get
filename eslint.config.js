@@ -1,13 +1,14 @@
-// Flat config. Lints hand-written JavaScript only: test/, scripts/ and the
-// root config files.
+// Flat config, covering both halves of the codebase:
+//   - hand-written JavaScript: test/, scripts/ and the root config files
+//   - TypeScript sources: lib/**/*.ts, index.ts, types/**/*.ts
 //
-// Deliberately NOT linted:
-//   - index.js, lib/**/*.js, types/**/*.js — tsc output (outDir: "."), so every
-//     .js there has a .ts sibling that is the real source. Linting generated
-//     code produced thousands of phantom errors, including "rule not found" for
-//     the @typescript-eslint disable comments tsc copies over from the .ts.
-//   - lib/**/*.ts — linting TypeScript needs typescript-eslint, which we have
-//     not adopted yet. Tracked as a follow-up.
+// Deliberately NOT linted: index.js, lib/**/*.js, types/**/*.js — tsc output
+// (outDir: "."), so every .js there has a .ts sibling that is the real source.
+// Linting generated code produced thousands of phantom errors, including
+// "rule not found" for the @typescript-eslint disable comments tsc copies over
+// from the .ts.
+
+const tseslint = require('typescript-eslint');
 
 const NODE_GLOBALS = {
     console: 'readonly',
@@ -128,6 +129,33 @@ module.exports = [
             // Chai-style assertions (`expect(x).to.be.true`) are expression
             // statements. Vitest's expect is chai-backed, so these do assert.
             'no-unused-expressions': 'off',
+        },
+    },
+
+    // ─── TypeScript sources ──────────────────────────────────────────────────
+    ...tseslint.configs.recommended.map(c => ({
+        ...c,
+        files: ['lib/**/*.ts', 'index.ts', 'types/**/*.ts'],
+    })),
+    {
+        files: ['lib/**/*.ts', 'index.ts', 'types/**/*.ts'],
+        rules: {
+            // `import X = require('...')` is the documented way to consume the
+            // `export =` modules this codebase uses (see CLAUDE.md). The rule
+            // forbids exactly that pattern, so it contradicts project policy.
+            '@typescript-eslint/no-require-imports': 'off',
+
+            // 115 `any`s remain while the JS -> TS migration is in progress and
+            // `strict: false` is pinned project-wide. Surfacing them is useful;
+            // failing the build on them would force an unrelated cleanup and
+            // pressure the strict-mode decision. Warn until migration completes.
+            '@typescript-eslint/no-explicit-any': 'warn',
+
+            '@typescript-eslint/no-unused-vars': ['error', {
+                argsIgnorePattern: '^_',
+                varsIgnorePattern: '^_',
+                caughtErrorsIgnorePattern: '^_',
+            }],
         },
     },
 ];
