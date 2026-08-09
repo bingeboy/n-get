@@ -244,6 +244,7 @@ export class DownloadSession {
                     allowedProtocols:     cfg['allowedProtocols']     ?? ['https', 'http', 'sftp'],
                     blockPrivateNetworks: cfg['blockPrivateNetworks']  ?? false,
                     blockLocalhost:       cfg['blockLocalhost']        ?? false,
+                    ipv6:                 cfg['ipv6']                  ?? {},
                 },
             },
             logger: this.logger,

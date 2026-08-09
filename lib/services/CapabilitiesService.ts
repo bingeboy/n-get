@@ -319,7 +319,6 @@ class CapabilitiesService {
                 noLimit: false
             },
             network: {
-                maxConnections: config.http?.maxConnections || 100,
                 maxRetries: config.http?.maxRetries || 10,
                 timeoutRange: {
                     min: 1000,

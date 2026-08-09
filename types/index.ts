@@ -303,20 +303,7 @@ export interface NgetConfig {
     http: {
         timeout: number;
         maxRetries: number;
-        maxConnections: number;
         userAgent: string;
-        keepAlive: {
-            enabled: boolean;
-            timeout: number;
-            maxSockets: number;
-            maxFreeSockets: number;
-        };
-        ipv6: {
-            enabled: boolean;
-            preferIPv6: boolean;
-            dualStack: boolean;
-            dnsResolution: string;
-        };
     };
     downloads: {
         maxConcurrent: number;
@@ -334,6 +321,13 @@ export interface NgetConfig {
         certificateValidation: boolean;
         sanitizeFilenames: boolean;
         enableIntegrityChecks: boolean;
+        ipv6: {
+            blockPrivateRanges: boolean;
+            blockDocumentation: boolean;
+            blockMulticast: boolean;
+            allowIPv4Mapped: boolean;
+            strictValidation: boolean;
+        };
     };
     logging: {
         level: LogLevel;

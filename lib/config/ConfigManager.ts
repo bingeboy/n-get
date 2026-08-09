@@ -265,11 +265,12 @@ class ConfigManager {
             'sanitizefilenames': 'sanitizeFilenames',
             'certificatevalidation': 'certificateValidation',
             'maxretries': 'maxRetries',
-            'maxconnections': 'maxConnections',
             'useragent': 'userAgent',
-            'keepalive': 'keepAlive',
-            'maxsockets': 'maxSockets',
-            'maxfreesockets': 'maxFreeSockets',
+            'blockprivateranges': 'blockPrivateRanges',
+            'blockdocumentation': 'blockDocumentation',
+            'blockmulticast': 'blockMulticast',
+            'allowipv4mapped': 'allowIPv4Mapped',
+            'strictvalidation': 'strictValidation',
             'enablecolors': 'enableColors',
             'includeperformance': 'includePerformance',
             'includestacktrace': 'includeStackTrace',
@@ -404,14 +405,7 @@ class ConfigManager {
             http: Joi.object({
                 timeout: Joi.number().min(1000).max(300000).default(30000),
                 maxRetries: Joi.number().min(0).max(10).default(3),
-                maxConnections: Joi.number().min(1).max(100).default(20),
                 userAgent: Joi.string().default('N-Get-Enterprise/2.0'),
-                keepAlive: Joi.object({
-                    enabled: Joi.boolean().default(true),
-                    timeout: Joi.number().min(1000).default(30000),
-                    maxSockets: Joi.number().min(1).default(10),
-                    maxFreeSockets: Joi.number().min(1).default(5),
-                }).default(),
             }).default(),
 
             downloads: Joi.object({
@@ -435,6 +429,13 @@ class ConfigManager {
                 }).default(),
                 sanitizeFilenames: Joi.boolean().default(true),
                 certificateValidation: Joi.boolean().default(true),
+                ipv6: Joi.object({
+                    blockPrivateRanges: Joi.boolean().default(false),
+                    blockDocumentation: Joi.boolean().default(false),
+                    blockMulticast: Joi.boolean().default(false),
+                    allowIPv4Mapped: Joi.boolean().default(true),
+                    strictValidation: Joi.boolean().default(false),
+                }).default(),
             }).default(),
 
             logging: Joi.object({
@@ -782,7 +783,6 @@ class ConfigManager {
                 maxConcurrentDownloads: this.get('downloads.maxConcurrent'),
                 httpTimeout: this.get('http.timeout'),
                 maxRetries: this.get('http.maxRetries'),
-                maxConnections: this.get('http.maxConnections'),
                 securityLevel: this.getSecurityLevel(),
                 loggingLevel: this.get('logging.level'),
             },

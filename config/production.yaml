@@ -29,20 +29,6 @@ security:
     blockMulticast: true
     strictValidation: true
 
-# Production performance settings
-http:
-  maxConnections: 50
-  keepAlive:
-    maxSockets: 20
-    maxFreeSockets: 10
-  ipv6:
-    enabled: true
-    preferIPv6: false
-    dualStack: true
-    dnsResolution:
-      timeout: 5000
-      retries: 2
-
 downloads:
   maxConcurrent: 5
   chunkUpdateFrequency: 2000
