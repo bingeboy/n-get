@@ -382,4 +382,148 @@ describe('HistoryCommands CLI', () => {
             expect(historyCommands.formatSize(1073741824)).to.equal('1.0 GB');
         });
     });
+
+    describe('Agent Identity Filters', () => {
+        beforeEach(async() => {
+            await historyManager.logDownload({
+                url: 'https://example.com/alpha.zip',
+                filePath: path.join(testDir, 'alpha.zip'),
+                status: 'success',
+                size: 1024,
+                agentId: 'agent-alpha',
+                sessionId: 'sess-123',
+                requestId: 'req-456',
+                conversationId: 'conv-789',
+            });
+            await historyManager.logDownload({
+                url: 'https://example.com/beta.zip',
+                filePath: path.join(testDir, 'beta.zip'),
+                status: 'success',
+                size: 2048,
+                agentId: 'agent-beta',
+            });
+            await historyManager.logDownload({
+                url: 'https://example.com/anon.zip',
+                filePath: path.join(testDir, 'anon.zip'),
+                status: 'success',
+                size: 512,
+            });
+        });
+
+        it('show filters by --agent-id', async() => {
+            const argv = {destination: testDir, 'agent-id': 'agent-alpha'};
+            await historyCommands.execute(['show'], argv);
+
+            const output = consoleOutput.join('\n');
+            expect(output).to.include('Download History (1 entries)');
+            expect(output).to.include('alpha.zip');
+            expect(output).to.not.include('beta.zip');
+            expect(output).to.not.include('anon.zip');
+        });
+
+        it('show filters by --session-id', async() => {
+            const argv = {destination: testDir, 'session-id': 'sess-123'};
+            await historyCommands.execute(['show'], argv);
+
+            const output = consoleOutput.join('\n');
+            expect(output).to.include('alpha.zip');
+            expect(output).to.not.include('beta.zip');
+        });
+
+        it('show filters by --conversation-id', async() => {
+            const argv = {destination: testDir, 'conversation-id': 'conv-789'};
+            await historyCommands.execute(['show'], argv);
+
+            const output = consoleOutput.join('\n');
+            expect(output).to.include('alpha.zip');
+            expect(output).to.not.include('anon.zip');
+        });
+
+        it('show displays agent identity in text output', async() => {
+            const argv = {destination: testDir, 'agent-id': 'agent-alpha'};
+            await historyCommands.execute(['show'], argv);
+
+            const output = consoleOutput.join('\n');
+            expect(output).to.include('🤖 Agent: agent-alpha');
+            expect(output).to.include('🧵 Session: sess-123');
+            expect(output).to.include('💬 Conversation: conv-789');
+        });
+
+        it('show reports no history when filter matches nothing', async() => {
+            const argv = {destination: testDir, 'agent-id': 'agent-nobody'};
+            await historyCommands.execute(['show'], argv);
+
+            const output = consoleOutput.join('\n');
+            expect(output).to.include('No download history found');
+        });
+
+        it('search combines term with --agent-id filter', async() => {
+            const argv = {destination: testDir, 'agent-id': 'agent-alpha'};
+            await historyCommands.execute(['search', 'example.com'], argv);
+
+            const output = consoleOutput.join('\n');
+            expect(output).to.include('alpha.zip');
+            expect(output).to.not.include('beta.zip');
+        });
+
+        it('export honours --agent-id filter', async() => {
+            const argv = {destination: testDir, json: true, output: '-', 'agent-id': 'agent-beta'};
+            await historyCommands.execute(['export'], argv);
+
+            const output = consoleOutput.join('\n');
+            expect(output).to.include('beta.zip');
+            expect(output).to.not.include('alpha.zip');
+            expect(output).to.include('"agentId": "agent-beta"');
+        });
+
+        it('help lists the agent filter flags', async() => {
+            await historyCommands.execute([], {});
+
+            const output = consoleOutput.join('\n');
+            expect(output).to.include('--agent-id');
+            expect(output).to.include('--session-id');
+            expect(output).to.include('--request-id');
+            expect(output).to.include('--conversation-id');
+        });
+    });
+
+    describe('Relative date parsing (--since/--until)', () => {
+        it('parses relative durations like 1h and 7d', () => {
+            const now = Date.now();
+            const oneHour = historyCommands.parseDateOption('1h');
+            expect(now - oneHour.getTime()).to.be.closeTo(60 * 60 * 1000, 5000);
+
+            const sevenDays = historyCommands.parseDateOption('7d');
+            expect(now - sevenDays.getTime()).to.be.closeTo(7 * 24 * 60 * 60 * 1000, 5000);
+        });
+
+        it('still parses absolute dates', () => {
+            const parsed = historyCommands.parseDateOption('2026-01-01T00:00:00.000Z');
+            expect(parsed.toISOString()).to.equal('2026-01-01T00:00:00.000Z');
+        });
+
+        it('show --since with a relative duration excludes older entries', async() => {
+            // Old entry: two days ago
+            const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+            await historyManager.logDownload({
+                url: 'https://example.com/old.zip',
+                filePath: path.join(testDir, 'old.zip'),
+                status: 'success',
+                timestamp: twoDaysAgo,
+            });
+            // Fresh entry: now
+            await historyManager.logDownload({
+                url: 'https://example.com/fresh.zip',
+                filePath: path.join(testDir, 'fresh.zip'),
+                status: 'success',
+            });
+
+            const argv = {destination: testDir, since: '1h'};
+            await historyCommands.execute(['show'], argv);
+
+            const output = consoleOutput.join('\n');
+            expect(output).to.include('fresh.zip');
+            expect(output).to.not.include('old.zip');
+        });
+    });
 });

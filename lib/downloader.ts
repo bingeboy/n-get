@@ -631,6 +631,18 @@ async function download(urls: string[], destination: string, options: DownloadOp
     // Generate correlation ID for this download batch
     const batchCorrelationId = `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+    // Caller-supplied agent identity, persisted on every history entry so the
+    // durable record can answer "which agent downloaded what, in which
+    // session/conversation" after the process exits. sessionId comes from the
+    // session itself so history matches the live NDJSON stream even when the
+    // id was generated rather than supplied.
+    const identity = {
+        agentId:        session.agentId,
+        sessionId:      session.id,
+        requestId:      (options as DownloadOptions).requestId ?? null,
+        conversationId: (options as DownloadOptions).conversationId ?? null,
+    };
+
     // Create concurrency limiter for parallel downloads
     const concurrencyLimiter = new ConcurrencyLimiter(maxConcurrent);
 
@@ -656,6 +668,12 @@ async function download(urls: string[], destination: string, options: DownloadOp
                     quietMode,
                     configManager,
                     logFormat,
+                    // Forward agent identity so per-download metadata collection
+                    // records the same identifiers as the history entries.
+                    agentId:        identity.agentId ?? undefined,
+                    sessionId:      identity.sessionId,
+                    requestId:      identity.requestId ?? undefined,
+                    conversationId: identity.conversationId ?? undefined,
                     _session: session,
                 },
             );
@@ -680,6 +698,7 @@ async function download(urls: string[], destination: string, options: DownloadOp
                     size: downloadResult.size,
                     duration: 0,
                     correlationId: batchCorrelationId,
+                    ...identity,
                     metadata: {alreadyComplete: true},
                 });
 
@@ -705,6 +724,7 @@ async function download(urls: string[], destination: string, options: DownloadOp
                 size: downloadResult.size,
                 duration: downloadResult.duration,
                 correlationId: batchCorrelationId,
+                ...identity,
                 metadata: {
                     resumed: downloadResult.resumed,
                     resumeFrom: downloadResult.resumeFrom,
@@ -725,6 +745,7 @@ async function download(urls: string[], destination: string, options: DownloadOp
                 status: 'failed',
                 error: (error as Error).message,
                 correlationId: batchCorrelationId,
+                ...identity,
                 metadata: {index: index + 1, total: urls.length},
             });
 

@@ -21,6 +21,12 @@ interface HistoryEntry {
     duration: number | null;
     error: string | null;
     correlationId: string;
+    // Caller-supplied agent identity (opaque identifiers, stored verbatim).
+    // Optional because entries written before these fields existed lack them.
+    agentId?: string | null;
+    sessionId?: string | null;
+    requestId?: string | null;
+    conversationId?: string | null;
     metadata: Record<string, unknown>;
     version: string;
 }
@@ -33,6 +39,10 @@ interface LogDownloadInput {
     duration?: number;
     error?: string;
     correlationId?: string;
+    agentId?: string | null;
+    sessionId?: string | null;
+    requestId?: string | null;
+    conversationId?: string | null;
     metadata?: Record<string, unknown>;
 }
 
@@ -42,6 +52,10 @@ interface HistoryOptions {
     search?: string;
     since?: Date;
     until?: Date;
+    agentId?: string;
+    sessionId?: string;
+    requestId?: string;
+    conversationId?: string;
 }
 
 interface StatisticsOptions {
@@ -64,6 +78,8 @@ interface HistoryStatistics {
     successRate: string | number;
     topErrors: Record<string, number>;
     downloadsByDay: Record<string, number>;
+    /** Download counts keyed by caller-supplied agent id; entries without one are omitted */
+    downloadsByAgent: Record<string, number>;
     sizeSummary: SizeSummary;
 }
 
@@ -130,6 +146,13 @@ class HistoryManager {
                 duration: entry.duration || null,
                 error: entry.error || null,
                 correlationId: entry.correlationId || this.generateCorrelationId(),
+                // Opaque caller-supplied identity — persisted verbatim, never
+                // parsed or enriched (same precedent as sanitizeUrl: only
+                // credentials are stripped, identifiers pass through).
+                agentId: entry.agentId ?? null,
+                sessionId: entry.sessionId ?? null,
+                requestId: entry.requestId ?? null,
+                conversationId: entry.conversationId ?? null,
                 metadata: entry.metadata || {},
                 version: '1.0',
             };
@@ -244,6 +267,7 @@ class HistoryManager {
             successRate: 0,
             topErrors: {},
             downloadsByDay: {},
+            downloadsByAgent: {},
             sizeSummary: {
                 smallest: null,
                 largest: null,
@@ -288,6 +312,11 @@ class HistoryManager {
             // Downloads by day
             const day = entry.timestamp.split('T')[0];
             stats.downloadsByDay[day] = (stats.downloadsByDay[day] || 0) + 1;
+
+            // Downloads by agent (legacy entries without an agentId are omitted)
+            if (entry.agentId) {
+                stats.downloadsByAgent[entry.agentId] = (stats.downloadsByAgent[entry.agentId] || 0) + 1;
+            }
         }
 
         // Calculate averages and rates
@@ -353,6 +382,25 @@ class HistoryManager {
                 return false;
             }
 
+            // Agent identity filters — exact match on opaque identifiers.
+            // Entries written before these fields existed (or without them)
+            // have undefined/null values and therefore never match a filter.
+            if (options.agentId && entry.agentId !== options.agentId) {
+                return false;
+            }
+
+            if (options.sessionId && entry.sessionId !== options.sessionId) {
+                return false;
+            }
+
+            if (options.requestId && entry.requestId !== options.requestId) {
+                return false;
+            }
+
+            if (options.conversationId && entry.conversationId !== options.conversationId) {
+                return false;
+            }
+
             // Search filter
             if (options.search) {
                 const search = options.search.toLowerCase();
@@ -375,7 +423,7 @@ class HistoryManager {
      * @private
      */
     exportToCsv(entries: HistoryEntry[]): string {
-        const headers = ['Timestamp', 'URL', 'File Path', 'Status', 'Size (bytes)', 'Duration (ms)', 'Error', 'Correlation ID'];
+        const headers = ['Timestamp', 'URL', 'File Path', 'Status', 'Size (bytes)', 'Duration (ms)', 'Error', 'Correlation ID', 'Agent ID', 'Session ID', 'Request ID', 'Conversation ID'];
         const rows = [headers.join(',')];
 
         for (const entry of entries) {
@@ -388,6 +436,11 @@ class HistoryManager {
                 entry.duration || '',
                 entry.error ? `"${entry.error}"` : '',
                 entry.correlationId || '',
+                // Caller-supplied identifiers are arbitrary strings — quote them
+                entry.agentId ? `"${entry.agentId}"` : '',
+                entry.sessionId ? `"${entry.sessionId}"` : '',
+                entry.requestId ? `"${entry.requestId}"` : '',
+                entry.conversationId ? `"${entry.conversationId}"` : '',
             ];
             rows.push(row.join(','));
         }
