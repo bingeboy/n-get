@@ -108,6 +108,17 @@ const argv = (0, minimist_1.default)(process.argv.slice(2), {
         'max-concurrent': 3,
     },
 });
+/**
+ * Subcommands whose stdout IS the payload — structured JSON or NDJSON that a
+ * caller parses directly. Incidental logging (config loading, progress) must
+ * never be interleaved with it.
+ *
+ * ADD NEW MACHINE-READABLE SUBCOMMANDS HERE. A missing entry does not fail
+ * loudly: the command still works, but its stdout gains a config banner and
+ * stops being parseable, which only surfaces when something downstream tries
+ * to JSON.parse it. `history` and `jobs` were missing for exactly this reason.
+ */
+const MACHINE_OUTPUT_COMMANDS = new Set(['fetch', 'jobs', 'history', 'config']);
 // ─── Module state ─────────────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let configManager;
@@ -191,8 +202,9 @@ async function main() {
             const outputToStdout = argv['output-file'] === '-';
             // --capabilities, --openapi-spec, and --agent-card need config to read live values
             // but their output should be clean machine-readable spec only.
-            const isInfoOnlyFlag = !!(argv.capabilities || argv['openapi-spec'] || argv['agent-card'] || argv._[0] === 'fetch');
-            const shouldSuppressLogs = argv.quiet || outputToStdout || isInfoOnlyFlag;
+            const isInfoOnlyFlag = !!(argv.capabilities || argv['openapi-spec'] || argv['agent-card']);
+            const isMachineOutputCommand = MACHINE_OUTPUT_COMMANDS.has(String(argv._[0] ?? ''));
+            const shouldSuppressLogs = argv.quiet || outputToStdout || isInfoOnlyFlag || isMachineOutputCommand;
             let configDir;
             const packageConfigDir = path.join(__dirname, 'config');
             const currentConfigDir = path.join(process.cwd(), 'config');

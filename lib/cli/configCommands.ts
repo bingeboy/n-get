@@ -27,6 +27,15 @@ class ConfigCommands {
     }
 
     /**
+     * True when the caller asked for a structured payload on stdout, so
+     * incidental logging has to be silenced. 'text' is the human default.
+     */
+    static isStructuredOutput(cliOptions: Record<string, unknown> = {}): boolean {
+        const format = cliOptions['output-format'];
+        return typeof format === 'string' && format !== '' && format !== 'text';
+    }
+
+    /**
      * Initialize ConfigManager for commands
      */
     initializeConfigManager(cliOptions: Record<string, unknown> = {}): InstanceType<typeof ConfigManager> {
@@ -34,7 +43,11 @@ class ConfigCommands {
             const configOptions = {
                 environment: (cliOptions['config-environment'] as string | undefined) || process.env.NODE_ENV || 'development',
                 enableHotReload: false, // Disable for CLI commands
-                logger: cliOptions.quiet ? {
+                // This manager is separate from the one index.ts builds, so it
+                // needs the same stdout discipline: a structured --output-format
+                // means stdout is the payload, and config-loading chatter must
+                // not be interleaved with it. Errors still reach stderr.
+                logger: (cliOptions.quiet || ConfigCommands.isStructuredOutput(cliOptions)) ? {
                     info: () => {},
                     debug: () => {},
                     warn: () => {},

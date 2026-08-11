@@ -206,4 +206,73 @@ describe('CLI output contract', () => {
             expect(Object.keys(spec.paths)).to.have.length.greaterThan(0);
         });
     });
+
+    // Regression: config-loading output used to land on stdout for these
+    // commands, so `JSON.parse` failed on `Unexpected token 'L'`. `--quiet`
+    // worked around it, but an agent following AGENTS.md has no reason to
+    // pass it. These assert stdout is parseable WITHOUT --quiet — that is the
+    // whole point, so do not "fix" a failure here by adding --quiet.
+    describe('machine-readable commands emit clean stdout (no --quiet)', () => {
+
+        // Vitest sets NODE_ENV=test, which loads config/test.yaml with
+        // logging.level "warn" — that alone silences the config banner. A test
+        // inheriting it cannot observe this bug at all. Agents run without
+        // NODE_ENV and get the "development" config, so spawn that way instead.
+        function runCliAsAgent(args) {
+            const env = {...process.env};
+            delete env.NODE_ENV;
+            return execFileSync(process.execPath, [cli, ...args], {
+                cwd: projectRoot,
+                encoding: 'utf8',
+                stdio: ['ignore', 'pipe', 'pipe'],
+                env,
+            });
+        }
+
+        it('nget jobs emits a single parseable NDJSON line', () => {
+            const out = runCliAsAgent(['jobs']).trim();
+            expect(() => JSON.parse(out), `stdout was not parseable JSON:\n${out.slice(0, 200)}`).to.not.throw();
+            expect(JSON.parse(out)).to.have.property('event', 'jobs');
+        });
+
+        it('nget history show --output-format json is parseable', () => {
+            const out = runCliAsAgent(['history', 'show', '--output-format', 'json']).trim();
+            expect(() => JSON.parse(out), `stdout was not parseable JSON:\n${out.slice(0, 200)}`).to.not.throw();
+        });
+
+        // `config` pollutes stdout from two managers, not one: the one index.js
+        // builds, and the separate one configCommands builds for itself. The
+        // latter used to silence itself only for --quiet, so fixing the former
+        // alone left this command just as unparseable.
+        it('nget config show --output-format json is parseable', () => {
+            const out = runCliAsAgent(['config', 'show', '--output-format', 'json']).trim();
+            expect(() => JSON.parse(out), 'stdout was not parseable JSON: ' + out.slice(0, 200)).to.not.throw();
+        });
+
+        it('nget config show --output-format yaml carries no config banner', () => {
+            const out = runCliAsAgent(['config', 'show', '--output-format', 'yaml']);
+            expect(out).to.not.match(/Loaded configuration from/);
+            expect(out).to.match(/^operation: config/m);
+        });
+
+        // The human path is deliberately untouched: text output is not a
+        // payload, and config validate must keep reporting in full.
+        it('leaves text-mode config output alone', () => {
+            const out = runCliAsAgent(['config', 'validate']);
+            expect(out).to.match(/Configuration is valid/);
+            expect(out).to.match(/Critical Sections/);
+        });
+
+        it('stdout carries no config-loading banner', () => {
+            const cases = [
+                ['jobs'],
+                ['history', 'show', '--output-format', 'json'],
+                ['config', 'show', '--output-format', 'json'],
+            ];
+            for (const args of cases) {
+                expect(runCliAsAgent(args), `leaked config output: nget ${args.join(' ')}`)
+                    .to.not.match(/Loaded configuration from/);
+            }
+        });
+    });
 });
