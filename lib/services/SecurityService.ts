@@ -125,7 +125,15 @@ class SecurityService {
             // profile or production config).
             blockPrivateNetworks: config?.security?.blockPrivateNetworks === true,
             blockLocalhost: config?.security?.blockLocalhost === true,
-            enablePathTraversalProtection: config?.security?.enablePathTraversalProtection !== false,
+            // The documented key is `pathTraversalProtection` (Joi schema and
+            // default.yaml). This class only ever read
+            // `enablePathTraversalProtection`, so the documented key never took
+            // effect and the protection could not be turned off. Accept both,
+            // documented name winning; the legacy name stays supported so
+            // anyone who set it does not silently flip behaviour.
+            enablePathTraversalProtection:
+                (config?.security?.pathTraversalProtection
+                    ?? config?.security?.enablePathTraversalProtection) !== false,
             maxConcurrentDownloads: config?.security?.maxConcurrentDownloads || 20,
             rateLimitRequests: config?.security?.rateLimitRequests || 100, // per minute
             sanitizeFilenames: config?.security?.sanitizeFilenames !== false,

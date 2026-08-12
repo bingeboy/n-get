@@ -35,6 +35,32 @@ describe('SecurityService', () => {
             expect(cfg.enablePathTraversalProtection).toBe(true);
         });
 
+        // Regression: this class only read `enablePathTraversalProtection`,
+        // while the schema and default.yaml document `pathTraversalProtection`.
+        // The documented key was therefore inert — protection could not be
+        // turned off through config, and no validation error said so.
+        describe('pathTraversalProtection key naming', () => {
+
+            it('honours the documented key', () => {
+                expect(makeService({pathTraversalProtection: false})
+                    .getSecurityConfig().enablePathTraversalProtection).toBe(false);
+            });
+
+            it('still honours the legacy enablePathTraversalProtection name', () => {
+                expect(makeService({enablePathTraversalProtection: false})
+                    .getSecurityConfig().enablePathTraversalProtection).toBe(false);
+            });
+
+            it('documented key wins when both are set', () => {
+                expect(makeService({pathTraversalProtection: true, enablePathTraversalProtection: false})
+                    .getSecurityConfig().enablePathTraversalProtection).toBe(true);
+            });
+
+            it('defaults to enabled when neither is set', () => {
+                expect(makeService({}).getSecurityConfig().enablePathTraversalProtection).toBe(true);
+            });
+        });
+
         it('defaults ipv6 policy to nothing-blocked, IPv4-mapped allowed', () => {
             const svc = new SecurityService({ config: {}, logger: makeLogger() });
             const cfg = svc.getSecurityConfig();

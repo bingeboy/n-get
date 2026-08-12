@@ -245,6 +245,19 @@ export class DownloadSession {
                     blockPrivateNetworks: cfg['blockPrivateNetworks']  ?? false,
                     blockLocalhost:       cfg['blockLocalhost']        ?? false,
                     ipv6:                 cfg['ipv6']                  ?? {},
+
+                    // Documented security keys that previously stopped here and
+                    // never reached SecurityService, so changing them in config
+                    // did nothing. Passed through undefined when unset, letting
+                    // SecurityService apply its own defaults — which match the
+                    // shipped default.yaml values, so behaviour is unchanged for
+                    // anyone who did not override them.
+                    maxFileSize:             cfg['maxFileSize'],
+                    pathTraversalProtection: cfg['pathTraversalProtection'],
+                    sanitizeFilenames:       cfg['sanitizeFilenames'],
+                    // yaml nests this as security.rateLimiting.requestsPerMinute;
+                    // SecurityService reads a flat rateLimitRequests.
+                    rateLimitRequests:       (cfg['rateLimiting'] as {requestsPerMinute?: number} | undefined)?.requestsPerMinute,
                 },
             },
             logger: this.logger,

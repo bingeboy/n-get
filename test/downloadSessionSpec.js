@@ -122,6 +122,50 @@ describe('DownloadSession', () => {
             expect(s.configManager).to.equal(configManager);
             expect(s.logger).to.exist;
         });
+
+        // Regression: _buildSecurity() forwarded only allowedProtocols,
+        // blockPrivateNetworks and blockLocalhost, so these documented keys
+        // stopped here and never reached SecurityService — changing them in
+        // config did nothing at all.
+        describe('forwards documented security config to SecurityService', () => {
+
+            function sessionWithSecurity(security) {
+                const configManager = {
+                    get: (key, def) => (key === 'security' ? security : def),
+                    getConfig: () => ({}),
+                };
+                return makeSession({ configManager, quietMode: true });
+            }
+
+            it('forwards pathTraversalProtection under its documented name', () => {
+                const s = sessionWithSecurity({ pathTraversalProtection: false });
+                expect(s.securityService.securityConfig.enablePathTraversalProtection).to.equal(false);
+            });
+
+            it('forwards maxFileSize', () => {
+                const s = sessionWithSecurity({ maxFileSize: 4096 });
+                expect(s.securityService.securityConfig.maxFileSize).to.equal(4096);
+            });
+
+            it('forwards sanitizeFilenames', () => {
+                const s = sessionWithSecurity({ sanitizeFilenames: false });
+                expect(s.securityService.securityConfig.sanitizeFilenames).to.equal(false);
+            });
+
+            it('maps rateLimiting.requestsPerMinute to rateLimitRequests', () => {
+                const s = sessionWithSecurity({ rateLimiting: { requestsPerMinute: 7 } });
+                expect(s.securityService.securityConfig.rateLimitRequests).to.equal(7);
+            });
+
+            it('falls back to shipped defaults when keys are absent', () => {
+                const s = sessionWithSecurity({});
+                const cfg = s.securityService.securityConfig;
+                expect(cfg.enablePathTraversalProtection, 'pathTraversalProtection').to.equal(true);
+                expect(cfg.sanitizeFilenames, 'sanitizeFilenames').to.equal(true);
+                expect(cfg.maxFileSize, 'maxFileSize').to.equal(10 * 1024 * 1024 * 1024);
+                expect(cfg.rateLimitRequests, 'rateLimitRequests').to.equal(100);
+            });
+        });
     });
 
     // ─── start() ──────────────────────────────────────────────────────────────
