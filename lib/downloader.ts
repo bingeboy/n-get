@@ -11,12 +11,9 @@ import * as path from 'node:path';
 import { pipeline } from 'node:stream';
 import { promisify } from 'node:util';
 import { Transform } from 'node:stream';
-import * as http  from 'node:http';
-import * as https from 'node:https';
 
 const streamPipeline = promisify(pipeline);
 
-import IPv6Utils    = require('./utils/ipv6Utils');
 // DownloadError is a class with static methods; esModuleInterop lets us import it directly
 import { DownloadError } from './errors/DownloadError';
 
@@ -30,97 +27,6 @@ const OutputFormatterService = require('./services/OutputFormatterService');
 import HistoryManager   = require('./services/HistoryManager');
 import { DownloadSession } from './core/DownloadSession.js';
 import type { DownloadOptions, DownloadResult } from '../types/index.js';
-
-// HTTP agent configuration - will be created with ConfigManager values
-let httpAgent: http.Agent | null = null;
-let httpsAgent: https.Agent | null = null;
-
-/**
- * Initialize HTTP agents with configuration values and IPv6 support
- * @param {ConfigManager} configManager - Configuration manager instance
- */
-function initializeHttpAgents(configManager: unknown) {
-    let keepAliveConfig: Record<string, unknown> = {};
-    let maxSockets = 20;
-    let ipv6Config: Record<string, unknown> = {};
-
-    if (configManager) {
-        const cm = configManager as { get: (key: string, def: unknown) => unknown };
-        keepAliveConfig = cm.get('http.keepAlive', {}) as Record<string, unknown>;
-        maxSockets = cm.get('http.maxConnections', 20) as number;
-        ipv6Config = cm.get('http.ipv6', {}) as Record<string, unknown>;
-    }
-
-    const baseAgentConfig = {
-        keepAlive: (keepAliveConfig['enabled'] as boolean) !== false,
-        keepAliveMsecs: (keepAliveConfig['timeout'] as number) || 30000,
-        maxSockets: (keepAliveConfig['maxSockets'] as number) || Math.min(maxSockets, 10),
-        maxFreeSockets: (keepAliveConfig['maxFreeSockets'] as number) || 5,
-    };
-
-    // IPv6 configuration options
-    const ipv6Enabled = (ipv6Config['enabled'] as boolean) !== false; // Default to true
-    const preferIPv6 = (ipv6Config['preferIPv6'] as boolean) || false;
-    const dualStack = (ipv6Config['dualStack'] as boolean) !== false; // Default to true
-
-    // Set family preference based on configuration
-    let family = 0; // Default: dual-stack (0 = both IPv4 and IPv6)
-    if (!dualStack) {
-        if (preferIPv6 && ipv6Enabled) {
-            family = 6; // IPv6 only
-        } else {
-            family = 4; // IPv4 only
-        }
-    }
-
-    const agentConfig = {
-        ...baseAgentConfig,
-        family, // 0=dual-stack, 4=IPv4 only, 6=IPv6 only
-    };
-
-    httpAgent = new http.Agent(agentConfig);
-    httpsAgent = new https.Agent(agentConfig);
-}
-
-/**
- * Gets the appropriate HTTP agent based on URL protocol with IPv6 support
- * @function getHttpAgent
- * @param {string} url - The URL to determine agent for
- * @param {Object} [options={}] - Additional options for agent selection
- * @param {boolean} [options.forceIPv6=false] - Force IPv6-only connection
- * @param {boolean} [options.forceIPv4=false] - Force IPv4-only connection
- * @returns {Object} The appropriate HTTP agent
- */
-// NOTE: currently unreachable. downloadHttpFile() builds `agentOptions` and sets
-// forceIPv6 for IPv6 URLs, but never passes it here, and nothing else calls this.
-// IPv6 connection forcing is therefore not actually wired up — requests fall back
-// to Node's default agent and DNS resolution. Kept rather than deleted because it
-// documents intended behaviour; wiring it up is a behaviour change, not a lint fix.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function getHttpAgent(url: string, options: { forceIPv6?: boolean; forceIPv4?: boolean } = {}) {
-    if (!httpAgent || !httpsAgent) {
-        throw new Error('HTTP agents not initialized. Call initializeHttpAgents() first.');
-    }
-
-    const baseAgent = url.startsWith('https:') ? httpsAgent : httpAgent;
-
-    // If specific IP version is requested, create a custom agent
-    if (options.forceIPv6 || options.forceIPv4) {
-        const family = options.forceIPv6 ? 6 : 4;
-        const AgentClass = url.startsWith('https:') ? https.Agent : http.Agent;
-
-        // Get the base agent's options and override family
-        const baseOptions = (baseAgent as unknown as { options?: Record<string, unknown> }).options || {};
-        const customOptions = {
-            ...baseOptions,
-            family,
-        };
-
-        return new AgentClass(customOptions);
-    }
-
-    return baseAgent;
-}
 
 /**
  * Determines and validates the destination directory for downloads
@@ -267,11 +173,6 @@ async function downloadFile(
     logger.setCorrelationId(correlationId);
 
     session.queueDownload(url);
-
-    // Initialize HTTP agents if not yet initialized
-    if (!httpAgent) {
-        initializeHttpAgents(configManager);
-    }
 
     try {
         // Security validation
@@ -432,15 +333,6 @@ async function downloadHttpFile(
 
         if (!isResume && !quietMode) {
             emitter.downloadStart(url, { filename, bytes_total: fileSizeBytes, index, total, resumed: false });
-        }
-
-        // Determine agent options based on URL and IPv6 support
-        const urlInfo = IPv6Utils.parseURL(url);
-        const agentOptions: { forceIPv6?: boolean } = {};
-
-        if (urlInfo.isIPv6) {
-            // For IPv6 URLs, prefer IPv6 connections
-            agentOptions.forceIPv6 = true;
         }
 
         // Create appropriate request
@@ -739,6 +631,18 @@ async function download(urls: string[], destination: string, options: DownloadOp
     // Generate correlation ID for this download batch
     const batchCorrelationId = `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+    // Caller-supplied agent identity, persisted on every history entry so the
+    // durable record can answer "which agent downloaded what, in which
+    // session/conversation" after the process exits. sessionId comes from the
+    // session itself so history matches the live NDJSON stream even when the
+    // id was generated rather than supplied.
+    const identity = {
+        agentId:        session.agentId,
+        sessionId:      session.id,
+        requestId:      (options as DownloadOptions).requestId ?? null,
+        conversationId: (options as DownloadOptions).conversationId ?? null,
+    };
+
     // Create concurrency limiter for parallel downloads
     const concurrencyLimiter = new ConcurrencyLimiter(maxConcurrent);
 
@@ -764,6 +668,12 @@ async function download(urls: string[], destination: string, options: DownloadOp
                     quietMode,
                     configManager,
                     logFormat,
+                    // Forward agent identity so per-download metadata collection
+                    // records the same identifiers as the history entries.
+                    agentId:        identity.agentId ?? undefined,
+                    sessionId:      identity.sessionId,
+                    requestId:      identity.requestId ?? undefined,
+                    conversationId: identity.conversationId ?? undefined,
                     _session: session,
                 },
             );
@@ -788,6 +698,7 @@ async function download(urls: string[], destination: string, options: DownloadOp
                     size: downloadResult.size,
                     duration: 0,
                     correlationId: batchCorrelationId,
+                    ...identity,
                     metadata: {alreadyComplete: true},
                 });
 
@@ -813,6 +724,7 @@ async function download(urls: string[], destination: string, options: DownloadOp
                 size: downloadResult.size,
                 duration: downloadResult.duration,
                 correlationId: batchCorrelationId,
+                ...identity,
                 metadata: {
                     resumed: downloadResult.resumed,
                     resumeFrom: downloadResult.resumeFrom,
@@ -833,6 +745,7 @@ async function download(urls: string[], destination: string, options: DownloadOp
                 status: 'failed',
                 error: (error as Error).message,
                 correlationId: batchCorrelationId,
+                ...identity,
                 metadata: {index: index + 1, total: urls.length},
             });
 

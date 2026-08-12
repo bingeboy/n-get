@@ -50,9 +50,3 @@ downloads:
 http:
   timeout: 10000
   maxRetries: 1
-  ipv6:
-    enabled: true
-    dualStack: true
-    dnsResolution:
-      timeout: 2000
-      retries: 1

@@ -129,7 +129,6 @@ describe('ConfigManager', () => {
                 http: {
                     timeout: 30000,
                     maxRetries: 3,
-                    maxConnections: 20,
                 },
                 downloads: {
                     maxConcurrent: 3,
@@ -275,7 +274,6 @@ describe('ConfigManager', () => {
                 http: {
                     timeout: 30000,
                     maxRetries: 3,
-                    maxConnections: 20,
                 },
                 downloads: {
                     maxConcurrent: 3,
@@ -293,6 +291,57 @@ describe('ConfigManager', () => {
                     configDir: tempConfigDir,
                 });
             }).to.not.throw();
+        });
+
+        it('should provide defaults for security.ipv6 policy keys', () => {
+            const validConfig = {
+                version: '2.0.0',
+            };
+
+            fs.writeFileSync(
+                path.join(tempConfigDir, 'default.yaml'),
+                require('js-yaml').dump(validConfig),
+            );
+
+            const config = createConfigManager({
+                configDir: tempConfigDir,
+                enableHotReload: false,
+            });
+
+            expect(config.get('security.ipv6.blockPrivateRanges')).to.be.false;
+            expect(config.get('security.ipv6.blockDocumentation')).to.be.false;
+            expect(config.get('security.ipv6.blockMulticast')).to.be.false;
+            expect(config.get('security.ipv6.allowIPv4Mapped')).to.be.true;
+            expect(config.get('security.ipv6.strictValidation')).to.be.false;
+        });
+
+        it('should accept and retain security.ipv6 overrides (not stripped as unknown)', () => {
+            const hardenedConfig = {
+                version: '2.0.0',
+                security: {
+                    ipv6: {
+                        blockPrivateRanges: true,
+                        blockDocumentation: true,
+                        allowIPv4Mapped: false,
+                    },
+                },
+            };
+
+            fs.writeFileSync(
+                path.join(tempConfigDir, 'default.yaml'),
+                require('js-yaml').dump(hardenedConfig),
+            );
+
+            const config = createConfigManager({
+                configDir: tempConfigDir,
+                enableHotReload: false,
+            });
+
+            expect(config.get('security.ipv6.blockPrivateRanges')).to.be.true;
+            expect(config.get('security.ipv6.blockDocumentation')).to.be.true;
+            expect(config.get('security.ipv6.allowIPv4Mapped')).to.be.false;
+            // Unspecified keys keep their schema defaults
+            expect(config.get('security.ipv6.blockMulticast')).to.be.false;
         });
 
         it('should throw error for invalid configuration values', () => {
@@ -438,7 +487,6 @@ describe('ConfigManager', () => {
                 version: '2.0.0',
                 http: {
                     timeout: 30000,
-                    maxConnections: 20,
                 },
                 downloads: {
                     maxConcurrent: 3,
@@ -448,7 +496,6 @@ describe('ConfigManager', () => {
                         description: 'Fast download profile',
                         http: {
                             timeout: 15000,
-                            maxConnections: 50,
                         },
                         downloads: {
                             maxConcurrent: 10,
@@ -490,9 +537,8 @@ describe('ConfigManager', () => {
         describe('applyProfile()', () => {
             it('should apply profile configuration correctly', async() => {
                 await config.applyProfile('fast');
-                
+
                 expect(config.get('http.timeout')).to.equal(15000);
-                expect(config.get('http.maxConnections')).to.equal(50);
                 expect(config.get('downloads.maxConcurrent')).to.equal(10);
                 expect(config.activeProfile).to.equal('fast');
             });
@@ -563,7 +609,6 @@ describe('ConfigManager', () => {
                 http: {
                     timeout: 30000,
                     maxRetries: 3,
-                    maxConnections: 20,
                 },
                 downloads: {
                     maxConcurrent: 3,

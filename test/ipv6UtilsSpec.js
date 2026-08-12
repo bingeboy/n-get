@@ -187,34 +187,6 @@ describe('IPv6Utils', function() {
         });
     });
 
-    describe('Agent Options', function() {
-        describe('getIPv6AgentOptions', function() {
-            it('should return IPv6 agent options', function() {
-                const options = IPv6Utils.getIPv6AgentOptions();
-                expect(options.family).to.equal(6);
-            });
-
-            it('should merge additional options', function() {
-                const options = IPv6Utils.getIPv6AgentOptions({keepAlive: true});
-                expect(options.family).to.equal(6);
-                expect(options.keepAlive).to.equal(true);
-            });
-        });
-
-        describe('getDualStackAgentOptions', function() {
-            it('should return dual-stack agent options', function() {
-                const options = IPv6Utils.getDualStackAgentOptions();
-                expect(options.family).to.equal(0);
-            });
-
-            it('should merge additional options', function() {
-                const options = IPv6Utils.getDualStackAgentOptions({timeout: 5000});
-                expect(options.family).to.equal(0);
-                expect(options.timeout).to.equal(5000);
-            });
-        });
-    });
-
     describe('Constants', function() {
         it('should provide common IPv6 addresses', function() {
             expect(IPv6Utils.COMMON_IPV6_ADDRESSES.LOOPBACK).to.equal('::1');

@@ -4,24 +4,13 @@
 version: "2.0.0"
 
 # HTTP/HTTPS Download Configuration
+# Connection pooling, keep-alive, and IPv4/IPv6 dual-stack selection are
+# handled natively by the fetch/undici transport and are not configurable here.
 http:
   timeout: 30000              # Request timeout in milliseconds
   maxRetries: 3               # Maximum number of retry attempts
-  maxConnections: 20          # Maximum concurrent connections
   userAgent: "N-Get-Enterprise/2.0"
-  keepAlive:
-    enabled: true             # Enable HTTP keep-alive
-    timeout: 30000           # Keep-alive timeout in milliseconds
-    maxSockets: 10           # Maximum sockets per host
-    maxFreeSockets: 5        # Maximum free sockets per host
-  ipv6:
-    enabled: true             # Enable IPv6 support
-    preferIPv6: false         # Prefer IPv6 over IPv4 when both available
-    dualStack: true           # Enable dual-stack (IPv4/IPv6) connections
-    dnsResolution:
-      timeout: 5000          # DNS resolution timeout for IPv6 in milliseconds
-      retries: 2             # Number of DNS resolution retries
-  
+
 # Download Behavior Configuration
 downloads:
   maxConcurrent: 3            # Maximum concurrent downloads
@@ -117,19 +106,11 @@ profiles:
   fast:
     description: "Optimized for speed and high throughput"
     http:
-      maxConnections: 50
       timeout: 15000
-      ipv6:
-        enabled: true
-        preferIPv6: true
-        dualStack: true
-        dnsResolution:
-          timeout: 3000
-          retries: 1
     downloads:
       maxConcurrent: 10
       chunkUpdateFrequency: 2000
-    
+
   secure:
     description: "Optimized for security and reliability"
     security:
@@ -145,16 +126,12 @@ profiles:
     http:
       timeout: 60000
       maxRetries: 5
-      ipv6:
-        preferIPv6: false
-        dualStack: true
     downloads:
       maxConcurrent: 2
-      
+
   bulk:
     description: "Optimized for bulk downloads and batch operations"
     http:
-      maxConnections: 100
       timeout: 45000
     downloads:
       maxConcurrent: 20
@@ -180,7 +157,6 @@ profiles:
     http:
       timeout: 30000
       maxRetries: 3
-      maxConnections: 10
     downloads:
       enableStdout: true
       maxConcurrent: 1

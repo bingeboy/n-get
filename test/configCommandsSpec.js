@@ -63,7 +63,6 @@ describe('ConfigCommands CLI', () => {
             http: {
                 timeout: 30000,
                 maxRetries: 3,
-                maxConnections: 20,
             },
             downloads: {
                 maxConcurrent: 3,

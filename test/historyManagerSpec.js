@@ -464,4 +464,231 @@ describe('HistoryManager', () => {
             expect(files.some(f => f.includes('.history.'))).to.be.true;
         });
     });
+
+    describe('Agent identity (provenance)', () => {
+        const identity = {
+            agentId: 'agent-alpha',
+            sessionId: 'sess-123',
+            requestId: 'req-456',
+            conversationId: 'conv-789',
+        };
+
+        it('persists agentId, sessionId, requestId, conversationId on entries', async() => {
+            await historyManager.logDownload({
+                url: 'https://example.com/tracked.zip',
+                filePath: path.join(testDir, 'tracked.zip'),
+                status: 'success',
+                size: 100,
+                ...identity,
+            });
+
+            const history = await historyManager.getHistory(testDir);
+            expect(history).to.have.length(1);
+            expect(history[0].agentId).to.equal('agent-alpha');
+            expect(history[0].sessionId).to.equal('sess-123');
+            expect(history[0].requestId).to.equal('req-456');
+            expect(history[0].conversationId).to.equal('conv-789');
+        });
+
+        it('defaults identity fields to null when not supplied', async() => {
+            await historyManager.logDownload({
+                url: 'https://example.com/anon.zip',
+                filePath: path.join(testDir, 'anon.zip'),
+                status: 'success',
+                size: 100,
+            });
+
+            const history = await historyManager.getHistory(testDir);
+            expect(history[0].agentId).to.be.null;
+            expect(history[0].sessionId).to.be.null;
+            expect(history[0].requestId).to.be.null;
+            expect(history[0].conversationId).to.be.null;
+        });
+
+        describe('filtering', () => {
+            beforeEach(async() => {
+                await historyManager.logDownload({
+                    url: 'https://example.com/a.zip',
+                    filePath: path.join(testDir, 'a.zip'),
+                    status: 'success',
+                    ...identity,
+                });
+                await historyManager.logDownload({
+                    url: 'https://example.com/b.zip',
+                    filePath: path.join(testDir, 'b.zip'),
+                    status: 'success',
+                    agentId: 'agent-beta',
+                    sessionId: 'sess-999',
+                });
+                await historyManager.logDownload({
+                    url: 'https://example.com/c.zip',
+                    filePath: path.join(testDir, 'c.zip'),
+                    status: 'success',
+                });
+            });
+
+            it('filters by agentId (exact match)', async() => {
+                const results = await historyManager.getHistory(testDir, {agentId: 'agent-alpha'});
+                expect(results).to.have.length(1);
+                expect(results[0].url).to.include('a.zip');
+            });
+
+            it('filters by sessionId', async() => {
+                const results = await historyManager.getHistory(testDir, {sessionId: 'sess-999'});
+                expect(results).to.have.length(1);
+                expect(results[0].agentId).to.equal('agent-beta');
+            });
+
+            it('filters by requestId', async() => {
+                const results = await historyManager.getHistory(testDir, {requestId: 'req-456'});
+                expect(results).to.have.length(1);
+                expect(results[0].url).to.include('a.zip');
+            });
+
+            it('filters by conversationId', async() => {
+                const results = await historyManager.getHistory(testDir, {conversationId: 'conv-789'});
+                expect(results).to.have.length(1);
+                expect(results[0].url).to.include('a.zip');
+            });
+
+            it('combines identity filters with status filter', async() => {
+                const results = await historyManager.getHistory(testDir, {agentId: 'agent-alpha', status: 'success'});
+                expect(results).to.have.length(1);
+                const none = await historyManager.getHistory(testDir, {agentId: 'agent-alpha', status: 'failed'});
+                expect(none).to.have.length(0);
+            });
+
+            it('excludes entries without identity when a filter is set', async() => {
+                const results = await historyManager.getHistory(testDir, {agentId: 'agent-alpha'});
+                expect(results.every(e => e.agentId === 'agent-alpha')).to.be.true;
+            });
+
+            it('returns all entries when no identity filter is set', async() => {
+                const results = await historyManager.getHistory(testDir);
+                expect(results).to.have.length(3);
+            });
+        });
+
+        describe('legacy entries (pre-identity format)', () => {
+            beforeEach(async() => {
+                // Write a raw legacy-shaped line exactly as older versions did:
+                // no agentId/sessionId/requestId/conversationId fields at all.
+                await historyManager.ensureHistoryDir(testDir);
+                const legacyEntry = {
+                    timestamp: '2026-01-01T00:00:00.000Z',
+                    url: 'https://example.com/legacy.zip',
+                    filePath: path.join(testDir, 'legacy.zip'),
+                    status: 'success',
+                    size: 512,
+                    duration: 1000,
+                    error: null,
+                    correlationId: 'hist-legacy-0001',
+                    metadata: {},
+                    version: '1.0',
+                };
+                await fs.appendFile(
+                    historyManager.getHistoryPath(testDir),
+                    JSON.stringify(legacyEntry) + '\n',
+                    'utf8',
+                );
+            });
+
+            it('reads legacy entries without throwing', async() => {
+                const history = await historyManager.getHistory(testDir);
+                expect(history).to.have.length(1);
+                expect(history[0].url).to.include('legacy.zip');
+            });
+
+            it('treats missing identity as no-match when filtering', async() => {
+                const results = await historyManager.getHistory(testDir, {agentId: 'agent-alpha'});
+                expect(results).to.have.length(0);
+                const bySession = await historyManager.getHistory(testDir, {sessionId: 'sess-123'});
+                expect(bySession).to.have.length(0);
+            });
+
+            it('includes legacy entries when no identity filter is set', async() => {
+                await historyManager.logDownload({
+                    url: 'https://example.com/new.zip',
+                    filePath: path.join(testDir, 'new.zip'),
+                    status: 'success',
+                    ...identity,
+                });
+                const history = await historyManager.getHistory(testDir);
+                expect(history).to.have.length(2);
+            });
+
+            it('exports legacy entries to CSV with blank identity columns', async() => {
+                const exported = await historyManager.exportHistory(testDir, 'csv');
+                const lines = exported.split('\n');
+                expect(lines[0]).to.include('Agent ID,Session ID,Request ID,Conversation ID');
+                // Legacy data row ends with four empty columns
+                expect(lines[1]).to.match(/,,,$/);
+            });
+        });
+
+        describe('export', () => {
+            beforeEach(async() => {
+                await historyManager.logDownload({
+                    url: 'https://example.com/tracked.zip',
+                    filePath: path.join(testDir, 'tracked.zip'),
+                    status: 'success',
+                    size: 100,
+                    ...identity,
+                });
+            });
+
+            it('includes identity fields in JSON export', async() => {
+                const exported = await historyManager.exportHistory(testDir, 'json');
+                const parsed = JSON.parse(exported);
+                expect(parsed[0].agentId).to.equal('agent-alpha');
+                expect(parsed[0].sessionId).to.equal('sess-123');
+                expect(parsed[0].requestId).to.equal('req-456');
+                expect(parsed[0].conversationId).to.equal('conv-789');
+            });
+
+            it('includes identity columns in CSV export', async() => {
+                const exported = await historyManager.exportHistory(testDir, 'csv');
+                const lines = exported.split('\n');
+                expect(lines[0]).to.include('Agent ID');
+                expect(lines[0]).to.include('Session ID');
+                expect(lines[0]).to.include('Request ID');
+                expect(lines[0]).to.include('Conversation ID');
+                expect(lines[1]).to.include('"agent-alpha"');
+                expect(lines[1]).to.include('"sess-123"');
+                expect(lines[1]).to.include('"req-456"');
+                expect(lines[1]).to.include('"conv-789"');
+            });
+
+            it('filters exports by identity', async() => {
+                const exported = await historyManager.exportHistory(testDir, 'json', {agentId: 'someone-else'});
+                expect(JSON.parse(exported)).to.have.length(0);
+            });
+        });
+
+        describe('statistics', () => {
+            it('counts downloads by agent, omitting entries without one', async() => {
+                await historyManager.logDownload({
+                    url: 'https://example.com/1.zip', filePath: path.join(testDir, '1.zip'),
+                    status: 'success', agentId: 'agent-alpha',
+                });
+                await historyManager.logDownload({
+                    url: 'https://example.com/2.zip', filePath: path.join(testDir, '2.zip'),
+                    status: 'success', agentId: 'agent-alpha',
+                });
+                await historyManager.logDownload({
+                    url: 'https://example.com/3.zip', filePath: path.join(testDir, '3.zip'),
+                    status: 'failed', error: 'boom', agentId: 'agent-beta',
+                });
+                await historyManager.logDownload({
+                    url: 'https://example.com/4.zip', filePath: path.join(testDir, '4.zip'),
+                    status: 'success',
+                });
+
+                const stats = await historyManager.getStatistics(testDir);
+                expect(stats.downloadsByAgent['agent-alpha']).to.equal(2);
+                expect(stats.downloadsByAgent['agent-beta']).to.equal(1);
+                expect(Object.keys(stats.downloadsByAgent)).to.have.length(2);
+            });
+        });
+    });
 });

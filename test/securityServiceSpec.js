@@ -22,15 +22,66 @@ function makeService(securityOverrides = {}) {
 describe('SecurityService', () => {
 
     describe('constructor', () => {
-        it('uses secure defaults when no security config provided', () => {
+        it('uses documented defaults when no security config provided', () => {
             const svc = new SecurityService({ config: {}, logger: makeLogger() });
             const cfg = svc.getSecurityConfig();
             expect(cfg.allowedProtocols).toContain('https');
             expect(cfg.maxFileSize).toBe(10 * 1024 * 1024 * 1024);
-            expect(cfg.blockPrivateNetworks).toBe(true);
-            expect(cfg.blockLocalhost).toBe(true);
+            // Default-allow: matches config/default.yaml and the Joi schema.
+            // Operators opt in to blocking (secure profile / production config).
+            expect(cfg.blockPrivateNetworks).toBe(false);
+            expect(cfg.blockLocalhost).toBe(false);
             expect(cfg.sanitizeFilenames).toBe(true);
             expect(cfg.enablePathTraversalProtection).toBe(true);
+        });
+
+        // Regression: this class only read `enablePathTraversalProtection`,
+        // while the schema and default.yaml document `pathTraversalProtection`.
+        // The documented key was therefore inert — protection could not be
+        // turned off through config, and no validation error said so.
+        describe('pathTraversalProtection key naming', () => {
+
+            it('honours the documented key', () => {
+                expect(makeService({pathTraversalProtection: false})
+                    .getSecurityConfig().enablePathTraversalProtection).toBe(false);
+            });
+
+            it('still honours the legacy enablePathTraversalProtection name', () => {
+                expect(makeService({enablePathTraversalProtection: false})
+                    .getSecurityConfig().enablePathTraversalProtection).toBe(false);
+            });
+
+            it('documented key wins when both are set', () => {
+                expect(makeService({pathTraversalProtection: true, enablePathTraversalProtection: false})
+                    .getSecurityConfig().enablePathTraversalProtection).toBe(true);
+            });
+
+            it('defaults to enabled when neither is set', () => {
+                expect(makeService({}).getSecurityConfig().enablePathTraversalProtection).toBe(true);
+            });
+        });
+
+        it('defaults ipv6 policy to nothing-blocked, IPv4-mapped allowed', () => {
+            const svc = new SecurityService({ config: {}, logger: makeLogger() });
+            const cfg = svc.getSecurityConfig();
+            expect(cfg.ipv6).toEqual({
+                blockPrivateRanges: false,
+                blockDocumentation: false,
+                blockMulticast: false,
+                allowIPv4Mapped: true,
+                strictValidation: false,
+            });
+        });
+
+        it('regression: blockPrivateNetworks default stays aligned with the Joi schema default (false)', () => {
+            // Three places declare this default: the Joi schema
+            // (ConfigManager), DownloadSession._buildSecurity, and this
+            // constructor. They must all agree on false. See issue #148 follow-up.
+            const svc = new SecurityService({ config: {}, logger: makeLogger() });
+            const result = svc.validateUrl('https://192.168.1.10/file.zip');
+            expect(result.errors.some(e => e.code === 'PRIVATE_NETWORK_ACCESS_DENIED')).toBe(false);
+            const localhost = svc.validateUrl('https://localhost/file.zip');
+            expect(localhost.errors.some(e => e.code === 'LOCAL_ACCESS_DENIED')).toBe(false);
         });
 
         it('accepts custom allowedProtocols', () => {
@@ -196,6 +247,142 @@ describe('SecurityService', () => {
             const svc = makeService({ blockPrivateNetworks: false, blockLocalhost: false });
             const result = svc.validateUrl('https://example.com/file');
             expect(Array.isArray(result.warnings)).toBe(true);
+        });
+    });
+
+    describe('IPv6 policy (security.ipv6)', () => {
+        function makeIPv6Service(ipv6Overrides = {}) {
+            return makeService({ ipv6: ipv6Overrides });
+        }
+
+        describe('defaults (no policy enabled)', () => {
+            it('allows IPv6 private-range URLs by default', () => {
+                const result = makeIPv6Service().validateUrl('http://[fd00::1]/file');
+                expect(result.errors.some(e => e.code === 'IPV6_PRIVATE_RANGE_BLOCKED')).toBe(false);
+            });
+
+            it('allows documentation-range URLs by default', () => {
+                const result = makeIPv6Service().validateUrl('http://[2001:db8::1]/file');
+                expect(result.errors.some(e => e.code === 'IPV6_DOCUMENTATION_RANGE_BLOCKED')).toBe(false);
+            });
+
+            it('allows multicast URLs by default', () => {
+                const result = makeIPv6Service().validateUrl('http://[ff02::1]/file');
+                expect(result.errors.some(e => e.code === 'IPV6_MULTICAST_BLOCKED')).toBe(false);
+            });
+
+            it('allows IPv4-mapped addresses by default', () => {
+                const result = makeIPv6Service().validateUrl('http://[::ffff:8.8.8.8]/file');
+                expect(result.errors.some(e => e.code === 'IPV6_IPV4_MAPPED_BLOCKED')).toBe(false);
+            });
+        });
+
+        describe('blockPrivateRanges', () => {
+            it('rejects unique-local addresses (fd00::/8)', () => {
+                const result = makeIPv6Service({ blockPrivateRanges: true }).validateUrl('http://[fd00::1]/file');
+                expect(result.isValid).toBe(false);
+                expect(result.errors.some(e => e.code === 'IPV6_PRIVATE_RANGE_BLOCKED')).toBe(true);
+            });
+
+            it('rejects unique-local addresses (fc00::/8)', () => {
+                const result = makeIPv6Service({ blockPrivateRanges: true }).validateUrl('http://[fc00::1]/file');
+                expect(result.errors.some(e => e.code === 'IPV6_PRIVATE_RANGE_BLOCKED')).toBe(true);
+            });
+
+            it('rejects link-local addresses (fe80::/10)', () => {
+                const result = makeIPv6Service({ blockPrivateRanges: true }).validateUrl('http://[fe80::1]/file');
+                expect(result.errors.some(e => e.code === 'IPV6_PRIVATE_RANGE_BLOCKED')).toBe(true);
+            });
+
+            it('rejects the IPv6 loopback (::1)', () => {
+                const result = makeIPv6Service({ blockPrivateRanges: true }).validateUrl('http://[::1]:8080/file');
+                expect(result.errors.some(e => e.code === 'IPV6_PRIVATE_RANGE_BLOCKED')).toBe(true);
+            });
+
+            it('does not reject global unicast addresses', () => {
+                const result = makeIPv6Service({ blockPrivateRanges: true }).validateUrl('http://[2606:4700::1111]/file');
+                expect(result.errors.some(e => e.code === 'IPV6_PRIVATE_RANGE_BLOCKED')).toBe(false);
+            });
+
+            it('does not affect IPv4 or hostname URLs', () => {
+                const svc = makeIPv6Service({ blockPrivateRanges: true });
+                expect(svc.validateUrl('https://example.com/file').errors.some(e => e.code.startsWith('IPV6_'))).toBe(false);
+                expect(svc.validateUrl('https://8.8.8.8/file').errors.some(e => e.code.startsWith('IPV6_'))).toBe(false);
+            });
+        });
+
+        describe('blockDocumentation', () => {
+            it('rejects 2001:db8::/32 addresses', () => {
+                const result = makeIPv6Service({ blockDocumentation: true }).validateUrl('http://[2001:db8::1]/file');
+                expect(result.isValid).toBe(false);
+                expect(result.errors.some(e => e.code === 'IPV6_DOCUMENTATION_RANGE_BLOCKED')).toBe(true);
+            });
+
+            it('does not reject non-documentation 2001:: addresses', () => {
+                const result = makeIPv6Service({ blockDocumentation: true }).validateUrl('http://[2001:4860:4860::8888]/file');
+                expect(result.errors.some(e => e.code === 'IPV6_DOCUMENTATION_RANGE_BLOCKED')).toBe(false);
+            });
+        });
+
+        describe('blockMulticast', () => {
+            it('rejects ff00::/8 addresses', () => {
+                const result = makeIPv6Service({ blockMulticast: true }).validateUrl('http://[ff02::1]/file');
+                expect(result.isValid).toBe(false);
+                expect(result.errors.some(e => e.code === 'IPV6_MULTICAST_BLOCKED')).toBe(true);
+            });
+
+            it('does not reject unicast addresses', () => {
+                const result = makeIPv6Service({ blockMulticast: true }).validateUrl('http://[2606:4700::1111]/file');
+                expect(result.errors.some(e => e.code === 'IPV6_MULTICAST_BLOCKED')).toBe(false);
+            });
+        });
+
+        describe('allowIPv4Mapped', () => {
+            it('rejects IPv4-mapped addresses when allowIPv4Mapped=false', () => {
+                const result = makeIPv6Service({ allowIPv4Mapped: false }).validateUrl('http://[::ffff:8.8.8.8]/file');
+                expect(result.isValid).toBe(false);
+                expect(result.errors.some(e => e.code === 'IPV6_IPV4_MAPPED_BLOCKED')).toBe(true);
+            });
+
+            it('allows plain IPv6 addresses when allowIPv4Mapped=false', () => {
+                const result = makeIPv6Service({ allowIPv4Mapped: false }).validateUrl('http://[2606:4700::1111]/file');
+                expect(result.errors.some(e => e.code === 'IPV6_IPV4_MAPPED_BLOCKED')).toBe(false);
+            });
+        });
+
+        describe('strictValidation', () => {
+            // WHATWG URL parsing rejects malformed bracketed hosts before the
+            // policy check runs, so the strict check is exercised directly as
+            // defense-in-depth for host strings from other sources.
+            it('flags a bracketed host that is not a valid IPv6 address', () => {
+                const svc = makeIPv6Service({ strictValidation: true });
+                const errors = svc.checkIPv6Policies('[not-an-address]');
+                expect(errors.some(e => e.code === 'IPV6_STRICT_VALIDATION_FAILED')).toBe(true);
+            });
+
+            it('does not flag invalid bracketed hosts when strictValidation=false', () => {
+                const svc = makeIPv6Service({ strictValidation: false });
+                const errors = svc.checkIPv6Policies('[not-an-address]');
+                expect(errors.length).toBe(0);
+            });
+
+            it('does not flag valid IPv6 literals', () => {
+                const svc = makeIPv6Service({ strictValidation: true });
+                expect(svc.checkIPv6Policies('[::1]').length).toBe(0);
+                expect(svc.checkIPv6Policies('2001:db8::1').length).toBe(0);
+            });
+        });
+
+        describe('policy pass-through from session config shape', () => {
+            it('honours policy provided under config.security.ipv6', () => {
+                const svc = new SecurityService({
+                    config: { security: { ipv6: { blockPrivateRanges: true } } },
+                    logger: makeLogger(),
+                });
+                const result = svc.validateUrl('http://[fe80::1]/file');
+                expect(result.isValid).toBe(false);
+                expect(result.errors.some(e => e.code === 'IPV6_PRIVATE_RANGE_BLOCKED')).toBe(true);
+            });
         });
     });
 

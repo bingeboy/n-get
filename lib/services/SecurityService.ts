@@ -12,6 +12,14 @@ import IPv6Utils from '../utils/ipv6Utils.js';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
+interface IPv6PolicyConfig {
+    blockPrivateRanges: boolean;
+    blockDocumentation: boolean;
+    blockMulticast: boolean;
+    allowIPv4Mapped: boolean;
+    strictValidation: boolean;
+}
+
 interface SecurityConfig {
     allowedProtocols: string[];
     maxFileSize: number;
@@ -25,6 +33,7 @@ interface SecurityConfig {
     maxConcurrentDownloads: number;
     rateLimitRequests: number;
     sanitizeFilenames: boolean;
+    ipv6: IPv6PolicyConfig;
 }
 
 interface RateLimiter {
@@ -111,12 +120,32 @@ class SecurityService {
             maxPathLength: config?.security?.maxPathLength || 260, // Windows MAX_PATH
             blockedDomains: config?.security?.blockedDomains || [],
             allowedDomains: config?.security?.allowedDomains || [], // Empty = allow all
-            blockPrivateNetworks: config?.security?.blockPrivateNetworks !== false,
-            blockLocalhost: config?.security?.blockLocalhost !== false,
-            enablePathTraversalProtection: config?.security?.enablePathTraversalProtection !== false,
+            // Default false — matches the documented default in config/default.yaml
+            // and the Joi schema. Operators opt in to blocking (e.g. the `secure`
+            // profile or production config).
+            blockPrivateNetworks: config?.security?.blockPrivateNetworks === true,
+            blockLocalhost: config?.security?.blockLocalhost === true,
+            // The documented key is `pathTraversalProtection` (Joi schema and
+            // default.yaml). This class only ever read
+            // `enablePathTraversalProtection`, so the documented key never took
+            // effect and the protection could not be turned off. Accept both,
+            // documented name winning; the legacy name stays supported so
+            // anyone who set it does not silently flip behaviour.
+            enablePathTraversalProtection:
+                (config?.security?.pathTraversalProtection
+                    ?? config?.security?.enablePathTraversalProtection) !== false,
             maxConcurrentDownloads: config?.security?.maxConcurrentDownloads || 20,
             rateLimitRequests: config?.security?.rateLimitRequests || 100, // per minute
             sanitizeFilenames: config?.security?.sanitizeFilenames !== false,
+            // IPv6-specific policy (security.ipv6.*). Defaults mirror
+            // config/default.yaml: nothing blocked, IPv4-mapped allowed.
+            ipv6: {
+                blockPrivateRanges: config?.security?.ipv6?.blockPrivateRanges === true,
+                blockDocumentation: config?.security?.ipv6?.blockDocumentation === true,
+                blockMulticast: config?.security?.ipv6?.blockMulticast === true,
+                allowIPv4Mapped: config?.security?.ipv6?.allowIPv4Mapped !== false,
+                strictValidation: config?.security?.ipv6?.strictValidation === true,
+            },
         };
 
         // Rate limiting state
@@ -285,6 +314,9 @@ class SecurityService {
                     message: 'Access to private network addresses is not allowed',
                 });
             }
+
+            // IPv6-specific policy checks (security.ipv6.*)
+            errors.push(...this.checkIPv6Policies(hostname));
 
             // Warn about HTTP vs HTTPS
             if (protocol === 'http' && !hostname.startsWith('localhost') && !this.isPrivateNetwork(hostname)) {
@@ -644,6 +676,87 @@ class SecurityService {
             .slice(0, 255);                           // Limit filename length
 
         return path.join(dir, sanitized || 'download');
+    }
+
+    /**
+     * Applies the security.ipv6.* policy to a hostname.
+     * Only IPv6 literal hosts are affected; regular hostnames and IPv4
+     * literals pass through untouched. Hostnames arriving from a parsed URL
+     * carry brackets (e.g. "[::1]") — both bracketed and plain forms are
+     * handled via IPv6Utils.detectAddressType.
+     *
+     * Note on strictValidation: WHATWG URL parsing already rejects malformed
+     * bracketed IPv6 hosts before this method is reached from validateUrl, so
+     * the strict check is defense-in-depth for host strings that arrive from
+     * other sources (e.g. SFTP host config).
+     * @param hostname - Hostname to check (lowercased)
+     * @returns Validation errors (empty when the host passes policy)
+     */
+    private checkIPv6Policies(hostname: string): ValidationError[] {
+        const policy = this.securityConfig.ipv6;
+        const errors: ValidationError[] = [];
+
+        const addressInfo = IPv6Utils.detectAddressType(hostname);
+
+        // Bracketed host whose contents are not a valid IPv6 address
+        if (policy.strictValidation && addressInfo.type === 'invalid') {
+            errors.push({
+                field: 'url',
+                code: 'IPV6_STRICT_VALIDATION_FAILED',
+                message: `Host '${hostname}' is not a valid IPv6 address`,
+            });
+            return errors;
+        }
+
+        if (addressInfo.type !== 'ipv6-bracketed' && addressInfo.type !== 'ipv6-plain') {
+            return errors; // Not an IPv6 literal — no IPv6 policy applies
+        }
+
+        const address = addressInfo.address.toLowerCase();
+
+        // fc00::/7 (unique local), fe80::/10 (link-local),
+        // fec0::/10 (site-local, deprecated), ::1 (loopback), :: (unspecified)
+        const privateRangePatterns = [
+            /^f[cd][0-9a-f]{2}:/,
+            /^fe[89ab][0-9a-f]:/,
+            /^fe[c-f][0-9a-f]:/,
+            /^::1$/,
+            /^::$/,
+        ];
+
+        if (policy.blockPrivateRanges && privateRangePatterns.some(pattern => pattern.test(address))) {
+            errors.push({
+                field: 'url',
+                code: 'IPV6_PRIVATE_RANGE_BLOCKED',
+                message: 'Access to IPv6 private/local ranges is blocked by security policy',
+            });
+        }
+
+        if (policy.blockDocumentation && /^2001:0*db8:/.test(address)) {
+            errors.push({
+                field: 'url',
+                code: 'IPV6_DOCUMENTATION_RANGE_BLOCKED',
+                message: 'Access to the IPv6 documentation range (2001:db8::/32) is blocked by security policy',
+            });
+        }
+
+        if (policy.blockMulticast && /^ff[0-9a-f]{2}:/.test(address)) {
+            errors.push({
+                field: 'url',
+                code: 'IPV6_MULTICAST_BLOCKED',
+                message: 'Access to IPv6 multicast ranges (ff00::/8) is blocked by security policy',
+            });
+        }
+
+        if (!policy.allowIPv4Mapped && /^::ffff:/.test(address)) {
+            errors.push({
+                field: 'url',
+                code: 'IPV6_IPV4_MAPPED_BLOCKED',
+                message: 'IPv4-mapped IPv6 addresses (::ffff:0:0/96) are blocked by security policy',
+            });
+        }
+
+        return errors;
     }
 
     /**

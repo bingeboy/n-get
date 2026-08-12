@@ -67,14 +67,49 @@ class HistoryCommands {
     }
 
     /**
+     * Extracts agent-identity filters from argv.
+     * These are opaque, caller-supplied identifiers matched exactly.
+     */
+    identityFilters(argv: any): Record<string, string | undefined> {
+        return {
+            agentId: argv['agent-id'],
+            sessionId: argv['session-id'],
+            requestId: argv['request-id'],
+            conversationId: argv['conversation-id'],
+        };
+    }
+
+    /**
+     * Parses a --since/--until value. Accepts anything Date can parse, plus
+     * relative durations like "45s", "30m", "1h", "7d", "2w" (meaning "that
+     * long before now").
+     */
+    parseDateOption(value: string): Date {
+        const relative = /^(\d+)([smhdw])$/.exec(value);
+        if (relative) {
+            const amount = parseInt(relative[1], 10);
+            const unitMs: Record<string, number> = {
+                s: 1000,
+                m: 60 * 1000,
+                h: 60 * 60 * 1000,
+                d: 24 * 60 * 60 * 1000,
+                w: 7 * 24 * 60 * 60 * 1000,
+            };
+            return new Date(Date.now() - amount * unitMs[relative[2]]);
+        }
+        return new Date(value);
+    }
+
+    /**
      * Handles the show subcommand
      */
     async handleShowCommand(destination: string, argv: any): Promise<void> {
         const options = {
             limit: argv.limit ? parseInt(argv.limit) : 50,
             status: argv.status,
-            since: argv.since ? new Date(argv.since) : null,
-            until: argv.until ? new Date(argv.until) : null,
+            since: argv.since ? this.parseDateOption(argv.since) : null,
+            until: argv.until ? this.parseDateOption(argv.until) : null,
+            ...this.identityFilters(argv),
         };
 
         const entries = await this.historyManager.getHistory(destination, options);
@@ -126,6 +161,18 @@ class HistoryCommands {
                 console.log(`   🔍 ID: ${entry.correlationId}`);
             }
 
+            if (entry.agentId) {
+                console.log(`   🤖 Agent: ${entry.agentId}`);
+            }
+
+            if (entry.sessionId) {
+                console.log(`   🧵 Session: ${entry.sessionId}`);
+            }
+
+            if (entry.conversationId) {
+                console.log(`   💬 Conversation: ${entry.conversationId}`);
+            }
+
             console.log('');
         }
     }
@@ -159,6 +206,7 @@ class HistoryCommands {
             search: searchTerm,
             limit: argv.limit ? parseInt(argv.limit) : 100,
             status: argv.status,
+            ...this.identityFilters(argv),
         };
 
         const entries = await this.historyManager.getHistory(destination, options);
@@ -239,8 +287,9 @@ class HistoryCommands {
         const options = {
             limit: argv.limit ? parseInt(argv.limit) : null,
             status: argv.status,
-            since: argv.since ? new Date(argv.since) : null,
-            until: argv.until ? new Date(argv.until) : null,
+            since: argv.since ? this.parseDateOption(argv.since) : null,
+            until: argv.until ? this.parseDateOption(argv.until) : null,
+            ...this.identityFilters(argv),
         };
 
         console.log(`📤 Exporting history to ${format.toUpperCase()} format...`);
@@ -302,8 +351,8 @@ class HistoryCommands {
         console.log('Show Options:');
         console.log('  --limit <number>    Maximum number of entries to show (default: 50)');
         console.log('  --status <status>   Filter by status (success, failed, in_progress)');
-        console.log('  --since <date>      Show entries after this date');
-        console.log('  --until <date>      Show entries before this date');
+        console.log('  --since <date>      Show entries after this date (or relative: 30m, 1h, 7d, 2w)');
+        console.log('  --until <date>      Show entries before this date (or relative)');
         console.log('');
         console.log('Clear Options:');
         console.log('  --confirm           Confirm deletion');
@@ -322,12 +371,19 @@ class HistoryCommands {
         console.log('  --output <file>     Output file (use "-" for stdout)');
         console.log('  --limit <number>    Maximum entries to export');
         console.log('  --status <status>   Filter by status');
-        console.log('  --since <date>      Export entries after this date');
-        console.log('  --until <date>      Export entries before this date');
+        console.log('  --since <date>      Export entries after this date (or relative: 1h, 7d)');
+        console.log('  --until <date>      Export entries before this date (or relative)');
+        console.log('');
+        console.log('Agent Filters (show, search, export):');
+        console.log('  --agent-id <id>         Filter by agent identifier');
+        console.log('  --session-id <id>       Filter by session identifier');
+        console.log('  --request-id <id>       Filter by request identifier');
+        console.log('  --conversation-id <id>  Filter by conversation identifier');
         console.log('');
         console.log('Examples:');
         console.log('  nget history show                           Show recent downloads');
         console.log('  nget history show --limit 10 --status success');
+        console.log('  nget history show --agent-id my-agent --since 1h --output-format json');
         console.log('  nget history search "example.com"          Search by URL');
         console.log('  nget history stats --days 7                Weekly stats');
         console.log('  nget history export --csv --output report.csv');
