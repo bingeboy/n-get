@@ -24,6 +24,12 @@ interface RecursiveDownloaderOptions {
     respectRobotsTxt?: boolean;
     userAgent?: string;
     sshOptions?: Record<string, any>;
+    /** Threaded to the crawler's SecurityService and to per-file downloads */
+    configManager?: any;
+    /** Injected security policy for the crawler (built from configManager otherwise) */
+    securityService?: any;
+    /** Caller-supplied agent identity for the download session */
+    agentId?: string | null;
 }
 
 interface DownloadStats {
@@ -76,17 +82,22 @@ class RecursiveDownloader {
         respectRobotsTxt: boolean;
         userAgent: string;
         sshOptions: Record<string, any>;
+        configManager: any;
+        agentId: string | null;
     };
     crawler: any;
     downloadStats: DownloadStats;
 
     constructor(options: RecursiveDownloaderOptions = {}) {
         this.options = {
-            // Crawler options
-            maxDepth: options.level || options.maxDepth || 5,
+            // Crawler options. ?? not || so an explicit 0 is honoured.
+            maxDepth: options.level ?? options.maxDepth ?? 5,
             noParent: options.noParent || false,
-            acceptPatterns: options.accept || [],
-            rejectPatterns: options.reject || [],
+            // Normalise here so CSV strings from the CLI (-A "*.pdf,*.zip")
+            // become pattern arrays instead of being iterated character by
+            // character inside the crawler.
+            acceptPatterns: RecursiveDownloader.parsePatterns(options.accept),
+            rejectPatterns: RecursiveDownloader.parsePatterns(options.reject),
             followExternalLinks: options.followExternalLinks || false,
 
             // Download options
@@ -95,12 +106,15 @@ class RecursiveDownloader {
             maxConcurrentDownloads: options.maxConcurrentDownloads || 3,
 
             // Crawler behavior
-            delayMs: options.delayMs || 1000,
+            delayMs: options.delayMs ?? 1000,
             respectRobotsTxt: options.respectRobotsTxt !== false,
             userAgent: options.userAgent || 'n-get-recursive/1.0',
 
             // SSH options (passed through)
             sshOptions: options.sshOptions || {},
+
+            configManager: options.configManager ?? null,
+            agentId: options.agentId ?? null,
         };
 
         this.crawler = new RecursiveCrawler({
@@ -114,6 +128,8 @@ class RecursiveDownloader {
             respectRobotsTxt: this.options.respectRobotsTxt,
             userAgent: this.options.userAgent,
             maxConcurrent: Math.min(this.options.maxConcurrentDownloads, 3), // Limit crawling concurrency
+            configManager: this.options.configManager,
+            securityService: options.securityService,
         });
 
         this.downloadStats = {
@@ -240,6 +256,18 @@ class RecursiveDownloader {
         ui.displayBanner();
         ui.displayInfo(`Starting recursive download of ${urls.length} file(s)...`);
 
+        // One shared session for the whole recursive batch. Without this,
+        // each bare downloadFile() call creates its own session and never
+        // ends it — leaving phantom "active" sessions behind for jobs/MCP
+        // observers. The shared session also applies the operator's security
+        // config to every file and gives the run a single NDJSON stream.
+        const {DownloadSession} = require('./core/DownloadSession');
+        const session = new DownloadSession({
+            quietMode: false,
+            configManager: this.options.configManager,
+            agentId: this.options.agentId,
+        }).start();
+
         const overallStartTime = Date.now();
 
         // Process downloads in batches to respect concurrency limits
@@ -264,6 +292,7 @@ class RecursiveDownloader {
                         urls.length,
                         enableResume,
                         sshOptions,
+                        session,
                     );
 
                     if (result.alreadyComplete) {
@@ -323,6 +352,19 @@ class RecursiveDownloader {
             .filter(result => result.success && result.filePath)
             .map(result => result.filePath as string);
 
+        await session.end({
+            stats: {
+                total: stats.totalFiles,
+                success: stats.successCount,
+                errors: stats.errorCount,
+                resumed: stats.resumedCount,
+                bytes: stats.totalBytes,
+                duration: overallTime,
+                avg_speed: stats.averageSpeed,
+                file_paths: filePaths,
+            },
+        });
+
         // Display comprehensive summary
         ui.displaySummary({
             totalFiles: stats.totalFiles,
@@ -341,15 +383,29 @@ class RecursiveDownloader {
     /**
      * Download a single file to a specific path
      */
-    async downloadSingleFile(url: string, targetPath: string, index: number, total: number, enableResume: boolean, sshOptions: any): Promise<any> {
+    async downloadSingleFile(url: string, targetPath: string, index: number, total: number, enableResume: boolean, sshOptions: any, session: any = null): Promise<any> {
+        // downloadFile is attached as a property of the batch download() export
         const {downloadFile} = require('./downloader');
+        if (typeof downloadFile !== 'function') {
+            throw new TypeError('lib/downloader does not expose downloadFile — recursive downloads cannot proceed');
+        }
 
         // Get the directory and filename
         const targetDir = path.dirname(targetPath);
         const originalFilename = path.basename(targetPath);
 
+        // SSH credentials stay top-level (sftpManager reads options.keyPath
+        // etc. directly); configManager rides along for session/security config.
+        const downloadOptions: any = {
+            ...sshOptions,
+            configManager: this.options.configManager,
+        };
+        if (session) {
+            downloadOptions._session = session;
+        }
+
         // Download to the target directory
-        const result: any = await downloadFile(url, targetDir, index, total, enableResume, sshOptions);
+        const result: any = await downloadFile(url, targetDir, index, total, enableResume, downloadOptions);
 
         // If the downloaded file has a different name than what we want, rename it
         if (result.path && path.basename(result.path) !== originalFilename) {
@@ -435,6 +491,7 @@ class RecursiveDownloader {
         console.log(`  • URLs discovered: ${crawlStats.discoveredUrls}`);
         console.log(`  • Max depth reached: ${this.options.maxDepth}`);
         console.log(`  • Crawl errors: ${crawlStats.errors}`);
+        console.log(`  • Blocked by security policy: ${crawlStats.blocked ?? 0}`);
 
         console.log((`\n${ui.emojis.downloading} Download Statistics:` as any).bold.blue);
         console.log(`  • Total files: ${this.downloadStats.totalUrls}`);

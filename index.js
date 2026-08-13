@@ -71,6 +71,10 @@ const argv = (0, minimist_1.default)(process.argv.slice(2), {
         'capabilities', 'openapi-spec', 'agent-card',
         'human', // human-readable output (progress bars + banners)
         'raw', // fetch: output response body only, no NDJSON envelope
+        'recursive', // -R: crawl and download linked resources
+        // NOTE: --no-parent is deliberately absent — minimist rewrites any
+        // --no-X argument to { X: false }, so the flag is read below as
+        // argv.parent === false.
     ],
     string: [
         'd', 'destination', 'ssh-key', 'ssh-password', 'ssh-passphrase',
@@ -82,6 +86,7 @@ const argv = (0, minimist_1.default)(process.argv.slice(2), {
         'agent-id',
         'method', 'data', 'header',
         'webhook', 'webhook-header', 'webhook-events', 'webhook-secret',
+        'level', 'accept', 'reject', // recursive: depth + file patterns
     ],
     alias: {
         d: 'destination',
@@ -96,6 +101,7 @@ const argv = (0, minimist_1.default)(process.argv.slice(2), {
         o: 'output-file',
         q: 'quiet',
         c: 'max-concurrent',
+        R: 'recursive',
     },
     default: {
         resume: true,
@@ -558,6 +564,43 @@ async function main() {
         const maxConcurrent = Math.max(1, Number.parseInt(argv['max-concurrent']) || configMaxConcurrent);
         if (!quietMode && maxConcurrent !== configMaxConcurrent) {
             ui.displayInfo(`Using ${maxConcurrent} concurrent downloads`);
+        }
+        // ─── Recursive download (-R / --recursive) ────────────────────────────
+        if (argv.recursive) {
+            // Advertised limits (see --capabilities limits.recursion)
+            const RECURSION_DEFAULT_DEPTH = 5;
+            const RECURSION_MAX_DEPTH = 50;
+            if (outputToStdout || argv['stdout']) {
+                console.error('Error: Recursive mode is not compatible with --stdout');
+                process.exit(1);
+            }
+            let level = RECURSION_DEFAULT_DEPTH;
+            if (argv.level !== undefined) {
+                const parsed = Number.parseInt(argv.level, 10);
+                if (Number.isNaN(parsed) || parsed < 1 || parsed > RECURSION_MAX_DEPTH) {
+                    console.error(`Error: --level must be a number between 1 and ${RECURSION_MAX_DEPTH}`);
+                    process.exit(1);
+                }
+                level = parsed;
+            }
+            const RecursiveDownloader = require('./lib/recursiveDownloader');
+            const recursiveDownloader = new RecursiveDownloader({
+                level,
+                // minimist rewrites --no-parent to { parent: false }
+                noParent: argv['parent'] === false,
+                accept: argv.accept,
+                reject: argv.reject,
+                enableResume,
+                maxConcurrentDownloads: maxConcurrent,
+                userAgent: argv['user-agent'],
+                sshOptions,
+                configManager,
+                agentId: argv['agent-id'] ?? null,
+            });
+            const recursiveResults = await recursiveDownloader.recursiveDownload(processedUrls, destination ?? process.cwd());
+            const allRecursiveFailed = recursiveResults.length > 0
+                && recursiveResults.every(r => !r.success);
+            process.exit(allRecursiveFailed ? 1 : 0);
         }
         const downloadOptions = {
             enableResume,

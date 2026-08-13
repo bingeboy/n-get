@@ -13,12 +13,9 @@
  *   not abort the batch or throw
  * - getDownloadStats shape
  *
- * NOT covered (blocked by a product bug, reported upstream): the successful
- * download path. downloadSingleFile() destructures {downloadFile} from
- * lib/downloader, which exports only the batch download() function, so every
- * per-file download currently throws TypeError before reaching the network.
- * The error-isolation tests below use unreachable URLs so their assertions
- * stay valid once that bug is fixed.
+ * The successful download path (downloadSingleFile rename, full Phase-2) is
+ * covered against the local server now that lib/downloader exposes
+ * downloadFile as a property of its batch export.
  *
  * All HTTP traffic goes to a local node:http server on an ephemeral port.
  */
@@ -132,6 +129,30 @@ describe('RecursiveDownloader', () => {
         });
     });
 
+    describe('downloader export (regression)', () => {
+        it('lib/downloader exposes downloadFile on the batch export', () => {
+            // downloadSingleFile destructures {downloadFile} from lib/downloader.
+            // This was undefined before the property was attached, making every
+            // recursive per-file download throw before reaching the network.
+            const downloader = require('../lib/downloader.js');
+            expect(downloader).to.be.a('function');
+            expect(downloader.downloadFile).to.be.a('function');
+        });
+    });
+
+    describe('constructor pattern normalisation (regression)', () => {
+        it('accepts CSV strings for accept/reject and parses them into arrays', () => {
+            const dl = new RecursiveDownloader({accept: '*.pdf, *.zip', reject: '*.exe'});
+            expect(dl.options.acceptPatterns).to.deep.equal(['*.pdf', '*.zip']);
+            expect(dl.options.rejectPatterns).to.deep.equal(['*.exe']);
+            expect(dl.crawler.options.acceptPatterns).to.deep.equal(['*.pdf', '*.zip']);
+        });
+
+        it('honours an explicit delayMs of 0', () => {
+            expect(new RecursiveDownloader({delayMs: 0}).options.delayMs).to.equal(0);
+        });
+    });
+
     describe('parsePatterns', () => {
         it('returns [] for null, undefined and non-string non-array input', () => {
             expect(RecursiveDownloader.parsePatterns(null)).to.deep.equal([]);
@@ -240,6 +261,74 @@ describe('RecursiveDownloader', () => {
                 expect(result.error).to.be.a('string');
                 expect(urls).to.include(result.url);
             }
+        });
+    });
+
+    describe('downloadSingleFile — success path', () => {
+        it('downloads a file and renames it to the requested target name', async() => {
+            routes['/files/data.bin'] = {contentType: 'application/octet-stream', body: 'RECURSIVE-OK'};
+            const dl = makeDownloader();
+            const targetPath = path.join(tmpDir, 'renamed.bin');
+
+            const result = await dl.downloadSingleFile(
+                `${origin}/files/data.bin`, targetPath, 1, 1, false, {},
+            );
+
+            expect(result.path).to.equal(targetPath);
+            expect(fs.readFileSync(targetPath, 'utf8')).to.equal('RECURSIVE-OK');
+            // The as-downloaded name must be gone after the rename
+            expect(fs.existsSync(path.join(tmpDir, 'data.bin'))).to.be.false;
+        });
+
+        it('keeps the name when the URL basename already matches', async() => {
+            routes['/files/exact.bin'] = {contentType: 'application/octet-stream', body: 'EXACT'};
+            const dl = makeDownloader();
+            const targetPath = path.join(tmpDir, 'exact.bin');
+
+            const result = await dl.downloadSingleFile(
+                `${origin}/files/exact.bin`, targetPath, 1, 1, false, {},
+            );
+
+            expect(result.path).to.equal(targetPath);
+            expect(fs.readFileSync(targetPath, 'utf8')).to.equal('EXACT');
+        });
+    });
+
+    describe('recursiveDownload — full crawl and download (Phase 2)', () => {
+        it('crawls a site and downloads discovered files into the recreated structure', async() => {
+            routes['/site/index.html'] = {body: '<a href="a.pdf">a</a><a href="sub/b.pdf">b</a>'};
+            routes['/site/a.pdf'] = {contentType: 'application/pdf', body: 'PDF-A'};
+            routes['/site/sub/b.pdf'] = {contentType: 'application/pdf', body: 'PDF-B'};
+            const dl = makeDownloader({enableResume: false});
+
+            const results = await dl.recursiveDownload([`${origin}/site/index.html`], tmpDir);
+
+            expect(results).to.have.length(2);
+            expect(results.every(r => r.success)).to.be.true;
+
+            const port = new URL(origin).port;
+            const hostDir = path.join(tmpDir, `127.0.0.1_${port}`);
+            expect(fs.readFileSync(path.join(hostDir, 'site', 'a.pdf'), 'utf8')).to.equal('PDF-A');
+            expect(fs.readFileSync(path.join(hostDir, 'site', 'sub', 'b.pdf'), 'utf8')).to.equal('PDF-B');
+
+            const stats = dl.getDownloadStats();
+            expect(stats.downloadedFiles).to.equal(2);
+            expect(stats.failedFiles).to.equal(0);
+        });
+
+        it('applies accept patterns end to end', async() => {
+            routes['/mix/index.html'] = {body: '<a href="keep.pdf">k</a><a href="skip.zip">s</a>'};
+            routes['/mix/keep.pdf'] = {contentType: 'application/pdf', body: 'KEEP'};
+            routes['/mix/skip.zip'] = {contentType: 'application/zip', body: 'SKIP'};
+            const dl = makeDownloader({enableResume: false, accept: '*.pdf'});
+
+            const results = await dl.recursiveDownload([`${origin}/mix/index.html`], tmpDir);
+
+            expect(results).to.have.length(1);
+            expect(results[0].url).to.equal(`${origin}/mix/keep.pdf`);
+            const port = new URL(origin).port;
+            expect(fs.existsSync(path.join(tmpDir, `127.0.0.1_${port}`, 'mix', 'keep.pdf'))).to.be.true;
+            expect(fs.existsSync(path.join(tmpDir, `127.0.0.1_${port}`, 'mix', 'skip.zip'))).to.be.false;
         });
     });
 

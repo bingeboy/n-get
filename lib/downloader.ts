@@ -843,4 +843,9 @@ async function download(urls: string[], destination: string, options: DownloadOp
     return results;
 }
 
+// The public export is the batch download() function. The single-file entry
+// point is attached as a property for the recursive downloader, which places
+// each file at a crawler-derived path and so cannot use the batch API.
+(download as unknown as Record<string, unknown>)['downloadFile'] = downloadFile;
+
 export = download;

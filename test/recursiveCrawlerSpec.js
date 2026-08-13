@@ -66,6 +66,26 @@ function makeCrawler(overrides = {}) {
 
 describe('RecursiveCrawler', () => {
 
+    describe('constructor option handling', () => {
+        it('regression: honours an explicit delayMs of 0', () => {
+            expect(new RecursiveCrawler({delayMs: 0}).options.delayMs).to.equal(0);
+        });
+
+        it('regression: honours an explicit maxDepth of 0', () => {
+            expect(new RecursiveCrawler({maxDepth: 0}).options.maxDepth).to.equal(0);
+        });
+
+        it('still defaults delayMs and maxDepth when omitted', () => {
+            const crawler = new RecursiveCrawler();
+            expect(crawler.options.delayMs).to.equal(1000);
+            expect(crawler.options.maxDepth).to.equal(5);
+        });
+
+        it('coerces maxConcurrent 0 to the default — 0 would spin the crawl queue forever', () => {
+            expect(new RecursiveCrawler({maxConcurrent: 0}).options.maxConcurrent).to.equal(3);
+        });
+    });
+
     describe('globToRegex', () => {
         it('anchors the pattern — *.pdf must not match report.pdfx', () => {
             const regex = makeCrawler().globToRegex('*.pdf');
@@ -210,6 +230,14 @@ describe('RecursiveCrawler', () => {
             expect(urls).to.include('http://host/dir/big.jpg');
         });
 
+        it('regression: srcset must not also produce a percent-encoded whole-value URL', () => {
+            const html = '<img srcset="small.jpg 1x, big.jpg 2x">';
+            const urls = makeCrawler().extractUrlsFromHtml(html, base);
+            expect(urls).to.have.length(2);
+            expect(urls.some(u => u.includes('%20'))).to.be.false;
+            expect(urls.some(u => u.includes(','))).to.be.false;
+        });
+
         it('skips data:, mailto:, tel:, javascript: and fragment-only links', () => {
             const html = `
                 <a href="data:text/plain,hi">d</a>
@@ -293,6 +321,22 @@ describe('RecursiveCrawler', () => {
             const crawler = makeCrawler();
             expect(crawler.parseRobotsTxt('User-agent: *\nDisallow:', 'http://h/x')).to.be.true;
         });
+
+        it('regression: a mixed-case Disallow rule is effective (case-insensitive obedience)', () => {
+            const crawler = makeCrawler();
+            const robots = 'User-agent: *\nDisallow: /Private/';
+            // Rule case must be preserved (not silently lowercased away) and
+            // matching is case-insensitive: politeness errs toward obeying.
+            expect(crawler.parseRobotsTxt(robots, 'http://h/Private/x')).to.be.false;
+            expect(crawler.parseRobotsTxt(robots, 'http://h/private/x')).to.be.false;
+            expect(crawler.parseRobotsTxt(robots, 'http://h/public/x')).to.be.true;
+        });
+
+        it('parseRobotsDisallows preserves the original case of path values', () => {
+            const crawler = makeCrawler();
+            expect(crawler.parseRobotsDisallows('User-agent: *\nDisallow: /Private/'))
+                .to.deep.equal(['/Private/']);
+        });
     });
 
     describe('generateLocalPath', () => {
@@ -333,6 +377,14 @@ describe('RecursiveCrawler', () => {
             expect(result).to.include('page_a_1_b_2');
             expect(result).to.not.include('?');
             expect(result).to.not.include('&');
+        });
+
+        it('regression: directory-style URLs get index.html on every platform', () => {
+            const crawler = makeCrawler();
+            // The old check was endsWith('/') on the JOINED path, which never
+            // matches on Windows where path.join yields backslashes.
+            expect(crawler.generateLocalPath('http://example.com/docs/', '/dest'))
+                .to.equal(path.join('/dest', 'example.com', 'docs', 'index.html'));
         });
     });
 
@@ -404,6 +456,24 @@ describe('RecursiveCrawler', () => {
             expect(requests).to.not.include('/robots.txt');
             expect(requests).to.include('/open.html');
         });
+
+        it('regression: robots verdict is per-path — an allowed first path must not unlock a disallowed one', async() => {
+            routes['/robots.txt'] = {contentType: 'text/plain', body: 'User-agent: *\nDisallow: /private/'};
+            routes['/public/a.html'] = {body: '<p>ok</p>'};
+            routes['/private/b.html'] = {body: '<p>secret</p>'};
+            const crawler = makeCrawler({respectRobotsTxt: true});
+
+            // First check an ALLOWED path — the old cache stored this boolean
+            // keyed by robots.txt URL and replayed it for every later path.
+            await crawler.crawlUrl(`${origin}/public/a.html`);
+            const blocked = await crawler.crawlUrl(`${origin}/private/b.html`);
+
+            expect(blocked).to.deep.equal([]);
+            expect(requests).to.include('/public/a.html');
+            expect(requests).to.not.include('/private/b.html');
+            // robots.txt itself is still fetched only once (list is cached)
+            expect(requests.filter(p => p === '/robots.txt')).to.have.length(1);
+        });
     });
 
     describe('crawl — full traversal', () => {
@@ -469,6 +539,90 @@ describe('RecursiveCrawler', () => {
 
             expect(downloads).to.deep.equal([]);
             expect(crawler.stats.pagesVisited).to.equal(1);
+        });
+
+        it('regression: files on external hosts are excluded unless followExternalLinks is set', async() => {
+            // "localhost" is a different hostname than 127.0.0.1 — no request
+            // is ever made to it because discovery does not download.
+            routes['/page.html'] = {body: `<a href="http://localhost:1/external.pdf">x</a><a href="${origin}/local.pdf">l</a>`};
+
+            const fenced = makeCrawler();
+            const fencedUrls = (await fenced.crawl([`${origin}/page.html`])).map(d => d.url);
+            expect(fencedUrls).to.include(`${origin}/local.pdf`);
+            expect(fencedUrls).to.not.include('http://localhost:1/external.pdf');
+
+            const open = makeCrawler({followExternalLinks: true});
+            const openUrls = (await open.crawl([`${origin}/page.html`])).map(d => d.url);
+            expect(openUrls).to.include('http://localhost:1/external.pdf');
+        });
+    });
+
+    describe('security policy enforcement', () => {
+        const SecurityService = require('../lib/services/SecurityService.js');
+        const silentLogger = {warn: () => {}, error: () => {}};
+
+        it('refuses to fetch a page the policy blocks, counting it instead of failing', async() => {
+            routes['/target.html'] = {body: '<p>never seen</p>'};
+            const crawler = makeCrawler({
+                securityService: new SecurityService({
+                    config: {security: {blockLocalhost: true}},
+                    logger: silentLogger,
+                }),
+            });
+
+            const items = await crawler.crawlUrl(`${origin}/target.html`);
+
+            expect(items).to.deep.equal([]);
+            expect(crawler.stats.blocked).to.equal(1);
+            expect(crawler.stats.errors).to.equal(0);
+            // The gate is BEFORE the fetch — nothing was requested at all
+            expect(requests).to.deep.equal([]);
+        });
+
+        it('skips discovered links the policy blocks without aborting the crawl', async() => {
+            routes['/page.html'] = {body: `<a href="http://blocked.example/evil.pdf">e</a><a href="${origin}/fine.pdf">f</a>`};
+            const crawler = makeCrawler({
+                followExternalLinks: true, // isolate the policy check from the host fence
+                securityService: new SecurityService({
+                    config: {security: {blockedDomains: ['blocked.example']}},
+                    logger: silentLogger,
+                }),
+            });
+
+            const downloads = await crawler.crawl([`${origin}/page.html`]);
+            const urls = downloads.map(d => d.url);
+
+            expect(urls).to.include(`${origin}/fine.pdf`);
+            expect(urls).to.not.include('http://blocked.example/evil.pdf');
+            expect(crawler.stats.blocked).to.equal(1);
+        });
+
+        it('blocks private-network link targets when the operator opts in', async() => {
+            // The crawler itself runs against 127.0.0.1, so an allowlist-style
+            // check: block private networks but exempt nothing — the page
+            // fetch itself must then also be blocked.
+            const crawler = makeCrawler({
+                securityService: new SecurityService({
+                    config: {security: {blockPrivateNetworks: true}},
+                    logger: silentLogger,
+                }),
+            });
+
+            const items = await crawler.crawlUrl(`${origin}/whatever.html`);
+
+            expect(items).to.deep.equal([]);
+            expect(crawler.stats.blocked).to.equal(1);
+            expect(requests).to.deep.equal([]);
+        });
+
+        it('applies the default (allow) policy when none is injected', async() => {
+            routes['/default.html'] = {body: '<p>ok</p>'};
+            const crawler = makeCrawler();
+
+            await crawler.crawlUrl(`${origin}/default.html`);
+
+            expect(requests).to.include('/default.html');
+            expect(crawler.stats.blocked).to.equal(0);
         });
     });
 
