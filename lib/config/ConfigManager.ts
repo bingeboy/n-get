@@ -12,6 +12,8 @@ import type { NgetConfig } from '../../types/index.js';
 
 interface ConfigManagerOptions {
     configDir?: string;
+    /** Directory holding user overrides, layered over configDir. Defaults to ./config. */
+    userConfigDir?: string;
     environment?: string;
     enableHotReload?: boolean;
     logger?: {
@@ -64,10 +66,13 @@ class ConfigManager {
      * @param {ConfigManagerOptions} [options={}] - Configuration options
      */
     constructor(options: ConfigManagerOptions = {}) {
-        // Robust config directory resolution
+        // Packaged defaults. The old code picked EITHER this directory or the
+        // user's ./config, and since the packaged one ships in files[] it always
+        // won — so user configuration was silently inert. The user directory is
+        // now a separate layer applied on top (see userConfigDir below) rather
+        // than an either/or.
         let configDir = options.configDir;
         if (!configDir) {
-            // Try to find package config directory relative to this file
             const packageConfigDir = path.join(__dirname, '../../config');
             const currentConfigDir = path.join(process.cwd(), 'config');
 
@@ -79,6 +84,21 @@ class ConfigManager {
             }
         }
 
+        // User overrides, layered over the packaged defaults.
+        //
+        // Only defaulted when configDir was NOT supplied. An explicit configDir
+        // means "use exactly this directory" — silently layering ./config on top
+        // would surprise embedders and, in tests, would pull this repo's real
+        // config over a fixture. Callers wanting both pass userConfigDir too.
+        //
+        // Resolved to an absolute path so the comparison in userConfigDirs() is
+        // reliable, and ignored when it equals the packaged directory — the case
+        // when running from inside this repo, which is exactly why the original
+        // bug went unnoticed.
+        const userConfigDir = options.userConfigDir
+            ? path.resolve(options.userConfigDir)
+            : (options.configDir ? undefined : path.resolve(process.cwd(), 'config'));
+
         // Detect test environment from command line or process
         const isTestEnvironment = process.argv.some(arg => arg.includes('mocha')) ||
                                  process.argv.some(arg => arg.includes('test')) ||
@@ -86,6 +106,7 @@ class ConfigManager {
 
         this.options = {
             configDir: configDir,
+            userConfigDir,
             environment: options.environment || process.env.NODE_ENV || (isTestEnvironment ? 'test' : 'development'),
             enableHotReload: options.enableHotReload !== false,
             logger: options.logger || console,
@@ -163,6 +184,18 @@ class ConfigManager {
             const localConfig = this.loadConfigFile('local.yaml');
             if (localConfig) {configs.push(localConfig);}
 
+            // 3b. User overrides from ./config, layered over everything the
+            // package ships. Same file precedence within the directory, so a
+            // user's local.yaml still beats their own default.yaml. Without
+            // this the packaged files were the only configuration that could
+            // ever apply, and nothing a user wrote had any effect.
+            for (const dir of this.userConfigDirs()) {
+                for (const filename of ['default.yaml', `${this.options.environment}.yaml`, 'local.yaml']) {
+                    const userConfig = this.loadConfigFileFrom(dir, filename);
+                    if (userConfig) {configs.push(userConfig);}
+                }
+            }
+
             // 4. Load environment variables
             const envVarConfig = this.loadEnvironmentVariables();
             if (envVarConfig) {configs.push(envVarConfig);}
@@ -193,7 +226,27 @@ class ConfigManager {
      * @private
      */
     private loadConfigFile(filename: string): Record<string, unknown> | null {
-        const filePath = path.join(this.options.configDir, filename);
+        return this.loadConfigFileFrom(this.options.configDir, filename);
+    }
+
+    /**
+     * Directories the user may place overrides in, in increasing precedence.
+     * Empty when the user directory is the packaged one (running from inside
+     * this repo), so the same files are not loaded twice.
+     * @private
+     */
+    private userConfigDirs(): string[] {
+        const packaged = path.resolve(this.options.configDir);
+        const user = this.options.userConfigDir;
+        return user && user !== packaged ? [user] : [];
+    }
+
+    /**
+     * Load a YAML configuration file from a specific directory
+     * @private
+     */
+    private loadConfigFileFrom(dir: string, filename: string): Record<string, unknown> | null {
+        const filePath = path.join(dir, filename);
 
         try {
             if (!fs.existsSync(filePath)) {
