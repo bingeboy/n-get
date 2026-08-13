@@ -7,6 +7,7 @@ import {URL} from 'node:url';
 import * as path from 'node:path';
 
 const ui: any = require('./ui');
+const SecurityService = require('./services/SecurityService');
 
 interface RecursiveCrawlerOptions {
     maxDepth?: number;
@@ -19,6 +20,10 @@ interface RecursiveCrawlerOptions {
     createDirectoryStructure?: boolean;
     maxConcurrent?: number;
     respectRobotsTxt?: boolean;
+    /** Injected security policy. Every URL is validated before fetch/queue. */
+    securityService?: any;
+    /** Used to build a SecurityService when one is not injected. */
+    configManager?: any;
 }
 
 interface CrawlItem {
@@ -40,6 +45,8 @@ interface CrawlStats {
     filesDownloaded: number;
     totalSize: number;
     errors: number;
+    /** URLs refused by security policy before being fetched or queued */
+    blocked: number;
 }
 
 /**
@@ -61,7 +68,10 @@ class RecursiveCrawler {
     visited: Set<string>;
     discovered: Map<string, DiscoveredInfo>;
     downloadQueue: any[];
-    robotsCache: Map<string, boolean>;
+    // robots.txt URL -> disallowed path prefixes for our user agent
+    // (null = no robots.txt / fetch error = everything allowed)
+    robotsCache: Map<string, string[] | null>;
+    securityService: any;
     maxVisitedEntries: number;
     maxDiscoveredEntries: number;
     cleanupThreshold: number;
@@ -69,17 +79,30 @@ class RecursiveCrawler {
 
     constructor(options: RecursiveCrawlerOptions = {}) {
         this.options = {
-            maxDepth: options.maxDepth || 5,
+            // ?? not || — an explicit 0 is meaningful for both of these
+            maxDepth: options.maxDepth ?? 5,
             noParent: options.noParent || false,
             acceptPatterns: options.acceptPatterns || [],
             rejectPatterns: options.rejectPatterns || [],
-            delayMs: options.delayMs || 1000,
+            delayMs: options.delayMs ?? 1000,
             userAgent: options.userAgent || 'n-get-crawler/1.0',
             followExternalLinks: options.followExternalLinks || false,
             createDirectoryStructure: options.createDirectoryStructure !== false,
+            // || is deliberate here: maxConcurrent 0 would make the crawl
+            // queue spin forever without draining
             maxConcurrent: options.maxConcurrent || 3,
             respectRobotsTxt: options.respectRobotsTxt !== false,
         };
+
+        // Every URL passes through this before being fetched or queued —
+        // recursive crawling follows untrusted links from fetched pages, so
+        // the operator's security policy (blocked domains, private-network /
+        // localhost blocking, IPv6 policy, protocol restrictions) must apply
+        // at discovery time, not only at download time.
+        this.securityService = options.securityService ?? new SecurityService({
+            config: {security: options.configManager ? options.configManager.get('security', {}) : {}},
+            logger: {warn: () => {}, error: () => {}},
+        });
 
         this.visited = new Set();
         this.discovered = new Map(); // URL -> {depth, parent, type}
@@ -96,7 +119,22 @@ class RecursiveCrawler {
             filesDownloaded: 0,
             totalSize: 0,
             errors: 0,
+            blocked: 0,
         };
+    }
+
+    /**
+     * Check a URL against the operator's security policy.
+     * Returns true when the URL may be fetched or queued; false counts the
+     * URL as blocked. Blocked URLs are skipped, never fatal.
+     */
+    isUrlAllowedByPolicy(url: string): boolean {
+        const result = this.securityService.validateUrl(url);
+        if (!result.isValid) {
+            this.stats.blocked++;
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -202,7 +240,10 @@ class RecursiveCrawler {
     }
 
     /**
-     * Fetch and parse robots.txt
+     * Fetch and parse robots.txt, then evaluate the given URL against it.
+     * The cache stores the parsed Disallow list per robots.txt URL — never a
+     * per-path verdict — so the answer for one path can never be reused for
+     * a different path on the same origin.
      */
     async checkRobotsTxt(baseUrl: string): Promise<boolean> {
         if (!this.options.respectRobotsTxt) {
@@ -211,56 +252,55 @@ class RecursiveCrawler {
 
         const robotsUrl = new URL('/robots.txt', baseUrl).toString();
 
-        if (this.robotsCache.has(robotsUrl)) {
-            return this.robotsCache.get(robotsUrl)!;
-        }
-
-        try {
-            const robotsController = new AbortController();
-            const robotsTimer = setTimeout(() => robotsController.abort(), 10000);
-            let response: any;
+        if (!this.robotsCache.has(robotsUrl)) {
+            let disallowed: string[] | null = null;
             try {
-                response = await fetch(robotsUrl, {
-                    headers: {'User-Agent': this.options.userAgent},
-                    signal: robotsController.signal,
-                });
-            } finally {
-                clearTimeout(robotsTimer);
+                const robotsController = new AbortController();
+                const robotsTimer = setTimeout(() => robotsController.abort(), 10000);
+                let response: any;
+                try {
+                    response = await fetch(robotsUrl, {
+                        headers: {'User-Agent': this.options.userAgent},
+                        signal: robotsController.signal,
+                    });
+                } finally {
+                    clearTimeout(robotsTimer);
+                }
+
+                if (response.ok) {
+                    disallowed = this.parseRobotsDisallows(await response.text());
+                }
+                // Non-ok (no robots.txt) leaves null = everything allowed
+            } catch {
+                disallowed = null; // Error fetching = allow
             }
 
-            if (!response.ok) {
-                this.robotsCache.set(robotsUrl, true); // No robots.txt = allowed
-                return true;
-            }
-
-            const robotsText: string = await response.text();
-            const allowed = this.parseRobotsTxt(robotsText, baseUrl);
-            this.robotsCache.set(robotsUrl, allowed);
-            return allowed;
-        } catch {
-            this.robotsCache.set(robotsUrl, true); // Error fetching = allow
-            return true;
+            this.robotsCache.set(robotsUrl, disallowed);
         }
+
+        return this.isAllowedByRobots(this.robotsCache.get(robotsUrl)!, baseUrl);
     }
 
     /**
-     * Parse robots.txt content
+     * Extract the Disallow path prefixes that apply to our user agent.
+     * Directives are matched case-insensitively, but path values keep their
+     * original case — lowercasing them made rules targeting mixed-case paths
+     * silently ineffective.
      */
-    parseRobotsTxt(robotsText: string, url: string): boolean {
+    parseRobotsDisallows(robotsText: string): string[] {
         const lines = robotsText.split('\n');
         const userAgent = this.options.userAgent.toLowerCase();
-        let _currentUserAgent = '';
         const disallowed: string[] = [];
         let inRelevantSection = false;
 
         for (const line of lines) {
-            const trimmed = line.trim().toLowerCase();
+            const trimmed = line.trim();
+            const lowered = trimmed.toLowerCase();
 
-            if (trimmed.startsWith('user-agent:')) {
-                const agent = trimmed.slice(11).trim();
+            if (lowered.startsWith('user-agent:')) {
+                const agent = lowered.slice(11).trim();
                 inRelevantSection = agent === '*' || agent === userAgent || userAgent.includes(agent);
-                _currentUserAgent = agent;
-            } else if (inRelevantSection && trimmed.startsWith('disallow:')) {
+            } else if (inRelevantSection && lowered.startsWith('disallow:')) {
                 const disallowPath = trimmed.slice(9).trim();
                 if (disallowPath) {
                     disallowed.push(disallowPath);
@@ -268,9 +308,28 @@ class RecursiveCrawler {
             }
         }
 
-        // Check if current URL is disallowed
-        const urlPath = new URL(url).pathname;
-        return !disallowed.some(disallowPath => urlPath.startsWith(disallowPath));
+        return disallowed;
+    }
+
+    /**
+     * Evaluate a URL's path against a parsed Disallow list.
+     * Comparison is case-insensitive: robots.txt is a politeness contract,
+     * so ambiguity errs toward obeying the rule.
+     */
+    isAllowedByRobots(disallowed: string[] | null, url: string): boolean {
+        if (!disallowed || disallowed.length === 0) {
+            return true;
+        }
+
+        const urlPath = new URL(url).pathname.toLowerCase();
+        return !disallowed.some(disallowPath => urlPath.startsWith(disallowPath.toLowerCase()));
+    }
+
+    /**
+     * Backwards-compatible helper: parse robots.txt text and evaluate one URL.
+     */
+    parseRobotsTxt(robotsText: string, url: string): boolean {
+        return this.isAllowedByRobots(this.parseRobotsDisallows(robotsText), url);
     }
 
     /**
@@ -280,7 +339,12 @@ class RecursiveCrawler {
         const urls = new Set<string>();
         const _baseUrlObject = new URL(baseUrl);
 
-        // Regex patterns for different link types
+        // Regex patterns for different link types.
+        // srcset is deliberately NOT in this list: its attribute value is a
+        // comma-separated list with width/density descriptors, and feeding the
+        // whole value into new URL() produces a percent-encoded garbage URL
+        // instead of throwing. The dedicated srcset handling below splits the
+        // entries properly.
         const patterns: RegExp[] = [
             // Href attributes (a, link tags)
             /(?:href\s*=\s*["']([^"']+)["'])/gi,
@@ -289,8 +353,6 @@ class RecursiveCrawler {
             // CSS @import and url() functions
             /@import\s+(?:url\()?["']?([^"')\s]+)["']?\)?/gi,
             /url\(["']?([^"')\s]+)["']?\)/gi,
-            // Srcset attributes (responsive images)
-            /(?:srcset\s*=\s*["']([^"']+)["'])/gi,
         ];
 
         for (const pattern of patterns) {
@@ -413,6 +475,12 @@ class RecursiveCrawler {
             currentUrl: url,
         });
 
+        // Security policy gate — nothing is fetched without passing it
+        if (!this.isUrlAllowedByPolicy(url)) {
+            ui.displayWarning(`Blocked by security policy: ${url}`);
+            return [];
+        }
+
         try {
             // Check robots.txt
             const robotsAllowed = await this.checkRobotsTxt(url);
@@ -477,7 +545,23 @@ class RecursiveCrawler {
                         type: urlType,
                     });
 
+                    // Security policy applies to every discovered URL before
+                    // it is queued — these are untrusted links from a fetched
+                    // page. Blocked URLs are counted and skipped.
+                    if (!this.isUrlAllowedByPolicy(discoveredUrl)) {
+                        continue;
+                    }
+
                     if (urlType === 'downloadable') {
+                        // The external-host restriction applies to files as
+                        // well as pages — without this, followExternalLinks
+                        // only fenced traversal while files on any host were
+                        // still queued for download.
+                        if (!this.options.followExternalLinks
+                            && discoveredUrlObject.hostname !== new URL(url).hostname) {
+                            continue;
+                        }
+
                         this.stats.filesDiscovered++;
 
                         // Check if this file should be downloaded
@@ -583,14 +667,16 @@ class RecursiveCrawler {
             localPath += `_${urlObject.port}`;
         }
 
-        // Add pathname
-        const pathname = urlObject.pathname === '/' ? '/index.html' : urlObject.pathname;
-        localPath = path.join(localPath, pathname.slice(1)); // Remove leading slash
-
-        // Ensure we have a filename
-        if (localPath.endsWith('/')) {
-            localPath = path.join(localPath, 'index.html');
+        // Add pathname, ensuring a filename. Directory-style URLs (trailing
+        // slash) map to index.html. Decided from the URL pathname, not the
+        // joined result — path.join yields platform separators, so an
+        // endsWith('/') check on it silently misses on Windows.
+        let pathname = urlObject.pathname === '/' ? '/index.html' : urlObject.pathname;
+        if (pathname.endsWith('/')) {
+            pathname += 'index.html';
         }
+
+        localPath = path.join(localPath, pathname.slice(1)); // Remove leading slash
 
         // Handle query parameters (create a safe filename)
         if (urlObject.search) {
@@ -628,6 +714,7 @@ class RecursiveCrawler {
             filesDownloaded: 0,
             totalSize: 0,
             errors: 0,
+            blocked: 0,
         };
     }
 }
