@@ -35,6 +35,53 @@ describe('SecurityService', () => {
             expect(cfg.enablePathTraversalProtection).toBe(true);
         });
 
+        // Regression: destination validation used to compare the input against
+        // sanitizePath(input), which resolves relative to process.cwd(). Any
+        // relative destination, and any absolute one outside the working
+        // directory, was reported as PATH_TRAVERSAL_ATTEMPT — and the verdict
+        // changed depending on where the process happened to be, so a spec that
+        // called process.chdir() could make an unrelated download fail. That is
+        // what broke CI on the recursive downloader specs.
+        describe('destination validation is independent of process.cwd()', () => {
+
+            const os = require('node:os');
+            const nodePath = require('node:path');
+
+            function check(p) {
+                return makeService({}).validateDestinationPath(p).isValid;
+            }
+
+            it('accepts a relative destination', () => {
+                expect(check('127.0.0.1_50293/site')).to.be.true;
+            });
+
+            it('accepts an absolute destination outside the working directory', () => {
+                expect(check(nodePath.join(os.tmpdir(), 'nget-x', '127.0.0.1_1', 'site'))).to.be.true;
+            });
+
+            it('gives the same verdict regardless of cwd', () => {
+                const dest = nodePath.join(process.cwd(), 'test', 'temp', 'rec', '127.0.0.1_1', 'site');
+                const before = check(dest);
+                const originalCwd = process.cwd();
+                try {
+                    process.chdir(os.tmpdir());
+                    expect(check(dest), 'verdict must not depend on cwd').to.equal(before);
+                } finally {
+                    process.chdir(originalCwd);
+                }
+            });
+
+            it('still rejects genuine traversal and system paths', () => {
+                // The '${HOME}' entry is a variable-expansion payload, not a
+                // mistyped template literal — it is one of the patterns the
+                // validator is meant to reject.
+                // eslint-disable-next-line no-template-curly-in-string
+                for (const bad of ['../../etc/passwd', '~/secrets', '/etc/shadow', 'a%2e%2e/b', '${HOME}/x']) {
+                    expect(check(bad), `should reject ${bad}`).to.be.false;
+                }
+            });
+        });
+
         // Regression: this class only read `enablePathTraversalProtection`,
         // while the schema and default.yaml document `pathTraversalProtection`.
         // The documented key was therefore inert — protection could not be
