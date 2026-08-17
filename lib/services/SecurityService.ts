@@ -393,16 +393,28 @@ class SecurityService {
 
         // Path traversal protection
         if (this.securityConfig.enablePathTraversalProtection) {
-            const sanitizedPath = this.sanitizePath(destinationPath);
-            if (destinationPath !== sanitizedPath) {
-                errors.push({
-                    field: 'destination',
-                    code: 'PATH_TRAVERSAL_ATTEMPT',
-                    message: 'Path traversal attempt detected in destination path',
-                });
-            }
+            // NOTE: this used to compare destinationPath against
+            // sanitizePath(destinationPath) and treat any difference as an
+            // attack. That was wrong twice over.
+            //
+            // It detected nothing the pattern list below does not already
+            // catch — every genuine traversal ('../..', '~/', '/etc/', null
+            // bytes, '%2e%2e', '${}', backticks) is matched there.
+            //
+            // And it produced false positives for legitimate paths, because
+            // sanitizePath() resolves to an absolute path and rewrites
+            // anything outside process.cwd(). Every relative destination was
+            // flagged, as was every absolute one outside the working
+            // directory. Worse, the verdict depended on process.cwd() at the
+            // moment of the call, so a perfectly safe destination validated
+            // differently depending on where the process happened to be — a
+            // test that changed directory could make an unrelated download
+            // fail. That is what broke CI on the recursive specs.
+            //
+            // Traversal detection belongs to the patterns below, which are
+            // properties of the path itself and independent of cwd.
 
-            // Additional path traversal checks
+            // Path traversal checks
             const dangerousPatterns = [
                 /\.\./,           // Parent directory references
                 /~\//,            // Home directory references

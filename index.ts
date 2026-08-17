@@ -187,6 +187,12 @@ async function main(): Promise<void> {
 
             const configOptions = {
                 configDir,
+                // Passed explicitly: ConfigManager only defaults userConfigDir
+                // when no configDir is given, so naming one here would
+                // otherwise suppress user overrides entirely on the download
+                // path — while `config show` (which builds its own manager)
+                // still showed them. Being explicit keeps the two in agreement.
+                userConfigDir: path.join(process.cwd(), 'config'),
                 environment: argv['config-environment'] || process.env['NODE_ENV'] || 'development',
                 enableHotReload: process.env['NODE_ENV'] === 'development',
                 logger: shouldSuppressLogs
