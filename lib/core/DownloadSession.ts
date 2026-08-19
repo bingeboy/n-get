@@ -246,6 +246,13 @@ export class DownloadSession {
                     blockLocalhost:       cfg['blockLocalhost']        ?? false,
                     ipv6:                 cfg['ipv6']                  ?? {},
 
+                    // Host allow/deny lists. SecurityService has enforced these
+                    // all along, but nothing ever passed them, so the capability
+                    // was unreachable. Undefined when unset so SecurityService
+                    // applies its own empty-list default (no restriction).
+                    blockedDomains:       cfg['blockedDomains'],
+                    allowedDomains:       cfg['allowedDomains'],
+
                     // Documented security keys that previously stopped here and
                     // never reached SecurityService, so changing them in config
                     // did nothing. Passed through undefined when unset, letting

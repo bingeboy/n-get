@@ -472,6 +472,14 @@ class ConfigManager {
             security: Joi.object({
                 maxFileSize: Joi.number().min(1024).default(10737418240),
                 allowedProtocols: Joi.array().items(Joi.string()).default(['https', 'http', 'sftp']),
+
+                // Host allow/deny lists. Both match a hostname exactly or as a
+                // subdomain, so 'example.com' also covers 'cdn.example.com'.
+                // An empty allowedDomains means no restriction; a non-empty
+                // one permits nothing outside it. blockedDomains is checked
+                // first, so it wins over an allowlist entry.
+                blockedDomains: Joi.array().items(Joi.string()).default([]),
+                allowedDomains: Joi.array().items(Joi.string()).default([]),
                 blockPrivateNetworks: Joi.boolean().default(false),
                 blockLocalhost: Joi.boolean().default(false),
                 pathTraversalProtection: Joi.boolean().default(true),
