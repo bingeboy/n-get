@@ -601,7 +601,13 @@ async function main() {
                 userAgent: argv['user-agent'],
                 sshOptions,
                 configManager,
+                // Full caller identity, not just agentId — recursive downloads
+                // are recorded in history like flat ones, and provenance has to
+                // survive there too.
                 agentId: argv['agent-id'] ?? null,
+                sessionId: argv['session-id'] ?? null,
+                requestId: argv['request-id'] ?? null,
+                conversationId: argv['conversation-id'] ?? null,
             });
             const recursiveResults = await recursiveDownloader.recursiveDownload(processedUrls, destination ?? process.cwd());
             const allRecursiveFailed = recursiveResults.length > 0

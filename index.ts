@@ -597,7 +597,13 @@ async function main(): Promise<void> {
                 userAgent: argv['user-agent'] as string | undefined,
                 sshOptions,
                 configManager,
-                agentId: (argv['agent-id'] as string | undefined) ?? null,
+                // Full caller identity, not just agentId — recursive downloads
+                // are recorded in history like flat ones, and provenance has to
+                // survive there too.
+                agentId:        (argv['agent-id']         as string | undefined) ?? null,
+                sessionId:      (argv['session-id']       as string | undefined) ?? null,
+                requestId:      (argv['request-id']       as string | undefined) ?? null,
+                conversationId: (argv['conversation-id']  as string | undefined) ?? null,
             });
 
             const recursiveResults = await recursiveDownloader.recursiveDownload(

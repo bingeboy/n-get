@@ -6,6 +6,8 @@
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 
+import HistoryManager = require('./services/HistoryManager');
+
 // These modules are .js — typed loosely
 const RecursiveCrawler = require('./recursiveCrawler');
 const ui: any = require('./ui');
@@ -30,6 +32,21 @@ interface RecursiveDownloaderOptions {
     securityService?: any;
     /** Caller-supplied agent identity for the download session */
     agentId?: string | null;
+    /** Rest of the caller-supplied identity, persisted on every history entry */
+    sessionId?: string | null;
+    requestId?: string | null;
+    conversationId?: string | null;
+}
+
+/**
+ * Per-batch context for downloadWithCustomPaths. Optional so the method keeps
+ * working for direct callers that only want files on disk.
+ */
+interface DownloadBatchContext {
+    /** Directory whose .nget/ collects the batch (the -d destination) */
+    historyRoot?: string;
+    /** url -> crawl provenance, recorded in each history entry's metadata */
+    discovered?: Map<string, { depth?: number; parent?: string | null }>;
 }
 
 interface DownloadStats {
@@ -84,6 +101,9 @@ class RecursiveDownloader {
         sshOptions: Record<string, any>;
         configManager: any;
         agentId: string | null;
+        sessionId: string | null;
+        requestId: string | null;
+        conversationId: string | null;
     };
     crawler: any;
     downloadStats: DownloadStats;
@@ -115,6 +135,9 @@ class RecursiveDownloader {
 
             configManager: options.configManager ?? null,
             agentId: options.agentId ?? null,
+            sessionId: options.sessionId ?? null,
+            requestId: options.requestId ?? null,
+            conversationId: options.conversationId ?? null,
         };
 
         this.crawler = new RecursiveCrawler({
@@ -223,12 +246,20 @@ class RecursiveDownloader {
                 urlToPathMap.set(fileItem.url, localPath);
             }
 
+            // Crawl provenance, keyed by URL, so each history entry can record
+            // the depth it was found at and the page that linked to it.
+            const discovered = new Map<string, { depth?: number; parent?: string | null }>();
+            for (const fileItem of discoveredFiles) {
+                discovered.set(fileItem.url, {depth: fileItem.depth, parent: fileItem.parent ?? null});
+            }
+
             // Download files using existing pipeline with custom destination handling
             const downloadResults = await this.downloadWithCustomPaths(
                 urls,
                 urlToPathMap,
                 this.options.enableResume,
                 this.options.sshOptions,
+                {historyRoot: baseDestination, discovered},
             );
 
             return downloadResults;
@@ -241,7 +272,7 @@ class RecursiveDownloader {
     /**
      * Custom download function that respects the directory structure
      */
-    async downloadWithCustomPaths(urls: string[], urlToPathMap: Map<string, string>, enableResume: boolean, sshOptions: any): Promise<DownloadResult[]> {
+    async downloadWithCustomPaths(urls: string[], urlToPathMap: Map<string, string>, enableResume: boolean, sshOptions: any, context: DownloadBatchContext = {}): Promise<DownloadResult[]> {
         const results: DownloadResult[] = [];
         const stats: BatchStats = {
             totalFiles: urls.length,
@@ -265,8 +296,39 @@ class RecursiveDownloader {
         const session = new DownloadSession({
             quietMode: false,
             configManager: this.options.configManager,
+            sessionId: this.options.sessionId ?? undefined,
             agentId: this.options.agentId,
         }).start();
+
+        // Durable history for recursive runs. Flat downloads have always been
+        // recorded; recursive ones were not, so anything fetched by a crawl was
+        // invisible to `nget history` and to the MCP get_history tool once the
+        // process exited — the live NDJSON stream was the only record.
+        //
+        // Entries are written to the batch's historyRoot rather than beside each
+        // file: a crawl scatters files across a recreated directory tree, and
+        // the history reader looks in exactly one directory.
+        const historyManager = new HistoryManager();
+        const batchCorrelationId = `recursive-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+        // sessionId comes from the session itself so history matches the live
+        // NDJSON stream even when the caller supplied no id.
+        const identity = {
+            agentId:        this.options.agentId,
+            sessionId:      session.id,
+            requestId:      this.options.requestId,
+            conversationId: this.options.conversationId,
+        };
+
+        // Crawl provenance for a URL, as recorded in history metadata.
+        const provenanceOf = (url: string) => {
+            const item = context.discovered?.get(url);
+            return {
+                recursive: true,
+                depth:     item?.depth ?? null,
+                sourceUrl: item?.parent ?? null,
+            };
+        };
 
         const overallStartTime = Date.now();
 
@@ -304,6 +366,18 @@ class RecursiveDownloader {
                             alreadyComplete: true,
                         });
                         stats.successCount++;
+
+                        await historyManager.logDownload({
+                            url,
+                            filePath:      result.path,
+                            historyRoot:   context.historyRoot,
+                            status:        'success',
+                            size:          result.size,
+                            duration:      0,
+                            correlationId: batchCorrelationId,
+                            ...identity,
+                            metadata: {...provenanceOf(url), alreadyComplete: true},
+                        });
                     } else {
                         results.push({
                             url,
@@ -325,11 +399,41 @@ class RecursiveDownloader {
                         if (result.speed > 0) {
                             stats.speeds.push(result.speed);
                         }
+
+                        await historyManager.logDownload({
+                            url,
+                            filePath:      result.path,
+                            historyRoot:   context.historyRoot,
+                            status:        'success',
+                            size:          result.size,
+                            duration:      result.duration,
+                            correlationId: batchCorrelationId,
+                            ...identity,
+                            metadata: {
+                                ...provenanceOf(url),
+                                resumed:    result.resumed,
+                                resumeFrom: result.resumeFrom,
+                                speed:      result.speed,
+                            },
+                        });
                     }
                 } catch (error: any) {
                     ui.displayError(`Failed to download ${url}: ${error.message}`);
                     results.push({url, error: error.message, success: false});
                     stats.errorCount++;
+
+                    // targetPath is where the file would have gone — recorded so a
+                    // failed entry still says what was attempted and where.
+                    await historyManager.logDownload({
+                        url,
+                        filePath:      targetPath,
+                        historyRoot:   context.historyRoot,
+                        status:        'failed',
+                        error:         error.message,
+                        correlationId: batchCorrelationId,
+                        ...identity,
+                        metadata: {...provenanceOf(url), index: globalIndex + 1, total: urls.length},
+                    });
                 }
             });
 
