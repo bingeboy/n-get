@@ -44,6 +44,15 @@ interface LogDownloadInput {
     requestId?: string | null;
     conversationId?: string | null;
     metadata?: Record<string, unknown>;
+    /**
+     * Directory whose .nget/ receives this entry. Defaults to the
+     * file's own parent directory, which is right for flat downloads where
+     * every file lands directly in the destination. Recursive downloads
+     * recreate a directory tree, so without an explicit root each file would
+     * write history beside itself and `nget history show -d <dest>` — which
+     * reads exactly one directory — would find none of it.
+     */
+    historyRoot?: string;
 }
 
 interface HistoryOptions {
@@ -134,7 +143,7 @@ class HistoryManager {
      */
     async logDownload(entry: LogDownloadInput): Promise<void> {
         try {
-            const destination = path.dirname(entry.filePath);
+            const destination = entry.historyRoot ?? path.dirname(entry.filePath);
             await this.ensureHistoryDir(destination);
 
             const historyEntry: HistoryEntry = {

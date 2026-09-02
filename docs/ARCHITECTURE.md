@@ -110,9 +110,15 @@ What we removed is not the CLI but the assumption that a human is watching. The 
 
 **Why:** A database ties the tool to infrastructure it should not own. It creates a setup step. It creates a migration concern. It creates a lock file that complicates concurrent access from multiple agent processes. It turns a composable CLI tool into a stateful service.
 
-The tool already has two forms of durable state:
-- `~/.nget/nget.history` — JSONL append log of completed downloads
-- `~/.nget/.nget-*` — resume metadata files per URL
+The tool already has two forms of durable state, both written under the
+download destination rather than the home directory, so a run's record travels
+with its files:
+- `<destination>/.nget/nget.history` — JSONL append log of completed downloads
+- `<destination>/.nget/<md5>.nget-meta` — resume metadata files per URL
+
+Recursive downloads recreate a directory tree beneath the destination, but
+their history still collects in the destination's own `.nget/` — `nget history`
+reads exactly one directory.
 
 Both are simple files. They compose naturally with `tail`, `grep`, `jq`, or any log aggregator the caller wants to use. A database would break this composability.
 
@@ -310,11 +316,13 @@ n-get/
 **State on disk:**
 
 ```
-~/.nget/
-├── active/
-│   └── sess_<id>.json              ← written while session runs, deleted on end
-├── nget.history                    ← JSONL append log of all completed downloads
-└── .nget-<url-hash>                ← resume metadata per URL (written by resumeManager)
+~/.nget/                            ← global, one per machine
+└── active/
+    └── sess_<id>.json              ← written while session runs, deleted on end
+
+<destination>/.nget/                ← per destination, alongside the files
+├── nget.history                    ← JSONL append log of completed downloads
+└── <md5>.nget-meta                 ← resume metadata per URL (written by resumeManager)
 ```
 
 ---
