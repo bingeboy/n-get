@@ -157,6 +157,25 @@ describe('DownloadSession', () => {
                 expect(s.securityService.securityConfig.rateLimitRequests).to.equal(7);
             });
 
+            // Regression: SecurityService has always enforced these lists, but
+            // _buildSecurity never passed them, so the capability was unreachable
+            // no matter what the operator configured.
+            it('forwards allowedDomains and blockedDomains', () => {
+                const s = sessionWithSecurity({
+                    allowedDomains: ['example.com'],
+                    blockedDomains: ['evil.test'],
+                });
+                const cfg = s.securityService.getSecurityConfig();
+                expect(cfg.allowedDomains).to.deep.equal(['example.com']);
+                expect(cfg.blockedDomains).to.deep.equal(['evil.test']);
+            });
+
+            it('defaults both domain lists to empty (no restriction)', () => {
+                const cfg = sessionWithSecurity({}).securityService.getSecurityConfig();
+                expect(cfg.allowedDomains).to.deep.equal([]);
+                expect(cfg.blockedDomains).to.deep.equal([]);
+            });
+
             it('falls back to shipped defaults when keys are absent', () => {
                 const s = sessionWithSecurity({});
                 const cfg = s.securityService.securityConfig;

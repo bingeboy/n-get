@@ -220,6 +220,26 @@ describe('SecurityService', () => {
             expect(result.isValid).toBe(true);
         });
 
+        it('does not treat a lookalike suffix as a subdomain', () => {
+            // 'notgood.com' ends with 'good.com' as a raw string. Matching on
+            // endsWith alone would admit an attacker-registered lookalike.
+            const svc = makeService({ allowedDomains: ['good.com'], blockPrivateNetworks: false, blockLocalhost: false });
+            const result = svc.validateUrl('https://notgood.com/file');
+            expect(result.isValid).toBe(false);
+            expect(result.errors.some(e => e.code === 'DOMAIN_NOT_ALLOWED')).toBe(true);
+        });
+
+        it('blockedDomains wins over an allowedDomains entry', () => {
+            const svc = makeService({
+                allowedDomains: ['good.com'],
+                blockedDomains: ['bad.good.com'],
+                blockPrivateNetworks: false, blockLocalhost: false,
+            });
+            const result = svc.validateUrl('https://bad.good.com/file');
+            expect(result.isValid).toBe(false);
+            expect(result.errors.some(e => e.code === 'BLOCKED_DOMAIN')).toBe(true);
+        });
+
         it('accepts subdomain of allowed domain', () => {
             const svc = makeService({ allowedDomains: ['good.com'], blockPrivateNetworks: false, blockLocalhost: false });
             const result = svc.validateUrl('https://cdn.good.com/file');

@@ -29,6 +29,11 @@ security:
     - sftp
   blockPrivateNetworks: false # Block access to private network addresses
   blockLocalhost: false       # Block access to localhost
+  # Host allow/deny lists. Each entry matches a hostname exactly or as a
+  # subdomain: 'example.com' also covers 'cdn.example.com'.
+  # blockedDomains is checked first and wins over allowedDomains.
+  blockedDomains: []          # Hosts never fetched. Empty = nothing blocked.
+  allowedDomains: []          # If non-empty, ONLY these hosts may be fetched.
   pathTraversalProtection: true # Enable path traversal protection
   rateLimiting:
     enabled: true             # Enable rate limiting
