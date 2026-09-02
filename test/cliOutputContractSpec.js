@@ -11,6 +11,7 @@
  * this file to add it to the required set.
  */
 
+const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
@@ -204,6 +205,145 @@ describe('CLI output contract', () => {
 
         it('paths has at least one entry', () => {
             expect(Object.keys(spec.paths)).to.have.length.greaterThan(0);
+        });
+    });
+
+    // Regression: config-loading output used to land on stdout for these
+    // commands, so `JSON.parse` failed on `Unexpected token 'L'`. `--quiet`
+    // worked around it, but an agent following AGENTS.md has no reason to
+    // pass it. These assert stdout is parseable WITHOUT --quiet — that is the
+    // whole point, so do not "fix" a failure here by adding --quiet.
+    describe('machine-readable commands emit clean stdout (no --quiet)', () => {
+
+        // Vitest sets NODE_ENV=test, which loads config/test.yaml with
+        // logging.level "warn" — that alone silences the config banner. A test
+        // inheriting it cannot observe this bug at all. Agents run without
+        // NODE_ENV and get the "development" config, so spawn that way instead.
+        function runCliAsAgent(args) {
+            const env = {...process.env};
+            delete env.NODE_ENV;
+            return execFileSync(process.execPath, [cli, ...args], {
+                cwd: projectRoot,
+                encoding: 'utf8',
+                stdio: ['ignore', 'pipe', 'pipe'],
+                env,
+            });
+        }
+
+        // Whether history is empty is ambient state — the repo root
+        // accumulates entries as soon as anyone runs a download there. The
+        // original version of this test ran only against the repo root, so it
+        // exercised whichever state that happened to be in: it passed locally
+        // on a dir with history and failed in CI on a clean checkout, where
+        // the empty branch returned "No download history found." as plain text
+        // regardless of --output-format. Both states are pinned explicitly
+        // below so neither can go unchecked again.
+        const tempBase = path.join(__dirname, 'temp');
+        let emptyDir;
+        let populatedDir;
+
+        before(() => {
+            fs.mkdirSync(tempBase, {recursive: true});
+            emptyDir = fs.mkdtempSync(path.join(tempBase, 'hist-empty-'));
+            populatedDir = fs.mkdtempSync(path.join(tempBase, 'hist-full-'));
+            fs.mkdirSync(path.join(populatedDir, '.nget'), {recursive: true});
+            fs.writeFileSync(
+                path.join(populatedDir, '.nget', 'nget.history'),
+                JSON.stringify({
+                    timestamp: new Date().toISOString(),
+                    url: 'http://example.com/f.bin',
+                    filePath: path.join(populatedDir, 'f.bin'),
+                    status: 'success',
+                    size: 10,
+                    duration: 5,
+                    error: null,
+                    correlationId: 'test-corr',
+                    metadata: {},
+                    version: '1.0',
+                }) + '\n',
+            );
+        });
+
+        after(() => {
+            for (const dir of [emptyDir, populatedDir]) {
+                try { fs.rmSync(dir, {recursive: true, force: true}); } catch { /* best effort */ }
+            }
+        });
+
+        it('history show --output-format json parses when history is EMPTY', () => {
+            const out = runCliAsAgent(['history', 'show', '-d', emptyDir, '--output-format', 'json']).trim();
+            let parsed;
+            expect(() => { parsed = JSON.parse(out); }, 'stdout was not parseable JSON: ' + out.slice(0, 200)).to.not.throw();
+            // An empty result is still a result: an empty array, not prose.
+            expect(parsed.summary.totalEntries).to.equal(0);
+            expect(parsed.entries).to.deep.equal([]);
+        });
+
+        it('history show --output-format json parses when history EXISTS', () => {
+            const out = runCliAsAgent(['history', 'show', '-d', populatedDir, '--output-format', 'json']).trim();
+            let parsed;
+            expect(() => { parsed = JSON.parse(out); }, 'stdout was not parseable JSON: ' + out.slice(0, 200)).to.not.throw();
+            expect(parsed.summary.totalEntries).to.equal(1);
+            expect(parsed.entries[0]).to.have.property('url', 'http://example.com/f.bin');
+        });
+
+        it('passing -d does not leak destination UI into structured stdout', () => {
+            const out = runCliAsAgent(['history', 'show', '-d', emptyDir, '--output-format', 'json']);
+            expect(out).to.not.match(/Moving Directory/);
+            expect(out).to.not.match(/Destination set/);
+        });
+
+        it('keeps the destination confirmation in text mode', () => {
+            // The human path is not a payload — this feedback should survive.
+            const out = runCliAsAgent(['history', 'show', '-d', emptyDir]);
+            expect(out).to.match(/Destination set/);
+            expect(out).to.match(/No download history found/);
+        });
+
+        it('nget jobs emits a single parseable NDJSON line', () => {
+            const out = runCliAsAgent(['jobs']).trim();
+            expect(() => JSON.parse(out), `stdout was not parseable JSON:\n${out.slice(0, 200)}`).to.not.throw();
+            expect(JSON.parse(out)).to.have.property('event', 'jobs');
+        });
+
+        it('nget history show --output-format json is parseable', () => {
+            const out = runCliAsAgent(['history', 'show', '--output-format', 'json']).trim();
+            expect(() => JSON.parse(out), `stdout was not parseable JSON:\n${out.slice(0, 200)}`).to.not.throw();
+        });
+
+        // `config` pollutes stdout from two managers, not one: the one index.js
+        // builds, and the separate one configCommands builds for itself. The
+        // latter used to silence itself only for --quiet, so fixing the former
+        // alone left this command just as unparseable.
+        it('nget config show --output-format json is parseable', () => {
+            const out = runCliAsAgent(['config', 'show', '--output-format', 'json']).trim();
+            expect(() => JSON.parse(out), 'stdout was not parseable JSON: ' + out.slice(0, 200)).to.not.throw();
+        });
+
+        it('nget config show --output-format yaml carries no config banner', () => {
+            const out = runCliAsAgent(['config', 'show', '--output-format', 'yaml']);
+            expect(out).to.not.match(/Loaded configuration from/);
+            expect(out).to.match(/^operation: config/m);
+        });
+
+        // The human path is deliberately untouched: text output is not a
+        // payload, and config validate must keep reporting in full.
+        it('leaves text-mode config output alone', () => {
+            const out = runCliAsAgent(['config', 'validate']);
+            expect(out).to.match(/Configuration is valid/);
+            expect(out).to.match(/Critical Sections/);
+        });
+
+        it('stdout carries no config-loading banner', () => {
+            const cases = [
+                ['jobs'],
+                ['history', 'show', '--output-format', 'json'],
+                ['config', 'show', '--output-format', 'json'],
+            ];
+            for (const args of cases) {
+                expect(runCliAsAgent(args), `leaked config output: nget ${args.join(' ')}`)
+                    .to.not.match(/Loaded configuration from/);
+            }
         });
     });
 });
