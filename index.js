@@ -119,6 +119,26 @@ const argv = (0, minimist_1.default)(process.argv.slice(2), {
  * to JSON.parse it. `history` and `jobs` were missing for exactly this reason.
  */
 const MACHINE_OUTPUT_COMMANDS = new Set(['fetch', 'jobs', 'history', 'config']);
+const IS_MACHINE_OUTPUT_COMMAND = MACHINE_OUTPUT_COMMANDS.has(String(argv._[0] ?? ''));
+/**
+ * True when stdout for this invocation is a structured payload a caller will
+ * parse, rather than prose for a person.
+ *
+ * Distinct from MACHINE_OUTPUT_COMMANDS on purpose. That set decides whether
+ * incidental *config* logging is suppressed, which is noise in either mode.
+ * This decides whether human progress UI is suppressed — and that UI is worth
+ * keeping in text mode. `history show -d <dir>` should still confirm the
+ * destination to a person; the same command with --output-format json must
+ * not, because the spinner and chdir's "Moving Directory" line land on stdout
+ * ahead of the JSON and stop it parsing.
+ *
+ * `fetch` and `jobs` write a payload unconditionally, with no flag to ask for
+ * it, so they qualify on the command alone.
+ */
+const _outputFormat = argv['output-format'];
+const IS_STRUCTURED_STDOUT = (typeof _outputFormat === 'string' && _outputFormat !== '' && _outputFormat !== 'text')
+    || argv._[0] === 'fetch'
+    || argv._[0] === 'jobs';
 // ─── Module state ─────────────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let configManager;
@@ -203,8 +223,7 @@ async function main() {
             // --capabilities, --openapi-spec, and --agent-card need config to read live values
             // but their output should be clean machine-readable spec only.
             const isInfoOnlyFlag = !!(argv.capabilities || argv['openapi-spec'] || argv['agent-card']);
-            const isMachineOutputCommand = MACHINE_OUTPUT_COMMANDS.has(String(argv._[0] ?? ''));
-            const shouldSuppressLogs = argv.quiet || outputToStdout || isInfoOnlyFlag || isMachineOutputCommand;
+            const shouldSuppressLogs = argv.quiet || outputToStdout || isInfoOnlyFlag || IS_MACHINE_OUTPUT_COMMAND;
             let configDir;
             const packageConfigDir = path.join(__dirname, 'config');
             const currentConfigDir = path.join(process.cwd(), 'config');
@@ -331,7 +350,11 @@ async function main() {
         // Handle destination
         if (argv.destination) {
             destination = argv.destination;
-            const quietMode = argv.quiet || argv['output-file'] === '-';
+            // Structured stdout counts as quiet here too: the spinner and
+            // chdir's "Moving Directory" line go to stdout, so `history show
+            // -d <dir> --output-format json` would emit them ahead of the JSON
+            // and stop it parsing. Text mode keeps the confirmation.
+            const quietMode = argv.quiet || argv['output-file'] === '-' || IS_STRUCTURED_STDOUT;
             if (quietMode) {
                 try {
                     const resolvedPath = await node_fs_1.promises.realpath(destination);

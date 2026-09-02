@@ -11,6 +11,7 @@
  * this file to add it to the required set.
  */
 
+const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
@@ -228,6 +229,76 @@ describe('CLI output contract', () => {
                 env,
             });
         }
+
+        // Whether history is empty is ambient state — the repo root
+        // accumulates entries as soon as anyone runs a download there. The
+        // original version of this test ran only against the repo root, so it
+        // exercised whichever state that happened to be in: it passed locally
+        // on a dir with history and failed in CI on a clean checkout, where
+        // the empty branch returned "No download history found." as plain text
+        // regardless of --output-format. Both states are pinned explicitly
+        // below so neither can go unchecked again.
+        const tempBase = path.join(__dirname, 'temp');
+        let emptyDir;
+        let populatedDir;
+
+        before(() => {
+            fs.mkdirSync(tempBase, {recursive: true});
+            emptyDir = fs.mkdtempSync(path.join(tempBase, 'hist-empty-'));
+            populatedDir = fs.mkdtempSync(path.join(tempBase, 'hist-full-'));
+            fs.mkdirSync(path.join(populatedDir, '.nget'), {recursive: true});
+            fs.writeFileSync(
+                path.join(populatedDir, '.nget', 'nget.history'),
+                JSON.stringify({
+                    timestamp: new Date().toISOString(),
+                    url: 'http://example.com/f.bin',
+                    filePath: path.join(populatedDir, 'f.bin'),
+                    status: 'success',
+                    size: 10,
+                    duration: 5,
+                    error: null,
+                    correlationId: 'test-corr',
+                    metadata: {},
+                    version: '1.0',
+                }) + '\n',
+            );
+        });
+
+        after(() => {
+            for (const dir of [emptyDir, populatedDir]) {
+                try { fs.rmSync(dir, {recursive: true, force: true}); } catch { /* best effort */ }
+            }
+        });
+
+        it('history show --output-format json parses when history is EMPTY', () => {
+            const out = runCliAsAgent(['history', 'show', '-d', emptyDir, '--output-format', 'json']).trim();
+            let parsed;
+            expect(() => { parsed = JSON.parse(out); }, 'stdout was not parseable JSON: ' + out.slice(0, 200)).to.not.throw();
+            // An empty result is still a result: an empty array, not prose.
+            expect(parsed.summary.totalEntries).to.equal(0);
+            expect(parsed.entries).to.deep.equal([]);
+        });
+
+        it('history show --output-format json parses when history EXISTS', () => {
+            const out = runCliAsAgent(['history', 'show', '-d', populatedDir, '--output-format', 'json']).trim();
+            let parsed;
+            expect(() => { parsed = JSON.parse(out); }, 'stdout was not parseable JSON: ' + out.slice(0, 200)).to.not.throw();
+            expect(parsed.summary.totalEntries).to.equal(1);
+            expect(parsed.entries[0]).to.have.property('url', 'http://example.com/f.bin');
+        });
+
+        it('passing -d does not leak destination UI into structured stdout', () => {
+            const out = runCliAsAgent(['history', 'show', '-d', emptyDir, '--output-format', 'json']);
+            expect(out).to.not.match(/Moving Directory/);
+            expect(out).to.not.match(/Destination set/);
+        });
+
+        it('keeps the destination confirmation in text mode', () => {
+            // The human path is not a payload — this feedback should survive.
+            const out = runCliAsAgent(['history', 'show', '-d', emptyDir]);
+            expect(out).to.match(/Destination set/);
+            expect(out).to.match(/No download history found/);
+        });
 
         it('nget jobs emits a single parseable NDJSON line', () => {
             const out = runCliAsAgent(['jobs']).trim();
