@@ -1,0 +1,22 @@
+# Line endings — see issue #150.
+#
+# This repo previously held a mix of CRLF and LF: 43 tracked source files were
+# CRLF while the rest were LF, and lib/services/OpenAPIService.js was
+# internally mixed (26 CRLF lines among 867 LF). Any tool that rewrites a file
+# wholesale — sed -i, eslint --fix, tsc — would silently renormalise the whole
+# file, turning a small edit into a diff of hundreds of lines and burying the
+# real change.
+#
+# text=auto lets git classify text vs binary; eol=lf checks text out as LF on
+# every platform, so the working tree matches the repository and no tool can
+# introduce a spurious ending change. Node, npm, git and every editor in use
+# handle LF on Windows without issue.
+#
+# Related: tsconfig.json sets "newLine": "lf" so compiled output is LF
+# regardless of the source file's endings. Without it, a single CRLF source
+# would emit CRLF and show up as build drift in CI.
+* text=auto eol=lf
+
+# Binary assets — never classified, diffed, or converted.
+*.png binary
+*.gif binary
