@@ -40,7 +40,6 @@ security:
     requestsPerMinute: 100    # Maximum requests per minute per IP
     windowMs: 60000          # Rate limiting window in milliseconds
   sanitizeFilenames: true     # Sanitize downloaded filenames
-  certificateValidation: true # Validate SSL certificates
   ipv6:
     blockPrivateRanges: false # Block IPv6 private ranges (fc00::/7, fe80::/10, etc.)
     blockDocumentation: false # Block IPv6 documentation ranges (2001:db8::/32)
@@ -122,7 +121,6 @@ profiles:
       allowedProtocols: [https, sftp]
       blockPrivateNetworks: true
       blockLocalhost: true
-      certificateValidation: true
       ipv6:
         blockPrivateRanges: true
         blockDocumentation: true

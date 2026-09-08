@@ -505,7 +505,7 @@ describe('ConfigManager', () => {
                         description: 'Secure download profile',
                         security: {
                             allowedProtocols: ['https'],
-                            certificateValidation: true,
+                            blockLocalhost: true,
                         },
                     },
                 },
@@ -548,7 +548,7 @@ describe('ConfigManager', () => {
                 
                 // Should have secure profile settings
                 expect(config.get('security.allowedProtocols')).to.deep.equal(['https']);
-                expect(config.get('security.certificateValidation')).to.be.true;
+                expect(config.get('security.blockLocalhost')).to.be.true;
                 
                 // Should retain original settings not overridden by profile
                 expect(config.get('http.timeout')).to.equal(30000);
@@ -617,7 +617,7 @@ describe('ConfigManager', () => {
                 },
                 security: {
                     blockPrivateNetworks: false,
-                    certificateValidation: true,
+                    sanitizeFilenames: true,
                 },
                 ai: {
                     enabled: true,

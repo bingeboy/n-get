@@ -17,7 +17,6 @@ logging:
 security:
   blockPrivateNetworks: true
   blockLocalhost: true
-  certificateValidation: true
   rateLimiting:
     enabled: true
     requestsPerMinute: 1000   # Higher limits for production

@@ -316,7 +316,6 @@ class ConfigManager {
             'blocklocalhost': 'blockLocalhost',
             'pathtraversalprotection': 'pathTraversalProtection',
             'sanitizefilenames': 'sanitizeFilenames',
-            'certificatevalidation': 'certificateValidation',
             'maxretries': 'maxRetries',
             'useragent': 'userAgent',
             'blockprivateranges': 'blockPrivateRanges',
@@ -489,7 +488,6 @@ class ConfigManager {
                     windowMs: Joi.number().min(1000).default(60000),
                 }).default(),
                 sanitizeFilenames: Joi.boolean().default(true),
-                certificateValidation: Joi.boolean().default(true),
                 ipv6: Joi.object({
                     blockPrivateRanges: Joi.boolean().default(false),
                     blockDocumentation: Joi.boolean().default(false),
@@ -863,18 +861,24 @@ class ConfigManager {
 
     /**
      * Determine current security level
+     *
+     * TLS certificate validation used to be a term in this expression, read
+     * from security.certificateValidation. That key never reached the download
+     * path — it only fed this label — so it has been removed (issue #164).
+     * Node's fetch validates certificates unconditionally, so the term was
+     * always true, and dropping it leaves every level unchanged.
+     *
      * @returns {string} Security level description
      * @private
      */
     private getSecurityLevel(): string {
         const blocksPrivate = this.get('security.blockPrivateNetworks');
         const blocksLocalhost = this.get('security.blockLocalhost');
-        const validatesCerts = this.get('security.certificateValidation');
         const rateLimited = this.get('security.rateLimiting.enabled');
 
-        if (blocksPrivate && blocksLocalhost && validatesCerts && rateLimited) {
+        if (blocksPrivate && blocksLocalhost && rateLimited) {
             return 'high';
-        } else if (validatesCerts && rateLimited) {
+        } else if (rateLimited) {
             return 'medium';
         } else {
             return 'low';
