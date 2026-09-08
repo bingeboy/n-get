@@ -318,7 +318,6 @@ export interface NgetConfig {
         allowedProtocols: string[];
         blockPrivateNetworks: boolean;
         blockLocalhost: boolean;
-        certificateValidation: boolean;
         sanitizeFilenames: boolean;
         enableIntegrityChecks: boolean;
         ipv6: {
