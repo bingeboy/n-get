@@ -336,6 +336,26 @@ export interface NgetConfig {
     };
     ssh: {
         timeout: number;
+        algorithms: {
+            kex: string[];
+            serverHostKey: string[];
+            cipher: string[];
+            hmac: string[];
+        };
+    };
+    webhooks: {
+        /** A string entry is shorthand for `{url}`. */
+        default: Array<string | {
+            url: string;
+            secret?: string;
+            headers?: Record<string, string>;
+            events?: string[];
+        }>;
+        secret: string;
+        retry: {
+            maxAttempts: number;
+            backoffMs: number[];
+        };
     };
     ai: {
         enabled: boolean;
