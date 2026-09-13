@@ -70,28 +70,15 @@ const KNOWN_UNREAD_KEYS = [
 ];
 
 /**
- * Keys shipped in config/default.yaml that the schema never declares.
+ * Keys shipped in config/default.yaml that the schema never declares, and so
+ * are removed by stripUnknown at load. Anything reading them gets undefined.
  *
- * Validation runs with stripUnknown, so these are deleted at load. This is
- * worse than an unread key: an unread key does nothing, whereas these are read
- * by real consumers that then silently receive undefined.
- *
- * `ssh` and `webhooks` are entire top-level sections missing from the schema.
- * DownloadSession reads webhooks.default, webhooks.secret and
- * webhooks.retry.* — all of which resolve to undefined behind `??` fallbacks,
- * so configuring webhooks through a config file has never had any effect.
+ * The `ssh` and `webhooks` sections were fixed in #175. `enableStdout` remains:
+ * it is set by the shipped `fetch` profile but reaches no code, so declaring it
+ * would only make the dead key validate. See docs/CONFIG-CONTRACT.md.
  */
 const KNOWN_UNDECLARED_KEYS = [
     'downloads.enableStdout',
-    'ssh.timeout',
-    'ssh.algorithms.kex',
-    'ssh.algorithms.serverHostKey',
-    'ssh.algorithms.cipher',
-    'ssh.algorithms.hmac',
-    'webhooks.default',
-    'webhooks.secret',
-    'webhooks.retry.maxAttempts',
-    'webhooks.retry.backoffMs',
 ];
 
 const sorted = xs => [...xs].sort();

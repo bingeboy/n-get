@@ -318,6 +318,9 @@ class ConfigManager {
             'sanitizefilenames': 'sanitizeFilenames',
             'maxretries': 'maxRetries',
             'useragent': 'userAgent',
+            'serverhostkey': 'serverHostKey',
+            'maxattempts': 'maxAttempts',
+            'backoffms': 'backoffMs',
             'blockprivateranges': 'blockPrivateRanges',
             'blockdocumentation': 'blockDocumentation',
             'blockmulticast': 'blockMulticast',
@@ -513,6 +516,35 @@ class ConfigManager {
                 }).default(),
             }).default(),
 
+            ssh: Joi.object({
+                timeout: Joi.number().min(1000).default(30000),
+                algorithms: Joi.object({
+                    kex: Joi.array().items(Joi.string()).default([
+                        'ecdh-sha2-nistp256',
+                        'ecdh-sha2-nistp384',
+                        'ecdh-sha2-nistp521',
+                        'diffie-hellman-group14-sha256',
+                    ]),
+                    serverHostKey: Joi.array().items(Joi.string()).default([
+                        'rsa-sha2-512',
+                        'rsa-sha2-256',
+                        'ssh-rsa',
+                        'ecdsa-sha2-nistp256',
+                    ]),
+                    cipher: Joi.array().items(Joi.string()).default([
+                        'aes128-gcm',
+                        'aes256-gcm',
+                        'aes128-ctr',
+                        'aes256-ctr',
+                    ]),
+                    hmac: Joi.array().items(Joi.string()).default([
+                        'hmac-sha2-256',
+                        'hmac-sha2-512',
+                        'hmac-sha1',
+                    ]),
+                }).default(),
+            }).default(),
+
             monitoring: Joi.object({
                 enabled: Joi.boolean().default(true),
                 metricsPort: Joi.number().min(1024).max(65535).default(9090),
@@ -549,6 +581,29 @@ class ConfigManager {
             }).default(),
 
             profiles: Joi.object().pattern(Joi.string(), Joi.object()).default({}),
+
+            webhooks: Joi.object({
+                // A string is shorthand for {url}; the object form adds per-URL
+                // overrides. DownloadSession._parseConfigWebhooks accepts both.
+                default: Joi.array().items(
+                    Joi.alternatives().try(
+                        Joi.string().uri(),
+                        Joi.object({
+                            url: Joi.string().uri().required(),
+                            secret: Joi.string().allow('').optional(),
+                            headers: Joi.object().pattern(Joi.string(), Joi.string()).optional(),
+                            events: Joi.array().items(Joi.string()).optional(),
+                        }),
+                    ),
+                ).default([]),
+                secret: Joi.string().allow('').default(''),
+                retry: Joi.object({
+                    maxAttempts: Joi.number().min(1).default(3),
+                    // EventSink indexes backoffMs by attempt number, so a array
+                    // shorter than maxAttempts yields undefined delays.
+                    backoffMs: Joi.array().items(Joi.number().min(0)).default([0, 500, 1000]),
+                }).default(),
+            }).default(),
         });
     }
 
