@@ -30,10 +30,9 @@ import type { DownloadOptions, DownloadResult } from '../types/index.js';
 
 /**
  * Determines and validates the destination directory for downloads
- * @function getDestination
- * @param {string} destination - The target destination path
- * @param {boolean} [quiet=false] - Whether to suppress console output during directory change
- * @returns {string} The absolute path to the destination directory
+ * @param destination - The target destination path
+ * @param [quiet=false] - Whether to suppress console output during directory change
+ * @returns The absolute path to the destination directory
  */
 function getDestination(destination: string, quiet = false): string {
     if (!destination || destination === null || destination === './' || destination === ' ') {
@@ -147,14 +146,13 @@ function getProtocol(url: string): string {
  * Downloads a single file with protocol detection and resume support
  * Supports HTTP/HTTPS and SFTP protocols with automatic protocol detection
  * @async
- * @function downloadFile
- * @param {string} url - The URL to download from
- * @param {string} destination - The destination directory path
- * @param {number} index - The current file index (for progress display)
- * @param {number} total - The total number of files being downloaded
- * @param {boolean} [enableResume=true] - Whether to enable resume functionality
- * @param {Object} [options={}] - Additional download options (SSH credentials, etc.)
- * @returns {Promise<Object>} Download result with path, size, duration, and resume status
+ * @param url - The URL to download from
+ * @param destination - The destination directory path
+ * @param index - The current file index (for progress display)
+ * @param total - The total number of files being downloaded
+ * @param [enableResume=true] - Whether to enable resume functionality
+ * @param [options={}] - Additional download options (SSH credentials, etc.)
+ * @returns Download result with path, size, duration, and resume status
  * @throws {Error} When download fails or URL is invalid
  */
 async function downloadFile(
@@ -529,15 +527,14 @@ async function downloadHttpFile(
  * Main download pipeline function - handles batch downloads with concurrency control
  * Processes multiple URLs with resume support, progress tracking, and error handling
  * @async
- * @function download
- * @param {string[]} urls - Array of URLs to download
- * @param {string} destination - Destination directory for downloads
- * @param {Object} [options={}] - Download configuration options
- * @param {boolean} [options.enableResume=true] - Enable resume functionality
- * @param {boolean} [options.quietMode=false] - Suppress progress output
- * @param {number} [options.maxConcurrent=3] - Maximum concurrent downloads
- * @param {Object} [options.sshOptions={}] - SSH connection options for SFTP
- * @returns {Promise<Object[]>} Array of download results with status, paths, and metrics
+ * @param urls - Array of URLs to download
+ * @param destination - Destination directory for downloads
+ * @param [options={}] - Download configuration options
+ * @param [options.enableResume=true] - Enable resume functionality
+ * @param [options.quietMode=false] - Suppress progress output
+ * @param [options.maxConcurrent=3] - Maximum concurrent downloads
+ * @param [options.sshOptions={}] - SSH connection options for SFTP
+ * @returns Array of download results with status, paths, and metrics
  * @throws {Error} When no URLs provided or critical download failures occur
  */
 async function download(urls: string[], destination: string, options: DownloadOptions | boolean = {}): Promise<DownloadResult[]> {

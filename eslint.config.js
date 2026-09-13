@@ -9,6 +9,7 @@
 // from the .ts.
 
 const tseslint = require('typescript-eslint');
+const jsdoc = require('eslint-plugin-jsdoc');
 
 const NODE_GLOBALS = {
     console: 'readonly',
@@ -139,6 +140,15 @@ module.exports = [
     })),
     {
         files: ['lib/**/*.ts', 'index.ts', 'types/**/*.ts'],
+        plugins: {jsdoc},
+        settings: {
+            jsdoc: {
+                // The repo uses @fileoverview throughout; the plugin defaults
+                // to preferring @file. Keep the existing convention rather
+                // than churn 33 files to rename a tag.
+                tagNamePreference: {file: 'fileoverview'},
+            },
+        },
         rules: {
             // `import X = require('...')` is the documented way to consume the
             // `export =` modules this codebase uses (see CLAUDE.md). The rule
@@ -156,6 +166,20 @@ module.exports = [
                 varsIgnorePattern: '^_',
                 caughtErrorsIgnorePattern: '^_',
             }],
+
+            // TSDoc, not JSDoc. `@param {string} name` restates what
+            // `name: string` already says, and nothing verifies the two agree —
+            // change the signature and the comment silently lies. The 1.6.0
+            // migration carried these over wholesale from the .js originals;
+            // this rule is what stops them coming back.
+            'jsdoc/no-types': 'error',
+
+            // `typed: true` is the TypeScript-aware mode: it reports tags that
+            // are redundant when the language already expresses them —
+            // @private, @public, @protected, @type, @readonly and friends.
+            // Visibility and types belong in the declaration, not a comment
+            // that nothing verifies.
+            'jsdoc/check-tag-names': ['error', {typed: true}],
         },
     },
 ];

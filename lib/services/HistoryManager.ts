@@ -373,9 +373,8 @@ class HistoryManager {
      * @param entries - Array of history entries
      * @param options - Filter options
      * @returns Filtered entries
-     * @private
      */
-    filterEntries(entries: HistoryEntry[], options: HistoryOptions): HistoryEntry[] {
+    private filterEntries(entries: HistoryEntry[], options: HistoryOptions): HistoryEntry[] {
         return entries.filter(entry => {
             // Status filter
             if (options.status && entry.status !== options.status) {
@@ -429,9 +428,8 @@ class HistoryManager {
      * Export entries to CSV format
      * @param entries - History entries
      * @returns CSV formatted string
-     * @private
      */
-    exportToCsv(entries: HistoryEntry[]): string {
+    private exportToCsv(entries: HistoryEntry[]): string {
         const headers = ['Timestamp', 'URL', 'File Path', 'Status', 'Size (bytes)', 'Duration (ms)', 'Error', 'Correlation ID', 'Agent ID', 'Session ID', 'Request ID', 'Conversation ID'];
         const rows = [headers.join(',')];
 
@@ -460,9 +458,8 @@ class HistoryManager {
     /**
      * Check if history file needs rotation and perform it
      * @param historyPath - Path to history file
-     * @private
      */
-    async checkRotation(historyPath: string): Promise<void> {
+    private async checkRotation(historyPath: string): Promise<void> {
         try {
             const stats = await fsPromises.stat(historyPath);
 
@@ -489,9 +486,8 @@ class HistoryManager {
     /**
      * Rotate history file when it becomes too large
      * @param historyPath - Path to history file
-     * @private
      */
-    async rotateHistoryFile(historyPath: string): Promise<void> {
+    private async rotateHistoryFile(historyPath: string): Promise<void> {
         try {
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             const archivePath = historyPath.replace('.history', `.history.${timestamp}`);
@@ -511,9 +507,8 @@ class HistoryManager {
      * Sanitize URL for logging (remove credentials)
      * @param url - Original URL
      * @returns Sanitized URL
-     * @private
      */
-    sanitizeUrl(url: string): string {
+    private sanitizeUrl(url: string): string {
         try {
             const urlObj = new URL(url);
             if (urlObj.username || urlObj.password) {
@@ -530,9 +525,8 @@ class HistoryManager {
     /**
      * Generate a unique correlation ID
      * @returns Correlation ID
-     * @private
      */
-    generateCorrelationId(): string {
+    private generateCorrelationId(): string {
         return `hist-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
     }
 
