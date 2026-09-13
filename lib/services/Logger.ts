@@ -66,14 +66,14 @@ class Logger {
 
     /**
      * Creates a logger instance
-     * @param {Object} [config={}] - Logger configuration
-     * @param {string} [config.level='info'] - Minimum log level
-     * @param {string} [config.format='json'] - Output format (json|text|csv)
-     * @param {Array<string>} [config.outputs=['console']] - Output destinations
-     * @param {string} [config.logDir='./logs'] - Directory for log files
-     * @param {boolean} [config.enableColors=true] - Enable colored console output
-     * @param {number} [config.maxFileSize=10485760] - Max log file size (10MB)
-     * @param {number} [config.maxFiles=5] - Max number of log files to keep
+     * @param [config={}] - Logger configuration
+     * @param [config.level='info'] - Minimum log level
+     * @param [config.format='json'] - Output format (json|text|csv)
+     * @param [config.outputs=['console']] - Output destinations
+     * @param [config.logDir='./logs'] - Directory for log files
+     * @param [config.enableColors=true] - Enable colored console output
+     * @param [config.maxFileSize=10485760] - Max log file size (10MB)
+     * @param [config.maxFiles=5] - Max number of log files to keep
      */
     constructor(config: (LoggerConfig & Record<string, unknown>) | FullLoggerConfig = {}) {
         this.config = {
@@ -132,9 +132,8 @@ class Logger {
 
     /**
      * Initializes logging directory and output streams
-     * @private
      */
-    initializeLogging(): void {
+    private initializeLogging(): void {
         if (this.config.outputs.includes('file') || this.config.outputs.includes('json-file')) {
             try {
                 if (!fs.existsSync(this.config.logDir)) {
@@ -151,9 +150,9 @@ class Logger {
 
     /**
      * Logs an error message
-     * @param {string} message - Error message
-     * @param {Object} [meta={}] - Additional metadata
-     * @param {Error} [error] - Error object for stack trace
+     * @param message - Error message
+     * @param [meta={}] - Additional metadata
+     * @param [error] - Error object for stack trace
      */
     error(message: string, meta: Record<string, unknown> = {}, error: Error | null = null): void {
         this.log('error', message, meta, error);
@@ -161,8 +160,8 @@ class Logger {
 
     /**
      * Logs a warning message
-     * @param {string} message - Warning message
-     * @param {Object} [meta={}] - Additional metadata
+     * @param message - Warning message
+     * @param [meta={}] - Additional metadata
      */
     warn(message: string, meta: Record<string, unknown> = {}): void {
         this.log('warn', message, meta);
@@ -170,8 +169,8 @@ class Logger {
 
     /**
      * Logs an info message
-     * @param {string} message - Info message
-     * @param {Object} [meta={}] - Additional metadata
+     * @param message - Info message
+     * @param [meta={}] - Additional metadata
      */
     info(message: string, meta: Record<string, unknown> = {}): void {
         this.log('info', message, meta);
@@ -179,8 +178,8 @@ class Logger {
 
     /**
      * Logs a debug message
-     * @param {string} message - Debug message
-     * @param {Object} [meta={}] - Additional metadata
+     * @param message - Debug message
+     * @param [meta={}] - Additional metadata
      */
     debug(message: string, meta: Record<string, unknown> = {}): void {
         this.log('debug', message, meta);
@@ -188,8 +187,8 @@ class Logger {
 
     /**
      * Logs a trace message
-     * @param {string} message - Trace message
-     * @param {Object} [meta={}] - Additional metadata
+     * @param message - Trace message
+     * @param [meta={}] - Additional metadata
      */
     trace(message: string, meta: Record<string, unknown> = {}): void {
         this.log('trace', message, meta);
@@ -197,13 +196,12 @@ class Logger {
 
     /**
      * Core logging method
-     * @param {string} level - Log level
-     * @param {string} message - Log message
-     * @param {Object} [meta={}] - Additional metadata
-     * @param {Error} [error=null] - Error object
-     * @private
+     * @param level - Log level
+     * @param message - Log message
+     * @param [meta={}] - Additional metadata
+     * @param [error=null] - Error object
      */
-    log(level: string, message: string, meta: Record<string, unknown> = {}, error: Error | null = null): void {
+    private log(level: string, message: string, meta: Record<string, unknown> = {}, error: Error | null = null): void {
         // Check if level should be logged
         if (this.levels[level] > this.levels[this.config.level]) {
             return;
@@ -221,14 +219,13 @@ class Logger {
 
     /**
      * Creates a structured log entry
-     * @param {string} level - Log level
-     * @param {string} message - Log message
-     * @param {Object} meta - Additional metadata
-     * @param {Error} error - Error object
-     * @returns {Object} Structured log entry
-     * @private
+     * @param level - Log level
+     * @param message - Log message
+     * @param meta - Additional metadata
+     * @param error - Error object
+     * @returns Structured log entry
      */
-    createLogEntry(level: string, message: string, meta: Record<string, unknown>, error: Error | null): LogEntry {
+    private createLogEntry(level: string, message: string, meta: Record<string, unknown>, error: Error | null): LogEntry {
         const timestamp = new Date().toISOString();
 
         const entry: LogEntry = {
@@ -269,10 +266,9 @@ class Logger {
 
     /**
      * Writes log entry to configured outputs
-     * @param {Object} logEntry - Log entry to write
-     * @private
+     * @param logEntry - Log entry to write
      */
-    writeToOutputs(logEntry: LogEntry): void {
+    private writeToOutputs(logEntry: LogEntry): void {
         for (const output of this.config.outputs) {
             try {
                 switch (output) {
@@ -306,11 +302,10 @@ class Logger {
 
     /**
      * Formats log entry as CSV
-     * @param {Object} logEntry - Log entry to format
-     * @returns {string} CSV formatted log entry
-     * @private
+     * @param logEntry - Log entry to format
+     * @returns CSV formatted log entry
      */
-    formatAsCSV(logEntry: LogEntry): string {
+    private formatAsCSV(logEntry: LogEntry): string {
         const fields = [
             logEntry.timestamp,
             logEntry.level,
@@ -327,11 +322,10 @@ class Logger {
 
     /**
      * Escapes a field for CSV format
-     * @param {string} field - Field to escape
-     * @returns {string} Escaped field
-     * @private
+     * @param field - Field to escape
+     * @returns Escaped field
      */
-    escapeCSVField(field: string): string {
+    private escapeCSVField(field: string): string {
         // If field contains comma, double quote, or newline, wrap in quotes and escape quotes
         if (field.includes(',') || field.includes('"') || field.includes('\n') || field.includes('\r')) {
             return `"${field.replace(/"/g, '""')}"`;
@@ -341,19 +335,17 @@ class Logger {
 
     /**
      * Gets CSV header row
-     * @returns {string} CSV header
-     * @private
+     * @returns CSV header
      */
-    getCSVHeader(): string {
+    private getCSVHeader(): string {
         return 'timestamp,level,message,correlationId,pid,metadata,errorMessage,errorStack';
     }
 
     /**
      * Writes log entry to console
-     * @param {Object} logEntry - Log entry to write
-     * @private
+     * @param logEntry - Log entry to write
      */
-    writeToConsole(logEntry: LogEntry): void {
+    private writeToConsole(logEntry: LogEntry): void {
         if (this.config.format === 'json') {
             console.log(JSON.stringify(logEntry));
         } else if (this.config.format === 'csv') {
@@ -386,11 +378,10 @@ class Logger {
 
     /**
      * Writes log entry to text file
-     * @param {Object} logEntry - Log entry to write
-     * @param {string} filename - Target filename
-     * @private
+     * @param logEntry - Log entry to write
+     * @param filename - Target filename
      */
-    writeToFile(logEntry: LogEntry, filename: string): void {
+    private writeToFile(logEntry: LogEntry, filename: string): void {
         const filePath = path.join(this.config.logDir, filename);
 
         // Write CSV header for first entry
@@ -429,11 +420,10 @@ class Logger {
 
     /**
      * Writes log entry to JSON file
-     * @param {Object} logEntry - Log entry to write
-     * @param {string} filename - Target filename
-     * @private
+     * @param logEntry - Log entry to write
+     * @param filename - Target filename
      */
-    writeToJsonFile(logEntry: LogEntry, filename: string): void {
+    private writeToJsonFile(logEntry: LogEntry, filename: string): void {
         const filePath = path.join(this.config.logDir, filename);
         const logLine = JSON.stringify(logEntry) + '\n';
 
@@ -446,11 +436,10 @@ class Logger {
 
     /**
      * Checks if log rotation is needed and performs rotation
-     * @param {string} filePath - Path to log file
-     * @param {number} newDataSize - Size of new data being added
-     * @private
+     * @param filePath - Path to log file
+     * @param newDataSize - Size of new data being added
      */
-    checkLogRotation(filePath: string, newDataSize: number): void {
+    private checkLogRotation(filePath: string, newDataSize: number): void {
         const currentSize = this.fileSizes.get(filePath) || this.getFileSize(filePath);
 
         if (currentSize + newDataSize > this.config.maxFileSize) {
@@ -460,10 +449,9 @@ class Logger {
 
     /**
      * Rotates a log file when it exceeds size limit
-     * @param {string} filePath - Path to log file to rotate
-     * @private
+     * @param filePath - Path to log file to rotate
      */
-    rotateLogFile(filePath: string): void {
+    private rotateLogFile(filePath: string): void {
         try {
             const dir = path.dirname(filePath);
             const ext = path.extname(filePath);
@@ -506,11 +494,10 @@ class Logger {
 
     /**
      * Gets file size safely
-     * @param {string} filePath - Path to file
-     * @returns {number} File size in bytes
-     * @private
+     * @param filePath - Path to file
+     * @returns File size in bytes
      */
-    getFileSize(filePath: string): number {
+    private getFileSize(filePath: string): number {
         try {
             const stats = fs.statSync(filePath);
             return stats.size;
@@ -521,7 +508,7 @@ class Logger {
 
     /**
      * Sets correlation ID for request tracking
-     * @param {string} correlationId - Unique correlation identifier
+     * @param correlationId - Unique correlation identifier
      */
     setCorrelationId(correlationId: string): void {
         this.correlationId = correlationId;
@@ -529,7 +516,7 @@ class Logger {
 
     /**
      * Pushes context onto the logging context stack
-     * @param {Object} context - Context object to add
+     * @param context - Context object to add
      */
     pushContext(context: Record<string, unknown>): void {
         this.contextStack.push({
@@ -540,7 +527,7 @@ class Logger {
 
     /**
      * Pops context from the logging context stack
-     * @returns {Object|undefined} Popped context object
+     * @returns Popped context object
      */
     popContext(): Record<string, unknown> | undefined {
         return this.contextStack.pop();
@@ -555,8 +542,8 @@ class Logger {
 
     /**
      * Creates a child logger with additional context
-     * @param {Object} context - Context to add to all logs
-     * @returns {Logger} Child logger instance
+     * @param context - Context to add to all logs
+     * @returns Child logger instance
      */
     child(context: Record<string, unknown>): Logger {
         const child = new Logger(this.config);
@@ -568,9 +555,9 @@ class Logger {
 
     /**
      * Logs audit trail events
-     * @param {string} action - Action being audited
-     * @param {Object} details - Audit details
-     * @param {string} [userId] - User performing the action
+     * @param action - Action being audited
+     * @param details - Audit details
+     * @param [userId] - User performing the action
      */
     audit(action: string, details: Record<string, unknown>, userId: string | null = null): void {
         this.info(`Audit: ${action}`, {
@@ -584,9 +571,9 @@ class Logger {
 
     /**
      * Logs performance metrics
-     * @param {string} operation - Operation being measured
-     * @param {number} duration - Duration in milliseconds
-     * @param {Object} [details={}] - Additional performance details
+     * @param operation - Operation being measured
+     * @param duration - Duration in milliseconds
+     * @param [details={}] - Additional performance details
      */
     performance(operation: string, duration: number, details: Record<string, unknown> = {}): void {
         this.info(`Performance: ${operation}`, {
@@ -599,9 +586,9 @@ class Logger {
 
     /**
      * Logs security events
-     * @param {string} event - Security event type
-     * @param {Object} details - Event details
-     * @param {string} [severity='info'] - Event severity
+     * @param event - Security event type
+     * @param details - Event details
+     * @param [severity='info'] - Event severity
      */
     security(event: string, details: Record<string, unknown>, severity: string = 'info'): void {
         (this as unknown as Record<string, (msg: string, meta: Record<string, unknown>) => void>)[severity](`Security: ${event}`, {
@@ -615,7 +602,7 @@ class Logger {
 
     /**
      * Gets logging statistics
-     * @returns {Object} Current logging statistics
+     * @returns Current logging statistics
      */
     getStats(): Record<string, unknown> {
         return {
@@ -634,7 +621,7 @@ class Logger {
 
     /**
      * Flushes all log buffers and closes file streams
-     * @returns {Promise<void>}
+     * @returns
      */
     async flush(): Promise<void> {
         return new Promise((resolve) => {
@@ -646,7 +633,7 @@ class Logger {
 
     /**
      * Gracefully shuts down the logger
-     * @returns {Promise<void>}
+     * @returns
      */
     async shutdown(): Promise<void> {
         this.info('Logger shutting down', {

@@ -63,7 +63,7 @@ class ConfigManager {
 
     /**
      * Creates a ConfigManager instance
-     * @param {ConfigManagerOptions} [options={}] - Configuration options
+     * @param [options={}] - Configuration options
      */
     constructor(options: ConfigManagerOptions = {}) {
         // Packaged defaults. The old code picked EITHER this directory or the
@@ -136,7 +136,6 @@ class ConfigManager {
 
     /**
      * Initialize the configuration manager
-     * @private
      */
     private initialize(): void {
         try {
@@ -221,9 +220,8 @@ class ConfigManager {
 
     /**
      * Load a YAML configuration file
-     * @param {string} filename - Configuration filename
-     * @returns {Record<string, unknown>|null} Configuration object or null if file doesn't exist
-     * @private
+     * @param filename - Configuration filename
+     * @returns Configuration object or null if file doesn't exist
      */
     private loadConfigFile(filename: string): Record<string, unknown> | null {
         return this.loadConfigFileFrom(this.options.configDir, filename);
@@ -233,7 +231,6 @@ class ConfigManager {
      * Directories the user may place overrides in, in increasing precedence.
      * Empty when the user directory is the packaged one (running from inside
      * this repo), so the same files are not loaded twice.
-     * @private
      */
     private userConfigDirs(): string[] {
         const packaged = path.resolve(this.options.configDir);
@@ -243,7 +240,6 @@ class ConfigManager {
 
     /**
      * Load a YAML configuration file from a specific directory
-     * @private
      */
     private loadConfigFileFrom(dir: string, filename: string): Record<string, unknown> | null {
         const filePath = path.join(dir, filename);
@@ -273,8 +269,7 @@ class ConfigManager {
     /**
      * Load configuration from environment variables
      * Environment variables follow the pattern: NGET_SECTION_KEY=value
-     * @returns {Record<string, unknown>|null} Configuration object from environment variables
-     * @private
+     * @returns Configuration object from environment variables
      */
     private loadEnvironmentVariables(): Record<string, unknown> | null {
         const envConfig: Record<string, unknown> = {};
@@ -298,9 +293,8 @@ class ConfigManager {
 
     /**
      * Convert string to camelCase, handling known config key mappings
-     * @param {string} str - String to convert
-     * @returns {string} camelCase string
-     * @private
+     * @param str - String to convert
+     * @returns camelCase string
      */
     private toCamelCase(str: string): string {
         // Handle known mappings for config keys
@@ -347,8 +341,7 @@ class ConfigManager {
 
     /**
      * Load configuration from command-line arguments
-     * @returns {Record<string, unknown>|null} Configuration object from CLI arguments
-     * @private
+     * @returns Configuration object from CLI arguments
      */
     private loadCommandLineArgs(): Record<string, unknown> | null {
         const args = process.argv.slice(2);
@@ -372,9 +365,8 @@ class ConfigManager {
 
     /**
      * Parse environment variable value to appropriate type
-     * @param {string} value - Environment variable value
-     * @returns {unknown} Parsed value
-     * @private
+     * @param value - Environment variable value
+     * @returns Parsed value
      */
     private parseEnvValue(value: string): unknown {
         // Boolean values
@@ -396,10 +388,9 @@ class ConfigManager {
 
     /**
      * Set nested value in object using path array
-     * @param {Record<string, unknown>} obj - Target object
-     * @param {string[]} path - Path array
-     * @param {unknown} value - Value to set
-     * @private
+     * @param obj - Target object
+     * @param path - Path array
+     * @param value - Value to set
      */
     private setNestedValue(obj: Record<string, unknown>, path: string[], value: unknown): void {
         let current: Record<string, unknown> = obj;
@@ -414,9 +405,8 @@ class ConfigManager {
 
     /**
      * Deep merge multiple configuration objects
-     * @param {Record<string, unknown>[]} configs - Array of configuration objects
-     * @returns {Record<string, unknown>} Merged configuration
-     * @private
+     * @param configs - Array of configuration objects
+     * @returns Merged configuration
      */
     private mergeConfigs(configs: Record<string, unknown>[]): Record<string, unknown> {
         return configs.reduce((merged, config) => {
@@ -426,10 +416,9 @@ class ConfigManager {
 
     /**
      * Deep merge two objects
-     * @param {Record<string, unknown>} target - Target object
-     * @param {Record<string, unknown>} source - Source object
-     * @returns {Record<string, unknown>} Merged object
-     * @private
+     * @param target - Target object
+     * @param source - Source object
+     * @returns Merged object
      */
     private deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
         const result = {...target};
@@ -447,8 +436,7 @@ class ConfigManager {
 
     /**
      * Create Joi validation schema for configuration
-     * @returns {Joi.ObjectSchema} Validation schema
-     * @private
+     * @returns Validation schema
      */
     private createValidationSchema(): Joi.ObjectSchema {
         return Joi.object({
@@ -555,7 +543,6 @@ class ConfigManager {
     /**
      * Validate configuration against schema
      * @throws {Error} If validation fails
-     * @private
      */
     private validateConfiguration(): void {
         try {
@@ -586,7 +573,6 @@ class ConfigManager {
 
     /**
      * Load configuration profiles
-     * @private
      */
     private loadProfiles(): void {
         if (this.config.profiles) {
@@ -604,7 +590,7 @@ class ConfigManager {
 
     /**
      * Get current configuration
-     * @returns {NgetConfig} Current configuration
+     * @returns Current configuration
      */
     getConfig(): NgetConfig {
         return {...this.config} as unknown as NgetConfig;
@@ -612,9 +598,9 @@ class ConfigManager {
 
     /**
      * Get configuration value by path
-     * @param {string} path - Configuration path (e.g., 'http.timeout')
-     * @param {unknown} [defaultValue] - Default value if path doesn't exist
-     * @returns {unknown} Configuration value
+     * @param path - Configuration path (e.g., 'http.timeout')
+     * @param [defaultValue] - Default value if path doesn't exist
+     * @returns Configuration value
      */
     get(path: string, defaultValue?: unknown): unknown {
         const keys = path.split('.');
@@ -633,8 +619,8 @@ class ConfigManager {
 
     /**
      * Set configuration value by path
-     * @param {string} path - Configuration path
-     * @param {unknown} value - Value to set
+     * @param path - Configuration path
+     * @param value - Value to set
      */
     set(path: string, value: unknown): void {
         const keys = path.split('.');
@@ -656,8 +642,8 @@ class ConfigManager {
 
     /**
      * Apply configuration profile
-     * @param {string} profileName - Profile name
-     * @returns {Promise<void>}
+     * @param profileName - Profile name
+     * @returns
      */
     async applyProfile(profileName: string): Promise<void> {
         if (!this.profiles.has(profileName)) {
@@ -699,9 +685,8 @@ class ConfigManager {
 
     /**
      * Record configuration change in history
-     * @param {string} type - Change type
-     * @param {unknown} details - Change details
-     * @private
+     * @param type - Change type
+     * @param details - Change details
      */
     private recordConfigurationChange(type: string, details: unknown): void {
         const change: ConfigChangeRecord = {
@@ -721,10 +706,9 @@ class ConfigManager {
 
     /**
      * Record error in metrics
-     * @param {string} type - Error type
-     * @param {Error} error - Error object
-     * @param {Record<string, unknown>} [context] - Additional context
-     * @private
+     * @param type - Error type
+     * @param error - Error object
+     * @param [context] - Additional context
      */
     private recordError(type: string, error: Error, context: Record<string, unknown> = {}): void {
         const errorRecord: ErrorRecord = {
@@ -745,7 +729,6 @@ class ConfigManager {
 
     /**
      * Setup hot-reloading for configuration files
-     * @private
      */
     private setupHotReload(): void {
         if (!this.options.enableHotReload) {return;}
@@ -797,7 +780,7 @@ class ConfigManager {
 
     /**
      * Get configuration metrics and statistics
-     * @returns {object} Configuration metrics
+     * @returns Configuration metrics
      */
     getMetrics(): Record<string, unknown> {
         return {
@@ -815,7 +798,7 @@ class ConfigManager {
 
     /**
      * Get available configuration profiles for AI agents
-     * @returns {Record<string, unknown>} Available profiles with descriptions
+     * @returns Available profiles with descriptions
      */
     getAvailableProfiles(): Record<string, unknown> {
         const profiles: Record<string, unknown> = {};
@@ -832,7 +815,7 @@ class ConfigManager {
 
     /**
      * Get AI-optimized configuration summary
-     * @returns {Record<string, unknown>} Configuration summary for AI agents
+     * @returns Configuration summary for AI agents
      */
     getAIConfigSummary(): Record<string, unknown> {
         return {
@@ -868,8 +851,7 @@ class ConfigManager {
      * Node's fetch validates certificates unconditionally, so the term was
      * always true, and dropping it leaves every level unchanged.
      *
-     * @returns {string} Security level description
-     * @private
+     * @returns Security level description
      */
     private getSecurityLevel(): string {
         const blocksPrivate = this.get('security.blockPrivateNetworks');
@@ -887,7 +869,7 @@ class ConfigManager {
 
     /**
      * Learn from successful configurations for AI improvement
-     * @param {object} outcome - Task outcome details
+     * @param outcome - Task outcome details
      */
     learnFromOutcome(outcome: { success: boolean; duration: number; throughput: number; errors?: unknown }): void {
         if (!this.get('ai.profiles.learningEnabled')) {
@@ -923,7 +905,7 @@ class ConfigManager {
 
     /**
      * Export current configuration for AI model training
-     * @returns {Record<string, unknown>} Configuration data suitable for AI training
+     * @returns Configuration data suitable for AI training
      */
     exportForAITraining(): Record<string, unknown> {
         return {
