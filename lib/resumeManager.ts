@@ -139,6 +139,27 @@ class ResumeManager {
     }
 
     /**
+     * Whether a resume could even be attempted, judged from local state alone.
+     *
+     * checkPartialDownload() needs both a partial file on disk and its resume
+     * metadata; without either it refuses before consulting the server. Callers
+     * use this to decide whether testRangeSupport() is worth a round trip —
+     * see the note at its call site in downloader.ts (#163).
+     *
+     * @param url - the download URL, which keys the metadata file
+     * @param filePath - where the partial file would be
+     * @returns true when both the partial file and its metadata exist
+     */
+    async hasResumableState(url: string, filePath: string): Promise<boolean> {
+        try {
+            await fs.promises.stat(filePath);
+        } catch {
+            return false;
+        }
+        return (await this.loadMetadata(url, path.dirname(filePath))) !== null;
+    }
+
+    /**
      * Check if a partial download exists and is valid
      */
     async checkPartialDownload(url: string, filePath: string, expectedSize: number, serverHeaders: Record<string, any> = {}): Promise<CheckPartialResult> {

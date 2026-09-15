@@ -282,16 +282,32 @@ async function downloadHttpFile(
             }
         }
 
-        // Test server capabilities first
-        const serverInfo = await resumeManager.testRangeSupport(url);
-        const fileSizeBytes: number = serverInfo.contentLength || 0;
-        const supportsResume: boolean = serverInfo.supportsRanges;
+        // Probe the server only when a resume could actually happen.
+        //
+        // testRangeSupport() costs a HEAD, and everything it returns —
+        // Content-Length, Accept-Ranges, ETag, Last-Modified — also arrives on
+        // the GET response below. For a fresh download the round trip buys
+        // nothing, and every file in a recursive crawl of a new site is a fresh
+        // download, so the crawler was doubling its request count for free
+        // (#163). hasResumableState() answers from disk alone.
+        const resumePossible = !outputToStdout && enableResume && writePath !== null
+            && await resumeManager.hasResumableState(url, writePath);
+
+        let serverInfo: Awaited<ReturnType<typeof resumeManager.testRangeSupport>> | null = null;
+        let fileSizeBytes = 0;
+        let supportsResume = false;
+
+        if (resumePossible) {
+            serverInfo = await resumeManager.testRangeSupport(url);
+            fileSizeBytes = serverInfo.contentLength || 0;
+            supportsResume = serverInfo.supportsRanges;
+        }
 
         // Check for existing partial download (not applicable for stdout)
         let resumeInfo = null;
         let isResume = false;
 
-        if (!outputToStdout && enableResume && supportsResume) {
+        if (!outputToStdout && enableResume && supportsResume && serverInfo) {
             resumeInfo = await resumeManager.checkPartialDownload(url, writePath, fileSizeBytes, serverInfo.headers);
 
             if (resumeInfo.canResume) {
@@ -329,9 +345,10 @@ async function downloadHttpFile(
             }
         }
 
-        if (!isResume && !quietMode) {
-            emitter.downloadStart(url, { filename, bytes_total: fileSizeBytes, index, total, resumed: false });
-        }
+        // download_start for the non-resume path is emitted after the response
+        // headers arrive, below — without the HEAD probe the size is not known
+        // before then, and an accurate bytes_total is worth more to an agent
+        // than a few milliseconds of event latency.
 
         // Create appropriate request
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -359,6 +376,29 @@ async function downloadHttpFile(
         } else {
             // New download
             response = await fetch(url, {});
+
+            // When the probe was skipped, take the same facts from the response
+            // we already have rather than asking for them separately.
+            if (!serverInfo) {
+                const contentLength = response.headers.get('content-length');
+                serverInfo = {
+                    supportsRanges: response.headers.get('accept-ranges') === 'bytes',
+                    contentLength: contentLength ? Number.parseInt(contentLength) : null,
+                    headers: {
+                        etag: response.headers.get('etag'),
+                        'last-modified': response.headers.get('last-modified'),
+                        'content-length': contentLength,
+                    },
+                };
+                fileSizeBytes = serverInfo.contentLength || 0;
+                supportsResume = serverInfo.supportsRanges;
+            }
+
+            // Emitted before the status check so a failed request still produces
+            // download_start -> download_error, the order agents already parse.
+            if (!quietMode) {
+                emitter.downloadStart(url, { filename, bytes_total: fileSizeBytes, index, total, resumed: false });
+            }
 
             if (!response.ok) {
                 throw DownloadError.httpError(response.status, response.statusText, url);
