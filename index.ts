@@ -592,7 +592,16 @@ async function main(): Promise<void> {
         }
 
         if (argv['output-file'] && argv['output-file'] !== '-' && processedUrls.length > 1) {
-            if (!quietMode) { ui.displayError('Cannot use -o with multiple URLs. The -o option is for single file downloads only.'); }
+            // stderr, not ui.displayError: that writes to stdout, and an error
+            // must be visible even when -q or -o - has set quietMode.
+            console.error('Error: Cannot use -o with multiple URLs. The -o option is for single file downloads only.');
+            process.exit(1);
+        }
+
+        if (outputToStdout && processedUrls.length > 1) {
+            // Two files interleaved on one stream is not a usable result, and
+            // without this the run exited 1 with no output at all.
+            console.error('Error: Cannot write multiple URLs to stdout. Use -o - with a single URL.');
             process.exit(1);
         }
 
@@ -610,7 +619,9 @@ async function main(): Promise<void> {
             const RECURSION_MAX_DEPTH = 50;
 
             if (outputToStdout || argv['stdout']) {
-                console.error('Error: Recursive mode is not compatible with --stdout');
+                // argv['stdout'] is the retired --stdout flag, kept so the legacy
+                // spelling still fails loudly instead of silently crawling.
+                console.error('Error: Recursive mode is not compatible with -o - (stdout output)');
                 process.exit(1);
             }
 
@@ -659,6 +670,9 @@ async function main(): Promise<void> {
             enableResume,
             sshOptions,
             outputToStdout,
+            // Without this the EventSink writes NDJSON to stdout alongside the
+            // file content, so piping -o - into jq fails on interleaved lines.
+            pipeMode: outputToStdout,
             outputFilename: argv['output-file'] && argv['output-file'] !== '-' ? argv['output-file'] as string : null,
             quietMode:      quietMode || outputToStdout,
             humanMode,

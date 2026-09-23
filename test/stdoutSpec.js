@@ -1,170 +1,137 @@
-const {execSync} = require('node:child_process');
+/**
+ * @fileoverview Integration tests for piping a download to stdout (#146).
+ *
+ * These previously drove a `--stdout` flag that no longer exists; it was
+ * replaced by `-o -` (`--output-file -`), the conventional spelling. The
+ * rewrite also uncovered two real bugs the stale assertions had been masking:
+ * NDJSON events were being written to stdout alongside the file content, and
+ * `-o -` with several URLs exited 1 with no message at all.
+ *
+ * The contract under test: stdout carries the file content and nothing else,
+ * so `nget -o - <url> | jq .` works. Events go to stderr.
+ */
+
+const {spawnSync} = require('node:child_process');
 const path = require('node:path');
 
-// Local fixture server (test/fixtures/), started by globalSetup. Replaces
-// httpbin.org so the suite does not fail when a third-party host is down.
+// Local fixture server (test/fixtures/), started by globalSetup.
 const ORIGIN = require('./fixtures/origin').readOrigin();
 
+const REPO_ROOT = path.join(__dirname, '..');
 
-describe('Stdout Mode Tests', () => {
-    describe('--stdout flag', () => {
-        it('should output content to stdout instead of file', function() {
+/**
+ * Run the CLI, capturing stdout and stderr separately.
+ * @param {string[]} args
+ * @returns {{status: number, stdout: string, stderr: string}}
+ */
+function runCli(args) {
+    // spawnSync, not execFileSync: the latter returns only stdout on success,
+    // and these tests assert on both streams being kept separate.
+    const result = spawnSync('node', ['index.js', ...args], {
+        cwd: REPO_ROOT,
+        encoding: 'utf8',
+    });
+    return {
+        status: result.status ?? 1,
+        stdout: result.stdout ?? '',
+        stderr: result.stderr ?? '',
+    };
+}
 
-            const output = execSync(`node index.js --stdout ${ORIGIN}/json`, {
-                cwd: path.join(__dirname, '..'),
-                encoding: 'utf8',
-            });
+describe('stdout output mode (-o -)', () => {
 
-            // Should output JSON content to stdout
-            expect(output).to.include('{');
-            expect(output).to.include('"slideshow"');
-            expect(output).to.include('"title"');
+    describe('stdout carries only the file content', () => {
+
+        it('writes the response body to stdout', () => {
+            const {stdout} = runCli(['-o', '-', `${ORIGIN}/json`]);
+            expect(stdout).to.include('"slideshow"');
+            expect(stdout).to.include('"title"');
         });
 
-        it('should reject multiple URLs with --stdout', function() {
-
-            try {
-                execSync(`node index.js --stdout ${ORIGIN}/json ${ORIGIN}/uuid 2>&1`, {
-                    cwd: path.join(__dirname, '..'),
-                    encoding: 'utf8',
-                    shell: true
-                });
-                expect.fail('Should have exited with error');
-            } catch (error) {
-                const errorOutput = error.stdout.toString();
-                expect(errorOutput).to.include('Cannot use --stdout flag with multiple URLs');
-            }
+        it('produces stdout that parses as JSON', () => {
+            // The whole point of -o -. Events on stdout used to break this.
+            const {stdout} = runCli(['-o', '-', `${ORIGIN}/json`]);
+            expect(() => JSON.parse(stdout)).to.not.throw();
+            expect(JSON.parse(stdout)).to.have.property('slideshow');
         });
 
-        it('should reject conflicting options with --stdout and -o', function() {
-
-            try {
-                execSync(`node index.js --stdout -o output.txt ${ORIGIN}/json 2>&1`, {
-                    cwd: path.join(__dirname, '..'),
-                    encoding: 'utf8',
-                    shell: true
-                });
-                expect.fail('Should have exited with error');
-            } catch (error) {
-                const errorOutput = error.stdout.toString();
-                expect(errorOutput).to.include('Cannot use --stdout with -o option');
-            }
+        it('keeps NDJSON events off stdout', () => {
+            const {stdout} = runCli(['-o', '-', `${ORIGIN}/json`]);
+            expect(stdout).to.not.include('"event":');
+            expect(stdout).to.not.include('session_start');
         });
 
-        it('should reject recursive mode with --stdout', function() {
+        it('emits the events on stderr instead', () => {
+            const {stderr} = runCli(['-o', '-', `${ORIGIN}/json`]);
+            expect(stderr).to.include('"event":"session_start"');
+        });
 
-            try {
-                execSync('node index.js --stdout --recursive https://example.com 2>&1', {
-                    cwd: path.join(__dirname, '..'),
-                    encoding: 'utf8',
-                    shell: true
-                });
-                expect.fail('Should have exited with error');
-            } catch (error) {
-                const errorOutput = error.stdout.toString();
-                expect(errorOutput).to.include('Recursive mode is not compatible with --stdout');
-            }
+        it('shows no progress bars or banners on stdout', () => {
+            const {stdout} = runCli(['-o', '-', `${ORIGIN}/json`]);
+            expect(stdout).to.not.include('█');
+            expect(stdout).to.not.include('Download Summary');
         });
     });
 
-    describe('Configuration-based stdout mode', () => {
-        it('should work with NGET_DOWNLOADS_ENABLESTDOUT environment variable', function() {
+    describe('works against API-shaped endpoints', () => {
 
-            const output = execSync(`node index.js ${ORIGIN}/uuid`, {
-                cwd: path.join(__dirname, '..'),
-                encoding: 'utf8',
-                env: {
-                    ...process.env,
-                    NGET_DOWNLOADS_ENABLESTDOUT: 'true',
-                    NODE_ENV: 'test'  // Use test environment to reduce logging
-                }
-            });
-
-            // Should output JSON content to stdout (may include some logging)
-            expect(output).to.include('{');
-            expect(output).to.include('"uuid"');
-        });
-
-        it.skip('should work with fetch profile', function() {
-            // Skip this test for now due to environment config conflicts
-
-            const output = execSync(`node index.js --config-ai-profile=fetch ${ORIGIN}/ip`, {
-                cwd: path.join(__dirname, '..'),
-                encoding: 'utf8',
-                env: {
-                    ...process.env,
-                    NODE_ENV: 'production'  // Use production to avoid development.yaml overrides
-                }
-            });
-
-            // Should output JSON content to stdout
-            expect(output).to.include('{');
-            expect(output).to.include('"origin"');
-        });
-    });
-
-    describe('Stdout mode behavior', () => {
-        it('should not show progress bars in stdout mode', function() {
-
-            const output = execSync(`node index.js --stdout ${ORIGIN}/json`, {
-                cwd: path.join(__dirname, '..'),
-                encoding: 'utf8',
-            });
-
-            // Should not contain progress indicators
-            expect(output).to.not.include('█');
-            expect(output).to.not.include('%');
-            expect(output).to.not.include('Download');
-        });
-
-        it('should work with API endpoints', function() {
-
-            const output = execSync(`node index.js --stdout ${ORIGIN}/get`, {
-                cwd: path.join(__dirname, '..'),
-                encoding: 'utf8',
-            });
-
-            // Should output valid JSON
-            const json = JSON.parse(output);
+        it('returns a parseable body from /get', () => {
+            const {stdout} = runCli(['-o', '-', `${ORIGIN}/get`]);
+            const json = JSON.parse(stdout);
             expect(json).to.have.property('url');
-            expect(json.url).to.include('httpbin.org/get');
+            // Previously asserted httpbin.org; the suite now uses a local fixture.
+            expect(json.url).to.include(ORIGIN);
         });
 
-        it('should handle binary content gracefully', function() {
+        it('returns a parseable body from /uuid', () => {
+            const {stdout} = runCli(['-o', '-', `${ORIGIN}/uuid`]);
+            expect(JSON.parse(stdout)).to.have.property('uuid');
+        });
 
-            // This should not crash, even with binary content
-            const output = execSync(`node index.js --stdout ${ORIGIN}/base64/SFRUUEJJTiBpcyBhd2Vzb21l`, {
-                cwd: path.join(__dirname, '..'),
-                encoding: 'utf8',
-            });
-
-            // Should return the decoded content
-            expect(output).to.include('HTTPBIN is awesome');
+        it('passes non-JSON content through unaltered', () => {
+            const {stdout} = runCli(['-o', '-', `${ORIGIN}/html`]);
+            expect(stdout).to.include('<html>');
+            expect(stdout).to.not.include('"event":');
         });
     });
 
-    describe('Help and documentation', () => {
-        it('should include --stdout in help output', function() {
+    describe('rejects combinations that cannot produce one clean stream', () => {
 
-            const output = execSync('node index.js --help', {
-                cwd: path.join(__dirname, '..'),
-                encoding: 'utf8',
-            });
-
-            expect(output).to.include('--stdout');
-            expect(output).to.include('fetch mode');
-            expect(output).to.include('single URL only');
+        it('refuses multiple URLs, with a message on stderr', () => {
+            // This exited 1 silently before #146: quietMode is implied by -o -,
+            // and the only error path was gated on it.
+            const {status, stderr} = runCli(['-o', '-', `${ORIGIN}/json`, `${ORIGIN}/uuid`]);
+            expect(status).to.not.equal(0);
+            expect(stderr).to.include('Cannot write multiple URLs to stdout');
         });
 
-        it('should include stdout examples in help', function() {
+        it('refuses recursive mode, naming the current flag', () => {
+            const {status, stderr} = runCli(['-o', '-', '--recursive', `${ORIGIN}/html`]);
+            expect(status).to.not.equal(0);
+            expect(stderr).to.include('Recursive mode is not compatible with -o -');
+        });
 
-            const output = execSync('node index.js --help', {
-                cwd: path.join(__dirname, '..'),
-                encoding: 'utf8',
-            });
+        it('still refuses a named output file with multiple URLs', () => {
+            const {status, stderr} = runCli(['-o', 'out.txt', `${ORIGIN}/json`, `${ORIGIN}/uuid`]);
+            expect(status).to.not.equal(0);
+            expect(stderr).to.include('Cannot use -o with multiple URLs');
+        });
+    });
 
-            expect(output).to.include('nget --stdout https://api.example.com/data.json');
-            expect(output).to.include('| jq .');
+    describe('help documents the flag', () => {
+
+        it('advertises -o / --output-file and the "-" convention', () => {
+            // The old assertions looked for a --stdout entry. There is no such
+            // flag; -o - is the supported spelling and help says so.
+            const {stdout} = runCli(['--help']);
+            expect(stdout).to.include('--output-file');
+            expect(stdout).to.match(/-o, --output-file/);
+            expect(stdout.toLowerCase()).to.include('stdout');
+        });
+
+        it('does not advertise a --stdout flag', () => {
+            const {stdout} = runCli(['--help']);
+            expect(stdout).to.not.match(/^\s*--stdout\b/m);
         });
     });
 });
