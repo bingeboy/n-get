@@ -219,8 +219,10 @@ class SftpManager {
         const connectionKey = this.getConnectionKey(config);
 
         // Check for existing connection
-        if (this.connections.has(connectionKey)) {
-            const cachedConnection = this.connections.get(connectionKey);
+        // get() once rather than has()-then-get(): the pair reads as a
+        // time-of-check/time-of-use gap and gives TS nothing to narrow.
+        const cachedConnection = this.connections.get(connectionKey);
+        if (cachedConnection) {
             try {
                 // Test connection
                 await cachedConnection.cwd();

@@ -203,7 +203,7 @@ class Logger {
      */
     private log(level: string, message: string, meta: Record<string, unknown> = {}, error: Error | null = null): void {
         // Check if level should be logged
-        if (this.levels[level] > this.levels[this.config.level]) {
+        if (this.levels[level] > this.levels[this.config.level ?? 'info']) {
             return;
         }
 

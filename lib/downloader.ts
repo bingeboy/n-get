@@ -422,7 +422,9 @@ async function downloadHttpFile(
             try {
                 enhancedMetadata = await metadataService.collectDownloadMetadata({
                     url,
-                    filePath: outputToStdout ? 'stdout' : writePath,
+                    // writePath is assigned whenever output is not stdout; the
+                    // fallback keeps the type honest rather than asserting it.
+                    filePath: outputToStdout ? 'stdout' : (writePath ?? 'unknown'),
                     response,
                     options: {
                         sessionId: options.sessionId,
