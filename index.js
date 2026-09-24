@@ -61,6 +61,7 @@ const download = require("./lib/downloader");
 const ConfigManager = require("./lib/config/ConfigManager");
 const jobsCommands_js_1 = require("./lib/cli/jobsCommands.js");
 const EventSink_js_1 = require("./lib/core/EventSink.js");
+const checksumVerifier_1 = require("./lib/checksumVerifier");
 // ─── Argv parsing ─────────────────────────────────────────────────────────────
 const argv = (0, minimist_1.default)(process.argv.slice(2), {
     boolean: [
@@ -87,6 +88,7 @@ const argv = (0, minimist_1.default)(process.argv.slice(2), {
         'method', 'data', 'header',
         'webhook', 'webhook-header', 'webhook-events', 'webhook-secret',
         'level', 'accept', 'reject', // recursive: depth + file patterns
+        'expect', // verify the download against <algorithm>:<hex>
     ],
     alias: {
         d: 'destination',
@@ -607,6 +609,27 @@ async function main() {
             console.error('Error: Cannot write multiple URLs to stdout. Use -o - with a single URL.');
             process.exit(1);
         }
+        if (argv.expect) {
+            if (processedUrls.length > 1) {
+                console.error('Error: --expect verifies a single file. Use one URL per invocation.');
+                process.exit(1);
+            }
+            if (outputToStdout) {
+                // Verification needs the written file; with -o - the bytes are
+                // already gone by the time a digest could be compared.
+                console.error('Error: --expect cannot be combined with -o - (stdout output).');
+                process.exit(1);
+            }
+            try {
+                // Parse now so a malformed expectation fails before the transfer
+                // rather than after it.
+                (0, checksumVerifier_1.parseExpectation)(argv.expect);
+            }
+            catch (error) {
+                console.error(`Error: ${error.message}`);
+                process.exit(1);
+            }
+        }
         const configMaxConcurrent = configManager.get('downloads.maxConcurrent', 3);
         const maxConcurrent = Math.max(1, Number.parseInt(argv['max-concurrent']) || configMaxConcurrent);
         if (!quietMode && maxConcurrent !== configMaxConcurrent) {
@@ -680,6 +703,7 @@ async function main() {
             requestedBy: 'cli',
             metadata: {},
             webhooks: parseWebhookConfig(),
+            expectChecksum: argv.expect,
         };
         const results = await download(processedUrls, destination, downloadOptions);
         const allFailed = results.every(r => !r.success);
