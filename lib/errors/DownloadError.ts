@@ -536,6 +536,26 @@ class DownloadError extends Error {
      * @param details - Additional context
      * @returns Validation error instance
      */
+    /**
+     * A downloaded file did not match the caller's expected checksum.
+     *
+     * Never retryable: a retry re-fetches the same bytes from the same URL. A
+     * mismatch means the server is serving something other than what the
+     * caller asked for, which retrying cannot resolve.
+     *
+     * @param url - the download URL
+     * @param algorithm - digest algorithm that was compared
+     * @param expected - the caller-supplied digest
+     * @param actual - the digest of the bytes received
+     */
+    static checksumMismatch(url: string, algorithm: string, expected: string, actual: string): DownloadError {
+        return new DownloadError(
+            'CHECKSUM_MISMATCH',
+            `Checksum mismatch for ${url}: expected ${algorithm}:${expected}, got ${algorithm}:${actual}. The downloaded file was discarded.`,
+            {url, algorithm, expected, actual, retryable: false},
+        );
+    }
+
     static validationError(field: string, value: string, reason: string, details: Record<string, unknown> = {}): DownloadError {
         let code = 'VALIDATION_ERROR';
 

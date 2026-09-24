@@ -16,6 +16,7 @@ const streamPipeline = promisify(pipeline);
 
 // DownloadError is a class with static methods; esModuleInterop lets us import it directly
 import { DownloadError } from './errors/DownloadError';
+import { parseExpectation, verifyFile } from './checksumVerifier';
 
 const chdir             = require('./chdir');
 const ui                = require('./ui');
@@ -259,7 +260,7 @@ async function downloadHttpFile(
     session: DownloadSession,
 ): Promise<Record<string, unknown>> {
     const { emitter, logger, metadataService } = session;
-    const {outputToStdout = false, outputFilename = null, quietMode = false, configManager} = options;
+    const {outputToStdout = false, outputFilename = null, quietMode = false, configManager, expectChecksum} = options;
     const startTime = process.hrtime();
 
     // Declare enhancedMetadata outside try-catch for proper scoping
@@ -467,6 +468,28 @@ async function downloadHttpFile(
         // getBytesDownloaded() is authoritative for chunked responses where Content-Length is absent
         const downloadedBytes = progressTracker.getBytesDownloaded() || (writeStream as fs.WriteStream).bytesWritten || totalSize;
         const speed = downloadedBytes > 0 ? downloadedBytes / durationSeconds : 0;
+
+        // Verify against the caller's expected checksum before announcing
+        // success. A download_complete for a file that failed verification
+        // would be the one event an unattended agent must never see.
+        if (expectChecksum && writePath && !outputToStdout) {
+            const expectation = parseExpectation(expectChecksum);
+            const verification = await verifyFile(writePath, expectation);
+
+            if (!verification.ok) {
+                // The file is not what was asked for, and it sits at the path a
+                // later step would read. Remove it rather than leave a booby
+                // trap; it was created by this call and was never valid.
+                await fs.promises.unlink(writePath).catch(() => { /* best effort */ });
+
+                throw DownloadError.checksumMismatch(
+                    url,
+                    expectation.algorithm,
+                    verification.expected,
+                    verification.actual,
+                );
+            }
+        }
 
         // Display completion with metrics (not in quiet mode)
         if (!quietMode) {
@@ -711,6 +734,7 @@ async function download(urls: string[], destination: string, options: DownloadOp
                     sessionId:      identity.sessionId,
                     requestId:      identity.requestId ?? undefined,
                     conversationId: identity.conversationId ?? undefined,
+                    expectChecksum: (options as DownloadOptions).expectChecksum,
                     _session: session,
                 },
             );

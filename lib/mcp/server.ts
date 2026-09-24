@@ -60,13 +60,15 @@ export function createServer() {
             agent_id:    z.string().optional().describe('Agent identifier — appears in all session events and get_jobs output'),
             session_id:  z.string().optional().describe('Override the auto-generated session ID'),
             no_resume:   z.boolean().optional().describe('Disable HTTP range resume (default: false)'),
+            expect_checksum: z.string().optional().describe('Verify the download against an expected checksum, as <algorithm>:<hex> (md5, sha1, sha256, sha512). On mismatch the file is discarded and the call fails.'),
         },
-        async ({ url, destination, agent_id, session_id, no_resume }: {
+        async ({ url, destination, agent_id, session_id, no_resume, expect_checksum }: {
             url: string;
             destination?: string;
             agent_id?: string;
             session_id?: string;
             no_resume?: boolean;
+            expect_checksum?: string;
         }) => {
             const dest = destination ?? process.cwd();
             const session = new DownloadSession({
@@ -82,6 +84,7 @@ export function createServer() {
                 const results = await downloadPipeline([url], dest, {
                     session,
                     enableResume: !no_resume,
+                    expectChecksum: expect_checksum,
                 });
 
                 const r = results[0];

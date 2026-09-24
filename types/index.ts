@@ -54,6 +54,11 @@ export interface DownloadOptions {
     requestedBy?: string;
     metadata?: Record<string, unknown>;
     webhooks?: WebhookConfig[];
+    /**
+     * Expected checksum as <algorithm>:<hex>, e.g. sha256:9f86d081...
+     * On mismatch the file is discarded and the download fails.
+     */
+    expectChecksum?: string;
     /** Internal: shared session injected by the batch download() call */
     _session?: unknown;
 }

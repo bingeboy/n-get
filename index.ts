@@ -30,6 +30,7 @@ import { handleJobsCommand } from './lib/cli/jobsCommands.js';
 
 import type { DownloadOptions, WebhookConfig } from './types/index.js';
 import { EventSink } from './lib/core/EventSink.js';
+import { parseExpectation } from './lib/checksumVerifier';
 
 // ─── Argv parsing ─────────────────────────────────────────────────────────────
 
@@ -58,6 +59,7 @@ const argv = minimist(process.argv.slice(2), {
         'method', 'data', 'header',
         'webhook', 'webhook-header', 'webhook-events', 'webhook-secret',
         'level', 'accept', 'reject', // recursive: depth + file patterns
+        'expect', // verify the download against <algorithm>:<hex>
     ],
     alias: {
         d: 'destination',
@@ -605,6 +607,27 @@ async function main(): Promise<void> {
             process.exit(1);
         }
 
+        if (argv.expect) {
+            if (processedUrls.length > 1) {
+                console.error('Error: --expect verifies a single file. Use one URL per invocation.');
+                process.exit(1);
+            }
+            if (outputToStdout) {
+                // Verification needs the written file; with -o - the bytes are
+                // already gone by the time a digest could be compared.
+                console.error('Error: --expect cannot be combined with -o - (stdout output).');
+                process.exit(1);
+            }
+            try {
+                // Parse now so a malformed expectation fails before the transfer
+                // rather than after it.
+                parseExpectation(argv.expect as string);
+            } catch (error) {
+                console.error(`Error: ${(error as Error).message}`);
+                process.exit(1);
+            }
+        }
+
         const configMaxConcurrent = configManager.get('downloads.maxConcurrent', 3) as number;
         const maxConcurrent = Math.max(1, Number.parseInt(argv['max-concurrent'] as string) || configMaxConcurrent);
         if (!quietMode && maxConcurrent !== configMaxConcurrent) {
@@ -689,6 +712,7 @@ async function main(): Promise<void> {
             requestedBy:     'cli',
             metadata:        {},
             webhooks:        parseWebhookConfig(),
+            expectChecksum:  argv.expect as string | undefined,
         };
 
         const results = await download(processedUrls, destination as string, downloadOptions);
