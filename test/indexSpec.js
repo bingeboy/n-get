@@ -2,12 +2,37 @@
 const {execSync} = require('node:child_process');
 const path = require('node:path');
 const fs = require('node:fs').promises;
+const os = require('node:os');
 
 // Local fixture server (test/fixtures/), started by globalSetup. Replaces
 // httpbin.org so the suite does not fail when a third-party host is down.
 const ORIGIN = require('./fixtures/origin').readOrigin();
 
 
+/**
+ * Extract the NDJSON event stream from CLI output.
+ *
+ * Default (non-TTY) output interleaves human status lines with the event
+ * stream, so events are picked out by parseability rather than position.
+ * These tests previously asserted on the human "Download Summary" block,
+ * which is only produced in --human/text mode (#146).
+ *
+ * @param {string} output - raw stdout
+ * @returns {object[]} parsed events, in order
+ */
+function events(output) {
+    return output
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.startsWith('{') && line.includes('"event"'))
+        .map(line => { try { return JSON.parse(line); } catch { return null; } })
+        .filter(Boolean);
+}
+
+/** Count events of a given type. */
+function countEvents(output, type) {
+    return events(output).filter(e => e.event === type).length;
+}
 // Returns a boolean rather than throwing, so callers can branch without
 // wrapping expect.fail() in a try — an AssertionError thrown inside a try is
 // caught by that try's own catch, which inverts the reported diagnosis.
@@ -21,28 +46,21 @@ async function exists(filePath) {
 }
 
 describe('Main CLI Application', () => {
-    const testDir = path.join(__dirname, 'cli-test');
+    // An OS temp directory, not test/cli-test/ inside the repo. Downloads used
+    // to land in the working tree, and the teardown below could not remove them:
+    // it unlinked each entry individually, which throws on the .nget/
+    // subdirectory the download path creates, and the swallowed error left
+    // rmdir facing a non-empty directory. Successive runs accumulated files that
+    // eventually got committed (#146).
+    let testDir;
 
     before(async() => {
-        try {
-            await fs.mkdir(testDir, {recursive: true});
-        } catch {
-            // Directory might already exist
-        }
+        testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'nget-cli-'));
     });
 
     after(async() => {
-        // Clean up test files
-        try {
-            const files = await fs.readdir(testDir);
-            for (const file of files) {
-                await fs.unlink(path.join(testDir, file));
-            }
-
-            await fs.rmdir(testDir);
-        } catch {
-            // Ignore cleanup errors
-        }
+        // Recursive, so the .nget/ metadata directory goes too.
+        await fs.rm(testDir, {recursive: true, force: true});
     });
 
     describe('CLI argument parsing', () => {
@@ -64,10 +82,8 @@ describe('Main CLI Application', () => {
                 encoding: 'utf8',
             });
 
-            // Strip ANSI color codes for testing
-            const cleanOutput = output.replaceAll(/\u001B\[[\d;]*m/g, '');
-            expect(cleanOutput).to.include('Download Summary');
-            expect(cleanOutput).to.include('Successful: 1/1');
+            expect(countEvents(output, 'download_complete')).to.equal(1);
+            expect(countEvents(output, 'download_error')).to.equal(0);
         });
 
         it('should handle multiple URL downloads', function() {
@@ -77,10 +93,8 @@ describe('Main CLI Application', () => {
                 encoding: 'utf8',
             });
 
-            // Strip ANSI color codes for testing
-            const cleanOutput = output.replaceAll(/\u001B\[[\d;]*m/g, '');
-            expect(cleanOutput).to.include('Download Summary');
-            expect(cleanOutput).to.include('Successful: 2/2');
+            expect(countEvents(output, 'download_complete')).to.equal(2);
+            expect(countEvents(output, 'download_error')).to.equal(0);
         });
 
         it('should handle invalid destination gracefully', function() {
@@ -110,7 +124,7 @@ describe('Main CLI Application', () => {
             } catch (error) {
                 // Should exit with non-zero code and show error summary
                 expect(error.status).to.equal(1);
-                expect(error.stdout).to.include('Failed: 1');
+                expect(countEvents(error.stdout.toString(), 'download_error')).to.equal(1);
             }
         });
 
@@ -121,10 +135,8 @@ describe('Main CLI Application', () => {
                 encoding: 'utf8',
             });
 
-            // Strip ANSI color codes for testing
-            const cleanOutput = output.replaceAll(/\u001B\[[\d;]*m/g, '');
-            expect(cleanOutput).to.include('Successful: 1');
-            expect(cleanOutput).to.include('Failed: 1');
+            expect(countEvents(output, 'download_complete')).to.equal(1);
+            expect(countEvents(output, 'download_error')).to.equal(1);
         });
     });
 
@@ -139,9 +151,7 @@ describe('Main CLI Application', () => {
                 encoding: 'utf8',
             });
 
-            // Strip ANSI color codes for testing
-            const cleanOutput = output.replaceAll(/\u001B\[[\d;]*m/g, '');
-            expect(cleanOutput).to.include('Successful: 1/1');
+            expect(countEvents(output, 'download_complete')).to.equal(1);
 
             // Check that file exists with custom name
             if (!await exists(customFilePath)) {
@@ -164,9 +174,7 @@ describe('Main CLI Application', () => {
                 encoding: 'utf8',
             });
 
-            // Strip ANSI color codes for testing
-            const cleanOutput = output.replaceAll(/\u001B\[[\d;]*m/g, '');
-            expect(cleanOutput).to.include('Successful: 1/1');
+            expect(countEvents(output, 'download_complete')).to.equal(1);
 
             // Check that file exists with custom name
             if (!await exists(customFilePath)) {

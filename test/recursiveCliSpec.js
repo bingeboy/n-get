@@ -153,12 +153,14 @@ describe('recursive CLI (-R / --recursive)', () => {
         const viaOutputFile = await runCli(['-R', '-o', '-', `${origin}/x.html`], tmpDir);
         expect(viaOutputFile.code).to.equal(1);
         expect(viaOutputFile.stdout + viaOutputFile.stderr)
-            .to.include('Recursive mode is not compatible with --stdout');
+            .to.include('Recursive mode is not compatible with -o -');
 
+        // The retired --stdout spelling must still fail loudly rather than
+        // silently starting a crawl.
         const viaStdoutFlag = await runCli(['--stdout', '--recursive', `${origin}/x.html`], tmpDir);
         expect(viaStdoutFlag.code).to.equal(1);
         expect(viaStdoutFlag.stdout + viaStdoutFlag.stderr)
-            .to.include('Recursive mode is not compatible with --stdout');
+            .to.include('Recursive mode is not compatible with -o -');
     });
 
     it('rejects --level outside the advertised 1-50 range', async() => {
