@@ -23,10 +23,14 @@
     "allowJs": true,
     "checkJs": false,
 
-    // Strictness — start loose, tighten file-by-file as we migrate
-    "strict": false,
-    "noImplicitAny": false,
-    "strictNullChecks": false,
+    // Strictness — on. The migration is complete for type-checking purposes:
+    // enabling this surfaced six errors across four files, not the large
+    // fallout the loose setting had been guarding against. See #151.
+    //
+    // `any` annotations are a separate axis and still present; eslint reports
+    // them as warnings and a test holds the count to a ceiling that can only
+    // fall (test/anyCountSpec.js).
+    "strict": true,
 
     // Quality checks that don't require strict mode
     "noImplicitReturns": true,

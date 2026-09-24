@@ -107,8 +107,8 @@ class HistoryCommands {
         const options = {
             limit: argv.limit ? parseInt(argv.limit) : 50,
             status: argv.status,
-            since: argv.since ? this.parseDateOption(argv.since) : null,
-            until: argv.until ? this.parseDateOption(argv.until) : null,
+            since: argv.since ? this.parseDateOption(argv.since) : undefined,
+            until: argv.until ? this.parseDateOption(argv.until) : undefined,
             ...this.identityFilters(argv),
         };
 
@@ -257,7 +257,7 @@ class HistoryCommands {
         console.log(`📏 Total Size: ${this.formatSize(stats.totalSize)}`);
         console.log(`⏱️  Average Duration: ${stats.averageDuration}ms`);
 
-        if (stats.sizeSummary.smallest !== null) {
+        if (stats.sizeSummary.smallest !== null && stats.sizeSummary.largest !== null) {
             console.log('\n📦 Size Summary:');
             console.log(`   Smallest: ${this.formatSize(stats.sizeSummary.smallest)}`);
             console.log(`   Largest: ${this.formatSize(stats.sizeSummary.largest)}`);
@@ -295,10 +295,10 @@ class HistoryCommands {
         const outputFile = argv.output || `nget-history.${format}`;
 
         const options = {
-            limit: argv.limit ? parseInt(argv.limit) : null,
+            limit: argv.limit ? parseInt(argv.limit) : undefined,
             status: argv.status,
-            since: argv.since ? this.parseDateOption(argv.since) : null,
-            until: argv.until ? this.parseDateOption(argv.until) : null,
+            since: argv.since ? this.parseDateOption(argv.since) : undefined,
+            until: argv.until ? this.parseDateOption(argv.until) : undefined,
             ...this.identityFilters(argv),
         };
 

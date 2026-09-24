@@ -917,8 +917,11 @@ This API is optimized for AI agent integration with features including:
         }
 
         // Validate path operations
-        Object.entries(spec.paths || {}).forEach(([p, pathItem]: [string, AnyObj]) => {
-            Object.entries(pathItem).forEach(([method, operation]: [string, AnyObj]) => {
+        // Object.entries widens values to unknown under strict; assert at the
+        // boundary rather than annotating the callback parameter, which no
+        // longer matches the inferred signature.
+        Object.entries((spec.paths || {}) as Record<string, AnyObj>).forEach(([p, pathItem]) => {
+            Object.entries(pathItem as Record<string, AnyObj>).forEach(([method, operation]) => {
                 if (!operation.operationId) {
                     warnings.push(`Missing operationId for ${method.toUpperCase()} ${p}`);
                 }
