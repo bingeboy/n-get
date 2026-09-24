@@ -51,6 +51,28 @@ function runNget(args, timeout = 15000) {
     });
 }
 
+/**
+ * Wait until `predicate` holds, polling rather than sleeping a fixed duration.
+ *
+ * Webhook POSTs are fire-and-forget from a separate process, so they can still
+ * be in flight after the CLI exits. A fixed wait is a bet that the machine is
+ * fast enough — the exact shape of flake that #153 removed from three unit
+ * specs. This waits as long as needed up to a bound, and returns immediately
+ * once the condition is met.
+ *
+ * @param {() => boolean} predicate - condition to wait for
+ * @param {string} description - included in the timeout message
+ * @param {number} [timeoutMs=5000] - upper bound before failing
+ */
+async function waitFor(predicate, description, timeoutMs = 5000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        if (predicate()) { return; }
+        await new Promise(r => setTimeout(r, 25));
+    }
+    throw new Error(`Timed out after ${timeoutMs}ms waiting for: ${description}`);
+}
+
 describe('--webhook event forwarding', () => {
 
     it('POSTs all events to the webhook URL and completes the download', async () => {
@@ -62,8 +84,10 @@ describe('--webhook event forwarding', () => {
                 '--webhook', `http://127.0.0.1:${port}/events`,
             ], 20000);
 
-            // Give webhooks a moment to land (fire-and-forget)
-            await new Promise(r => setTimeout(r, 500));
+            await waitFor(
+                () => events.some(e => e.event === 'session_end'),
+                'session_end to reach the receiver',
+            );
 
             expect(result.exitCode).to.equal(0);
             expect(events.length).to.be.greaterThan(0);
@@ -93,7 +117,10 @@ describe('--webhook event forwarding', () => {
                 '--webhook-events', 'download_complete,session_end',
             ], 20000);
 
-            await new Promise(r => setTimeout(r, 500));
+            await waitFor(
+                () => events.some(e => e.event === 'download_complete' || e.event === 'session_end'),
+                'a filtered event to reach the receiver',
+            );
 
             const eventTypes = events.map(e => e.event);
             expect(eventTypes).to.not.include('session_start');
@@ -141,7 +168,10 @@ describe('nget fetch --webhook event emission', () => {
                 '--webhook', `http://127.0.0.1:${port}/events`,
             ], 15000);
 
-            await new Promise(r => setTimeout(r, 500));
+            await waitFor(
+                () => events.some(e => e.event === 'fetch_complete' || e.event === 'fetch_error'),
+                'a terminal fetch event to reach the receiver',
+            );
 
             expect(result.exitCode).to.equal(0);
             const eventTypes = events.map(e => e.event);
@@ -170,7 +200,10 @@ describe('nget fetch --webhook event emission', () => {
                 '--webhook', `http://127.0.0.1:${port}/events`,
             ], 15000);
 
-            await new Promise(r => setTimeout(r, 500));
+            await waitFor(
+                () => events.some(e => e.event === 'fetch_error'),
+                'fetch_error to reach the receiver',
+            );
 
             const eventTypes = events.map(e => e.event);
             expect(eventTypes).to.include('fetch_start');
