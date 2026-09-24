@@ -53,10 +53,16 @@ const PER_FILE_CEILING = {
 function countAny() {
     let raw;
     try {
+        // Lint the project rather than passing a glob. `shell: true` is needed
+        // for npx on Windows, and a shell that expands globs gives a different
+        // file set per platform — bash without globstar matches only one
+        // directory level, so CI scanned fewer files than a local run and
+        // reported live entries as stale. `.` is unambiguous everywhere, and
+        // eslint.config.js already excludes compiled output.
         raw = execFileSync(
             'npx',
-            ['eslint', 'lib/**/*.ts', 'index.ts', 'types/**/*.ts', '-f', 'json'],
-            {cwd: REPO_ROOT, encoding: 'utf8', timeout: 120000, shell: true},
+            ['eslint', '.', '-f', 'json'],
+            {cwd: REPO_ROOT, encoding: 'utf8', timeout: 120000, shell: true, maxBuffer: 32 * 1024 * 1024},
         );
     } catch (error) {
         // eslint exits non-zero when it reports problems; the JSON is still on stdout.
@@ -68,9 +74,11 @@ function countAny() {
     let total = 0;
 
     for (const file of results) {
+        const relative = path.relative(REPO_ROOT, file.filePath).split(path.sep).join('/');
+        if (!relative.endsWith('.ts') || relative.endsWith('.d.ts')) { continue; }
+
         for (const message of file.messages) {
             if (message.ruleId !== '@typescript-eslint/no-explicit-any') { continue; }
-            const relative = path.relative(REPO_ROOT, file.filePath).split(path.sep).join('/');
             perFile[relative] = (perFile[relative] || 0) + 1;
             total++;
         }
