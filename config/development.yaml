@@ -19,7 +19,6 @@ security:
     blockPrivateRanges: false
     blockDocumentation: false
     blockMulticast: false
-    strictValidation: false
     
 # Development features enabled
 development:

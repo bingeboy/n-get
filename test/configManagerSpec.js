@@ -312,7 +312,7 @@ describe('ConfigManager', () => {
             expect(config.get('security.ipv6.blockDocumentation')).to.be.false;
             expect(config.get('security.ipv6.blockMulticast')).to.be.false;
             expect(config.get('security.ipv6.allowIPv4Mapped')).to.be.true;
-            expect(config.get('security.ipv6.strictValidation')).to.be.false;
+            // strictValidation was removed in #155 — see securityServiceSpec.
         });
 
         it('should accept and retain security.ipv6 overrides (not stripped as unknown)', () => {

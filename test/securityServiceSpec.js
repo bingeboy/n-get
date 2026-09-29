@@ -116,7 +116,6 @@ describe('SecurityService', () => {
                 blockDocumentation: false,
                 blockMulticast: false,
                 allowIPv4Mapped: true,
-                strictValidation: false,
             });
         });
 
@@ -417,29 +416,32 @@ describe('SecurityService', () => {
             });
         });
 
-        describe('strictValidation', () => {
-            // WHATWG URL parsing rejects malformed bracketed hosts before the
-            // policy check runs, so the strict check is exercised directly as
-            // defense-in-depth for host strings from other sources.
-            it('flags a bracketed host that is not a valid IPv6 address', () => {
-                const svc = makeIPv6Service({ strictValidation: true });
-                const errors = svc.checkIPv6Policies('[not-an-address]');
-                expect(errors.some(e => e.code === 'IPV6_STRICT_VALIDATION_FAILED')).toBe(true);
+        describe('IPv6 canonicalisation is handled by the URL parser (#155)', () => {
+            // security.ipv6.strictValidation was removed. It could not trigger
+            // through validateUrl: WHATWG URL parsing rejects malformed
+            // bracketed hosts first. The encoding-ambiguity bypass it was meant
+            // to prevent is closed by the URL parser, unconditionally.
+
+            it('normalises every spelling of one address to a single form', () => {
+                const canonical = new URL('http://[::1]/').hostname;
+                for (const variant of [
+                    'http://[0:0:0:0:0:0:0:1]/',
+                    'http://[0000:0000:0000:0000:0000:0000:0000:0001]/',
+                ]) {
+                    expect(new URL(variant).hostname).toBe(canonical);
+                }
             });
 
-            it('does not flag invalid bracketed hosts when strictValidation=false', () => {
-                const svc = makeIPv6Service({ strictValidation: false });
-                const errors = svc.checkIPv6Policies('[not-an-address]');
-                expect(errors.length).toBe(0);
+            it('lower-cases hex so case cannot evade a policy comparison', () => {
+                expect(new URL('http://[2001:DB8::1]/').hostname)
+                    .toBe(new URL('http://[2001:db8::1]/').hostname);
             });
 
-            it('does not flag valid IPv6 literals', () => {
-                const svc = makeIPv6Service({ strictValidation: true });
-                expect(svc.checkIPv6Policies('[::1]').length).toBe(0);
-                expect(svc.checkIPv6Policies('2001:db8::1').length).toBe(0);
+            it('still applies the remaining ipv6 policies', () => {
+                const svc = makeIPv6Service({ blockPrivateRanges: true });
+                expect(svc.checkIPv6Policies('[fc00::1]').length).toBeGreaterThan(0);
             });
         });
-
         describe('policy pass-through from session config shape', () => {
             it('honours policy provided under config.security.ipv6', () => {
                 const svc = new SecurityService({
