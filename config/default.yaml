@@ -18,7 +18,6 @@ downloads:
   progressReporting: true     # Show progress bars and status
   chunkUpdateFrequency: 1000  # Progress update frequency in milliseconds
   chunkSize: 50              # Number of chunks before forced update
-  enableStdout: false         # Enable stdout mode for fetch-like behavior
 
 # Security Configuration
 security:
@@ -85,22 +84,8 @@ ssh:
       - hmac-sha2-256
       - hmac-sha2-512
       - hmac-sha1
-
-# Monitoring and Metrics
-monitoring:
-  enabled: true               # Enable monitoring and metrics
-  metricsPort: 9090          # Port for metrics endpoint
-  healthCheckPort: 8080      # Port for health check endpoint
-  tracingEnabled: true       # Enable request tracing
-  performanceTracking: true  # Track performance metrics
-
-# AI Agent Integration Configuration
 ai:
   enabled: false              # Enable AI agent features
-  mcp:
-    enabled: false            # Enable MCP server
-    port: 8080               # MCP server port
-    host: "127.0.0.1"        # MCP server host
   profiles:
     enabled: true             # Enable configuration profiles
     learningEnabled: false   # Enable configuration learning
@@ -161,7 +146,6 @@ profiles:
       timeout: 30000
       maxRetries: 3
     downloads:
-      enableStdout: true
       maxConcurrent: 1
       progressReporting: false
       enableResume: false
@@ -186,13 +170,3 @@ webhooks:
 # Development and Debugging
 development:
   hotReload: true             # Enable configuration hot-reloading
-  validateOnChange: true      # Validate configuration on changes
-  debugMode: false           # Enable debug mode
-  mockExternalServices: false # Mock external services for testing
-
-# Enterprise Features
-enterprise:
-  auditLogging: false        # Enable audit logging
-  complianceMode: false      # Enable compliance mode
-  encryptedConfig: false     # Enable encrypted configuration values
-  configVersioning: false   # Enable configuration versioning

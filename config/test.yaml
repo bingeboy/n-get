@@ -24,9 +24,6 @@ security:
 # Development features for testing
 development:
   hotReload: false
-  validateOnChange: false
-  debugMode: false
-  mockExternalServices: true
 
 # AI features disabled for testing
 ai:
@@ -34,14 +31,6 @@ ai:
   profiles:
     enabled: true
     learningEnabled: false
-
-# Monitoring disabled in testing
-monitoring:
-  enabled: false
-  tracingEnabled: false
-  performanceTracking: false
-
-# Conservative limits for testing
 downloads:
   maxConcurrent: 1
   chunkUpdateFrequency: 1000

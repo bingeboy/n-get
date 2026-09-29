@@ -416,10 +416,17 @@ class CapabilitiesService {
                 timeouts: true
             },
             monitoring: {
+                // progress and performance are real: progress events stream on
+                // the NDJSON channel, and warn/error log entries carry heap and
+                // counter data (logging.structured.includePerformance).
                 progress: true,
                 performance: true,
-                health: true,
-                metrics: true
+                // health and metrics claimed endpoints that do not exist — no
+                // health check, no metrics server, nothing serving either. An
+                // agent reading this alongside the former monitoring.* config
+                // keys had two surfaces agreeing on something false (#181).
+                health: false,
+                metrics: false
             }
         };
     }
