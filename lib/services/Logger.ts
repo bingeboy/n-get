@@ -15,6 +15,8 @@ interface FullLoggerConfig extends LoggerConfig {
     maxFileSize: number;
     maxFiles: number;
     includeStackTrace: boolean;
+    /** logging.structured.includePerformance — attach heap/metrics to warn and error entries. */
+    includePerformance: boolean;
 }
 
 interface LogMetrics {
@@ -85,6 +87,7 @@ class Logger {
             maxFileSize: (config.maxFileSize as number) || 10 * 1024 * 1024, // 10MB
             maxFiles: (config.maxFiles as number) || 5,
             includeStackTrace: config.includeStackTrace !== false,
+            includePerformance: config.includePerformance !== false,
             ...config,
         } as FullLoggerConfig;
 
@@ -252,8 +255,10 @@ class Logger {
             };
         }
 
-        // Add performance data for error and warn levels
-        if (['error', 'warn'].includes(level)) {
+        // Add performance data for error and warn levels.
+        // logging.structured.includePerformance gates this; before #180 the key
+        // existed and the block ran regardless.
+        if (this.config.includePerformance !== false && ['error', 'warn'].includes(level)) {
             entry.performance = {
                 timestamp: Date.now(),
                 heapUsed: process.memoryUsage().heapUsed,

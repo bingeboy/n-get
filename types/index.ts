@@ -364,19 +364,13 @@ export interface NgetConfig {
     };
     ai: {
         enabled: boolean;
-        mcp: {
-            enabled: boolean;
-            port: number;
-            host: string;
-        };
         profiles: {
             enabled: boolean;
             learningEnabled: boolean;
         };
     };
-    monitoring: {
-        enabled: boolean;
-        metricsPort: number;
-        performanceTracking: boolean;
+    development: {
+        /** Watch config files for changes. Only honoured in the development environment. */
+        hotReload: boolean;
     };
 }

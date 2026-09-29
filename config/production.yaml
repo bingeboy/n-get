@@ -31,26 +31,8 @@ security:
 downloads:
   maxConcurrent: 5
   chunkUpdateFrequency: 2000
-
-# Monitoring enabled for production
-monitoring:
-  enabled: true
-  metricsPort: 9090
-  healthCheckPort: 8080
-  tracingEnabled: true
-  performanceTracking: true
-
-# Enterprise features for production
-enterprise:
-  auditLogging: true
-  complianceMode: true
-  configVersioning: true
-
-# AI features controlled in production
 ai:
   enabled: true
-  mcp:
-    enabled: false            # Disabled by default, enable as needed
   profiles:
     enabled: true
     learningEnabled: false    # Learning disabled in production
@@ -58,5 +40,3 @@ ai:
 # Development features disabled
 development:
   hotReload: false
-  debugMode: false
-  mockExternalServices: false

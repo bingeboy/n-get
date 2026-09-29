@@ -38,48 +38,21 @@ const {schemaKeys, consumerSource, unreadSchemaKeys, undeclaredYamlKeys} = requi
 /**
  * Schema keys that validate and default but reach no code.
  *
- * Every one of these behaves like #164: it appears in `nget config show`, an
- * agent can set it, and nothing observable changes.
- *
- * Detector note — this list is CONSERVATIVE. Five further keys are dead by
- * manual inspection but invisible to a static scan because their leaf names
- * collide with common properties:
- *
- *   development.hotReload  — hot reload is real (ConfigManager fs.watch), but
- *                            it is driven by the `enableHotReload` constructor
- *                            option; the config key never reaches it
- *   monitoring.enabled     — leaf `enabled` appears everywhere
- *   ai.mcp.enabled/port/host — MCP transport is stdio; port/host are inert
- *
- * They are omitted rather than hard-coded so this list stays mechanically
- * derived. Removing them is tracked with the rest of the cleanup.
+ * Empty as of #180, which removed the last sixteen. The invariant is now
+ * unconditional: every key the schema accepts is read by something. An entry
+ * appearing here again means a key was shipped that does nothing.
  */
-const KNOWN_UNREAD_KEYS = [
-    'logging.structured.includePerformance',
-    'monitoring.metricsPort',
-    'monitoring.healthCheckPort',
-    'monitoring.tracingEnabled',
-    'monitoring.performanceTracking',
-    'development.validateOnChange',
-    'development.debugMode',
-    'development.mockExternalServices',
-    'enterprise.auditLogging',
-    'enterprise.complianceMode',
-    'enterprise.encryptedConfig',
-    'enterprise.configVersioning',
-];
+const KNOWN_UNREAD_KEYS = [];
 
 /**
  * Keys shipped in config/default.yaml that the schema never declares, and so
  * are removed by stripUnknown at load. Anything reading them gets undefined.
  *
- * The `ssh` and `webhooks` sections were fixed in #175. `enableStdout` remains:
- * it is set by the shipped `fetch` profile but reaches no code, so declaring it
- * would only make the dead key validate. See docs/CONFIG-CONTRACT.md.
+ * Empty as of #180. The ssh and webhooks sections were declared in #175, and
+ * downloads.enableStdout — set by the shipped fetch profile but reaching no
+ * code — was removed rather than declared.
  */
-const KNOWN_UNDECLARED_KEYS = [
-    'downloads.enableStdout',
-];
+const KNOWN_UNDECLARED_KEYS = [];
 
 const sorted = xs => [...xs].sort();
 

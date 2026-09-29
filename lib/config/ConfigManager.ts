@@ -143,7 +143,15 @@ class ConfigManager {
             this.loadConfiguration();
             this.loadProfiles();
 
-            if (this.options.enableHotReload && this.options.environment === 'development' && process.env.NODE_ENV !== 'test') {
+            // development.hotReload now participates. It is read after the
+            // config loads, so a config file can disable watching even when the
+            // constructor option allows it; the option remains the outer gate
+            // for embedders who never want watchers at all. Previously the key
+            // existed and only the option was consulted (#180).
+            const hotReloadConfigured = this.get('development.hotReload') !== false;
+
+            if (this.options.enableHotReload && hotReloadConfigured
+                && this.options.environment === 'development' && process.env.NODE_ENV !== 'test') {
                 this.setupHotReload();
             }
 
@@ -325,18 +333,7 @@ class ConfigManager {
             'includestacktrace': 'includeStackTrace',
             'correlationids': 'correlationIds',
             'hotreload': 'hotReload',
-            'validateonchange': 'validateOnChange',
-            'debugmode': 'debugMode',
-            'mockexternalservices': 'mockExternalServices',
-            'auditlogging': 'auditLogging',
-            'compliancemode': 'complianceMode',
-            'encryptedconfig': 'encryptedConfig',
-            'configversioning': 'configVersioning',
             'learningenabled': 'learningEnabled',
-            'metricsport': 'metricsPort',
-            'healthcheckport': 'healthCheckPort',
-            'tracingenabled': 'tracingEnabled',
-            'performancetracking': 'performanceTracking',
         };
 
         return keyMappings[str.toLowerCase()] || str;
@@ -533,21 +530,16 @@ class ConfigManager {
                 }).default(),
             }).default(),
 
-            monitoring: Joi.object({
-                enabled: Joi.boolean().default(true),
-                metricsPort: Joi.number().min(1024).max(65535).default(9090),
-                healthCheckPort: Joi.number().min(1024).max(65535).default(8080),
-                tracingEnabled: Joi.boolean().default(true),
-                performanceTracking: Joi.boolean().default(true),
-            }).default(),
+            // monitoring.* and enterprise.* were removed in #180: every key
+            // validated, defaulted and appeared in `nget config show` while
+            // reaching no code. They return as MINOR additions alongside the
+            // features that would give them meaning.
 
             ai: Joi.object({
                 enabled: Joi.boolean().default(false),
-                mcp: Joi.object({
-                    enabled: Joi.boolean().default(false),
-                    port: Joi.number().min(1024).max(65535).default(8080),
-                    host: Joi.string().default('127.0.0.1'),
-                }).default(),
+                // ai.mcp.* was removed with them. MCP transport is stdio, so
+                // port and host were meaningless, and nget-mcp is a separate
+                // binary that no config flag gates.
                 profiles: Joi.object({
                     enabled: Joi.boolean().default(true),
                     learningEnabled: Joi.boolean().default(false),
@@ -555,17 +547,11 @@ class ConfigManager {
             }).default(),
 
             development: Joi.object({
+                // The only survivor, because hot reload is real — ConfigManager
+                // watches files with fs.watch. It was gated on the
+                // enableHotReload constructor option and this key never reached
+                // it; now it does.
                 hotReload: Joi.boolean().default(true),
-                validateOnChange: Joi.boolean().default(true),
-                debugMode: Joi.boolean().default(false),
-                mockExternalServices: Joi.boolean().default(false),
-            }).default(),
-
-            enterprise: Joi.object({
-                auditLogging: Joi.boolean().default(false),
-                complianceMode: Joi.boolean().default(false),
-                encryptedConfig: Joi.boolean().default(false),
-                configVersioning: Joi.boolean().default(false),
             }).default(),
 
             profiles: Joi.object().pattern(Joi.string(), Joi.object()).default({}),
