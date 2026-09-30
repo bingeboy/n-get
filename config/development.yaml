@@ -11,7 +11,7 @@ logging:
 
 # Security relaxed for development
 security:
-  blockPrivateNetworks: false
+  blockPrivateIpLiterals: false
   blockLocalhost: false
   rateLimiting:
     enabled: false

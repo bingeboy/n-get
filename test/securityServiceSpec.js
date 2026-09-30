@@ -29,7 +29,7 @@ describe('SecurityService', () => {
             expect(cfg.maxFileSize).toBe(10 * 1024 * 1024 * 1024);
             // Default-allow: matches config/default.yaml and the Joi schema.
             // Operators opt in to blocking (secure profile / production config).
-            expect(cfg.blockPrivateNetworks).toBe(false);
+            expect(cfg.blockPrivateIpLiterals).toBe(false);
             expect(cfg.blockLocalhost).toBe(false);
             expect(cfg.sanitizeFilenames).toBe(true);
             expect(cfg.enablePathTraversalProtection).toBe(true);
@@ -120,7 +120,7 @@ describe('SecurityService', () => {
             });
         });
 
-        it('regression: blockPrivateNetworks default stays aligned with the Joi schema default (false)', () => {
+        it('regression: blockPrivateIpLiterals default stays aligned with the Joi schema default (false)', () => {
             // Three places declare this default: the Joi schema
             // (ConfigManager), DownloadSession._buildSecurity, and this
             // constructor. They must all agree on false. See issue #148 follow-up.
@@ -136,9 +136,9 @@ describe('SecurityService', () => {
             expect(svc.getSecurityConfig().allowedProtocols).toEqual(['https']);
         });
 
-        it('respects blockPrivateNetworks=false', () => {
-            const svc = makeService({ blockPrivateNetworks: false });
-            expect(svc.getSecurityConfig().blockPrivateNetworks).toBe(false);
+        it('respects blockPrivateIpLiterals=false', () => {
+            const svc = makeService({ blockPrivateIpLiterals: false });
+            expect(svc.getSecurityConfig().blockPrivateIpLiterals).toBe(false);
         });
 
         it('initializes empty rate limiter', () => {
@@ -189,33 +189,33 @@ describe('SecurityService', () => {
         });
 
         it('accepts valid https URL to public domain', () => {
-            const svc = makeService({ blockPrivateNetworks: false, blockLocalhost: false });
+            const svc = makeService({ blockPrivateIpLiterals: false, blockLocalhost: false });
             const result = svc.validateUrl('https://example.com/file.zip');
             expect(result.isValid).toBe(true);
         });
 
         it('rejects blocked domain', () => {
-            const svc = makeService({ blockedDomains: ['evil.com'], blockPrivateNetworks: false, blockLocalhost: false });
+            const svc = makeService({ blockedDomains: ['evil.com'], blockPrivateIpLiterals: false, blockLocalhost: false });
             const result = svc.validateUrl('https://evil.com/malware.exe');
             expect(result.isValid).toBe(false);
             expect(result.errors.some(e => e.code === 'BLOCKED_DOMAIN')).toBe(true);
         });
 
         it('rejects subdomain of blocked domain', () => {
-            const svc = makeService({ blockedDomains: ['evil.com'], blockPrivateNetworks: false, blockLocalhost: false });
+            const svc = makeService({ blockedDomains: ['evil.com'], blockPrivateIpLiterals: false, blockLocalhost: false });
             const result = svc.validateUrl('https://sub.evil.com/file');
             expect(result.errors.some(e => e.code === 'BLOCKED_DOMAIN')).toBe(true);
         });
 
         it('rejects domain not in allowedDomains whitelist', () => {
-            const svc = makeService({ allowedDomains: ['good.com'], blockPrivateNetworks: false, blockLocalhost: false });
+            const svc = makeService({ allowedDomains: ['good.com'], blockPrivateIpLiterals: false, blockLocalhost: false });
             const result = svc.validateUrl('https://other.com/file');
             expect(result.isValid).toBe(false);
             expect(result.errors.some(e => e.code === 'DOMAIN_NOT_ALLOWED')).toBe(true);
         });
 
         it('accepts domain in allowedDomains whitelist', () => {
-            const svc = makeService({ allowedDomains: ['good.com'], blockPrivateNetworks: false, blockLocalhost: false });
+            const svc = makeService({ allowedDomains: ['good.com'], blockPrivateIpLiterals: false, blockLocalhost: false });
             const result = svc.validateUrl('https://good.com/file');
             expect(result.isValid).toBe(true);
         });
@@ -223,7 +223,7 @@ describe('SecurityService', () => {
         it('does not treat a lookalike suffix as a subdomain', () => {
             // 'notgood.com' ends with 'good.com' as a raw string. Matching on
             // endsWith alone would admit an attacker-registered lookalike.
-            const svc = makeService({ allowedDomains: ['good.com'], blockPrivateNetworks: false, blockLocalhost: false });
+            const svc = makeService({ allowedDomains: ['good.com'], blockPrivateIpLiterals: false, blockLocalhost: false });
             const result = svc.validateUrl('https://notgood.com/file');
             expect(result.isValid).toBe(false);
             expect(result.errors.some(e => e.code === 'DOMAIN_NOT_ALLOWED')).toBe(true);
@@ -233,7 +233,7 @@ describe('SecurityService', () => {
             const svc = makeService({
                 allowedDomains: ['good.com'],
                 blockedDomains: ['bad.good.com'],
-                blockPrivateNetworks: false, blockLocalhost: false,
+                blockPrivateIpLiterals: false, blockLocalhost: false,
             });
             const result = svc.validateUrl('https://bad.good.com/file');
             expect(result.isValid).toBe(false);
@@ -241,7 +241,7 @@ describe('SecurityService', () => {
         });
 
         it('accepts subdomain of allowed domain', () => {
-            const svc = makeService({ allowedDomains: ['good.com'], blockPrivateNetworks: false, blockLocalhost: false });
+            const svc = makeService({ allowedDomains: ['good.com'], blockPrivateIpLiterals: false, blockLocalhost: false });
             const result = svc.validateUrl('https://cdn.good.com/file');
             expect(result.isValid).toBe(true);
         });
@@ -254,51 +254,51 @@ describe('SecurityService', () => {
         });
 
         it('allows localhost when blockLocalhost=false', () => {
-            const svc = makeService({ blockLocalhost: false, blockPrivateNetworks: false });
+            const svc = makeService({ blockLocalhost: false, blockPrivateIpLiterals: false });
             const result = svc.validateUrl('https://localhost/file');
             expect(result.errors.some(e => e.code === 'LOCAL_ACCESS_DENIED')).toBe(false);
         });
 
-        it('rejects private network IP when blockPrivateNetworks=true', () => {
-            const svc = makeService({ blockPrivateNetworks: true, blockLocalhost: false });
+        it('rejects private network IP when blockPrivateIpLiterals=true', () => {
+            const svc = makeService({ blockPrivateIpLiterals: true, blockLocalhost: false });
             const result = svc.validateUrl('https://192.168.1.1/file');
             expect(result.isValid).toBe(false);
             expect(result.errors.some(e => e.code === 'PRIVATE_NETWORK_ACCESS_DENIED')).toBe(true);
         });
 
         it('rejects 10.x private IP', () => {
-            const svc = makeService({ blockPrivateNetworks: true, blockLocalhost: false });
+            const svc = makeService({ blockPrivateIpLiterals: true, blockLocalhost: false });
             const result = svc.validateUrl('https://10.0.0.1/internal');
             expect(result.errors.some(e => e.code === 'PRIVATE_NETWORK_ACCESS_DENIED')).toBe(true);
         });
 
         it('warns about HTTP for public domain', () => {
-            const svc = makeService({ blockPrivateNetworks: false, blockLocalhost: false });
+            const svc = makeService({ blockPrivateIpLiterals: false, blockLocalhost: false });
             const result = svc.validateUrl('http://example.com/file');
             expect(result.warnings.some(w => w.code === 'INSECURE_PROTOCOL')).toBe(true);
             expect(result.isValid).toBe(true);
         });
 
         it('does not warn INSECURE_PROTOCOL for HTTPS', () => {
-            const svc = makeService({ blockPrivateNetworks: false, blockLocalhost: false });
+            const svc = makeService({ blockPrivateIpLiterals: false, blockLocalhost: false });
             const result = svc.validateUrl('https://example.com/file');
             expect(result.warnings.some(w => w.code === 'INSECURE_PROTOCOL')).toBe(false);
         });
 
         it('rejects URL with .. path traversal pattern', () => {
-            const svc = makeService({ blockPrivateNetworks: false, blockLocalhost: false });
+            const svc = makeService({ blockPrivateIpLiterals: false, blockLocalhost: false });
             const result = svc.validateUrl('https://example.com/../../etc/passwd');
             expect(result.errors.some(e => e.code === 'SUSPICIOUS_URL_PATTERN')).toBe(true);
         });
 
         it('rejects URL with %2e%2e (encoded path traversal)', () => {
-            const svc = makeService({ blockPrivateNetworks: false, blockLocalhost: false });
+            const svc = makeService({ blockPrivateIpLiterals: false, blockLocalhost: false });
             const result = svc.validateUrl('https://example.com/%2e%2e/etc');
             expect(result.errors.some(e => e.code === 'SUSPICIOUS_URL_PATTERN')).toBe(true);
         });
 
         it('rejects URL with null byte injection (%00)', () => {
-            const svc = makeService({ blockPrivateNetworks: false, blockLocalhost: false });
+            const svc = makeService({ blockPrivateIpLiterals: false, blockLocalhost: false });
             const result = svc.validateUrl('https://example.com/file%00.txt');
             expect(result.errors.some(e => e.code === 'SUSPICIOUS_URL_PATTERN')).toBe(true);
         });
@@ -311,7 +311,7 @@ describe('SecurityService', () => {
         });
 
         it('returns warnings array even when valid', () => {
-            const svc = makeService({ blockPrivateNetworks: false, blockLocalhost: false });
+            const svc = makeService({ blockPrivateIpLiterals: false, blockLocalhost: false });
             const result = svc.validateUrl('https://example.com/file');
             expect(Array.isArray(result.warnings)).toBe(true);
         });
@@ -894,7 +894,7 @@ describe('SecurityService', () => {
 
     describe('validateDownloadRequest', () => {
         it('accepts a clean request with valid URL', () => {
-            const svc = makeService({ blockPrivateNetworks: false, blockLocalhost: false });
+            const svc = makeService({ blockPrivateIpLiterals: false, blockLocalhost: false });
             const result = svc.validateDownloadRequest({ url: 'https://example.com/file.zip' });
             expect(result.isValid).toBe(true);
             expect(result.sanitizedRequest).toBeDefined();
@@ -908,7 +908,7 @@ describe('SecurityService', () => {
         });
 
         it('propagates destination path errors', () => {
-            const svc = makeService({ blockPrivateNetworks: false, blockLocalhost: false });
+            const svc = makeService({ blockPrivateIpLiterals: false, blockLocalhost: false });
             const result = svc.validateDownloadRequest({
                 url: 'https://example.com/file',
                 destination: '../../../etc/passwd',
@@ -917,7 +917,7 @@ describe('SecurityService', () => {
         });
 
         it('validates headers when provided', () => {
-            const svc = makeService({ blockPrivateNetworks: false, blockLocalhost: false });
+            const svc = makeService({ blockPrivateIpLiterals: false, blockLocalhost: false });
             const result = svc.validateDownloadRequest({
                 url: 'https://example.com/file',
                 headers: { 'Content-Type': 'application/json' },
@@ -926,7 +926,7 @@ describe('SecurityService', () => {
         });
 
         it('rejects request with header injection', () => {
-            const svc = makeService({ blockPrivateNetworks: false, blockLocalhost: false });
+            const svc = makeService({ blockPrivateIpLiterals: false, blockLocalhost: false });
             const result = svc.validateDownloadRequest({
                 url: 'https://example.com/file',
                 headers: { 'X-Header': 'value\r\nevil: payload' },
@@ -936,7 +936,7 @@ describe('SecurityService', () => {
         });
 
         it('applies rate limiting when clientIp is provided', () => {
-            const svc = makeService({ rateLimitRequests: 1, blockPrivateNetworks: false, blockLocalhost: false });
+            const svc = makeService({ rateLimitRequests: 1, blockPrivateIpLiterals: false, blockLocalhost: false });
             svc.validateDownloadRequest({ url: 'https://example.com/file', clientIp: '3.3.3.3' });
             const result = svc.validateDownloadRequest({ url: 'https://example.com/file', clientIp: '3.3.3.3' });
             expect(result.isValid).toBe(false);
@@ -944,13 +944,13 @@ describe('SecurityService', () => {
         });
 
         it('skips rate limiting when no clientIp provided', () => {
-            const svc = makeService({ blockPrivateNetworks: false, blockLocalhost: false });
+            const svc = makeService({ blockPrivateIpLiterals: false, blockLocalhost: false });
             const result = svc.validateDownloadRequest({ url: 'https://example.com/file' });
             expect(result.errors.some(e => e.code === 'RATE_LIMIT_EXCEEDED')).toBe(false);
         });
 
         it('returns warnings array in result', () => {
-            const svc = makeService({ blockPrivateNetworks: false, blockLocalhost: false });
+            const svc = makeService({ blockPrivateIpLiterals: false, blockLocalhost: false });
             const result = svc.validateDownloadRequest({ url: 'https://example.com/file' });
             expect(Array.isArray(result.warnings)).toBe(true);
         });

@@ -314,7 +314,7 @@ class ConfigManager {
             'chunksize': 'chunkSize',
             'maxfilesize': 'maxFileSize',
             'allowedprotocols': 'allowedProtocols',
-            'blockprivatenetworks': 'blockPrivateNetworks',
+            'blockprivateipliterals': 'blockPrivateIpLiterals',
             'blocklocalhost': 'blockLocalhost',
             'pathtraversalprotection': 'pathTraversalProtection',
             'sanitizefilenames': 'sanitizeFilenames',
@@ -467,7 +467,12 @@ class ConfigManager {
                 // first, so it wins over an allowlist entry.
                 blockedDomains: Joi.array().items(Joi.string()).default([]),
                 allowedDomains: Joi.array().items(Joi.string()).default([]),
-                blockPrivateNetworks: Joi.boolean().default(false),
+                // Named for what it does. It matches private addresses written
+                // as IP literals in the URL and the hostname "localhost"; it
+                // performs no DNS resolution, so a public hostname resolving to
+                // a private address is not caught. Renamed from
+                // blockPrivateNetworks, which claimed more than it delivered.
+                blockPrivateIpLiterals: Joi.boolean().default(false),
                 blockLocalhost: Joi.boolean().default(false),
                 pathTraversalProtection: Joi.boolean().default(true),
                 rateLimiting: Joi.object({
@@ -895,7 +900,7 @@ class ConfigManager {
      * @returns Security level description
      */
     private getSecurityLevel(): string {
-        const blocksPrivate = this.get('security.blockPrivateNetworks');
+        const blocksPrivate = this.get('security.blockPrivateIpLiterals');
         const blocksLocalhost = this.get('security.blockLocalhost');
         const rateLimited = this.get('security.rateLimiting.enabled');
 

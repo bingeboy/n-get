@@ -242,7 +242,7 @@ export class DownloadSession {
             config: {
                 security: {
                     allowedProtocols:     cfg['allowedProtocols']     ?? ['https', 'http', 'sftp'],
-                    blockPrivateNetworks: cfg['blockPrivateNetworks']  ?? false,
+                    blockPrivateIpLiterals: cfg['blockPrivateIpLiterals']  ?? false,
                     blockLocalhost:       cfg['blockLocalhost']        ?? false,
                     ipv6:                 cfg['ipv6']                  ?? {},
 

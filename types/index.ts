@@ -321,7 +321,7 @@ export interface NgetConfig {
     security: {
         maxFileSize: number;
         allowedProtocols: string[];
-        blockPrivateNetworks: boolean;
+        blockPrivateIpLiterals: boolean;
         blockLocalhost: boolean;
         sanitizeFilenames: boolean;
         enableIntegrityChecks: boolean;

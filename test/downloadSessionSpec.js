@@ -124,7 +124,7 @@ describe('DownloadSession', () => {
         });
 
         // Regression: _buildSecurity() forwarded only allowedProtocols,
-        // blockPrivateNetworks and blockLocalhost, so these documented keys
+        // blockPrivateIpLiterals and blockLocalhost, so these documented keys
         // stopped here and never reached SecurityService — changing them in
         // config did nothing at all.
         describe('forwards documented security config to SecurityService', () => {

@@ -603,7 +603,7 @@ describe('RecursiveCrawler', () => {
             // fetch itself must then also be blocked.
             const crawler = makeCrawler({
                 securityService: new SecurityService({
-                    config: {security: {blockPrivateNetworks: true}},
+                    config: {security: {blockPrivateIpLiterals: true}},
                     logger: silentLogger,
                 }),
             });

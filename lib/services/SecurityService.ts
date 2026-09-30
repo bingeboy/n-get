@@ -27,7 +27,7 @@ interface SecurityConfig {
     maxPathLength: number;
     blockedDomains: string[];
     allowedDomains: string[];
-    blockPrivateNetworks: boolean;
+    blockPrivateIpLiterals: boolean;
     blockLocalhost: boolean;
     enablePathTraversalProtection: boolean;
     maxConcurrentDownloads: number;
@@ -123,7 +123,7 @@ class SecurityService {
             // Default false — matches the documented default in config/default.yaml
             // and the Joi schema. Operators opt in to blocking (e.g. the `secure`
             // profile or production config).
-            blockPrivateNetworks: config?.security?.blockPrivateNetworks === true,
+            blockPrivateIpLiterals: config?.security?.blockPrivateIpLiterals === true,
             blockLocalhost: config?.security?.blockLocalhost === true,
             // The documented key is `pathTraversalProtection` (Joi schema and
             // default.yaml). This class only ever read
@@ -307,7 +307,7 @@ class SecurityService {
                 });
             }
 
-            if (this.securityConfig.blockPrivateNetworks && this.isPrivateNetwork(hostname)) {
+            if (this.securityConfig.blockPrivateIpLiterals && this.isPrivateNetwork(hostname)) {
                 errors.push({
                     field: 'url',
                     code: 'PRIVATE_NETWORK_ACCESS_DENIED',
