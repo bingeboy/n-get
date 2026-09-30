@@ -103,6 +103,37 @@ class HistoryCommands {
     /**
      * Handles the show subcommand
      */
+    /**
+     * Emit entries in a structured format when one was requested.
+     *
+     * Call this BEFORE any empty-result early return. An empty result is a
+     * normal outcome — for an agent it is the most likely one, since a fresh
+     * environment has no history — and it still has to arrive as a parseable
+     * payload with an empty array rather than a sentence (#157, #179).
+     *
+     * @param entries - history entries to render
+     * @param argv - parsed CLI arguments
+     * @returns true when output was written and the caller should return
+     */
+    private emitStructured(entries: object[], argv: Record<string, unknown>): boolean {
+        const outputFormat = argv['output-format'] || 'text';
+        if (outputFormat === 'text') { return false; }
+
+        try {
+            // The formatter takes its own loose record type; entries are
+            // structurally compatible, so assert at this one boundary rather
+            // than widening the parameter to any.
+            console.log(this.outputFormatter.formatHistoryOutput(entries as Record<string, unknown>[], {
+                format: outputFormat,
+                compact: argv.quiet,
+            }));
+            return true;
+        } catch (error) {
+            console.error(`Error formatting output as ${outputFormat}:`, (error as Error).message);
+            return false; // fall through to text
+        }
+    }
+
     async handleShowCommand(destination: string, argv: any): Promise<void> {
         const options = {
             limit: argv.limit ? parseInt(argv.limit) : 50,
@@ -124,21 +155,7 @@ class HistoryCommands {
         // command emit unparseable text in exactly the case an agent hits
         // first. formatHistoryOutput already renders an empty array correctly
         // (totalEntries 0, entries []); it was simply never reached.
-        const outputFormat = argv['output-format'] || 'text';
-
-        if (outputFormat !== 'text') {
-            try {
-                const formattedOutput = this.outputFormatter.formatHistoryOutput(entries, {
-                    format: outputFormat,
-                    compact: argv.quiet
-                });
-                console.log(formattedOutput);
-                return;
-            } catch (error: any) {
-                console.error(`Error formatting output as ${outputFormat}:`, error.message);
-                // Fall back to text output
-            }
-        }
+        if (this.emitStructured(entries, argv)) { return; }
 
         // Text mode only: a human reads a sentence, not an empty table.
         if (entries.length === 0) {
@@ -221,6 +238,10 @@ class HistoryCommands {
 
         const entries = await this.historyManager.getHistory(destination, options);
 
+        // Ahead of the empty-result check, for the same reason as show.
+        if (this.emitStructured(entries, argv)) { return; }
+
+        // Text mode only: a human reads a sentence, not an empty list.
         if (entries.length === 0) {
             console.log(`No downloads found matching: "${searchTerm}"`);
             return;
@@ -247,6 +268,22 @@ class HistoryCommands {
     async handleStatsCommand(destination: string, argv: any): Promise<void> {
         const days = argv.days ? parseInt(argv.days) : 30;
         const stats = await this.historyManager.getStatistics(destination, {days});
+
+        // Statistics are an aggregate rather than a list, so they use their own
+        // formatter; the summary IS the payload.
+        const outputFormat = argv['output-format'] || 'text';
+        if (outputFormat !== 'text') {
+            try {
+                console.log(this.outputFormatter.formatHistoryStatsOutput(stats, {
+                    format: outputFormat,
+                    compact: argv.quiet,
+                }));
+                return;
+            } catch (error: any) {
+                console.error(`Error formatting output as ${outputFormat}:`, error.message);
+                // Fall through to text.
+            }
+        }
 
         console.log(`\n📈 Download Statistics (Last ${days} days):`);
         console.log('═'.repeat(50));
