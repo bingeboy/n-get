@@ -44,7 +44,6 @@ security:
     blockDocumentation: false # Block IPv6 documentation ranges (2001:db8::/32)
     blockMulticast: false     # Block IPv6 multicast ranges (ff00::/8)
     allowIPv4Mapped: true     # Allow IPv4-mapped IPv6 addresses (::ffff:0:0/96)
-    strictValidation: false   # Enable strict IPv6 address format validation
 
 # Logging Configuration
 logging:
@@ -110,7 +109,6 @@ profiles:
         blockPrivateRanges: true
         blockDocumentation: true
         blockMulticast: true
-        strictValidation: true
     http:
       timeout: 60000
       maxRetries: 5

@@ -330,7 +330,6 @@ export interface NgetConfig {
             blockDocumentation: boolean;
             blockMulticast: boolean;
             allowIPv4Mapped: boolean;
-            strictValidation: boolean;
         };
     };
     logging: {

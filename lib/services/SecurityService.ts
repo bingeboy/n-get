@@ -17,7 +17,6 @@ interface IPv6PolicyConfig {
     blockDocumentation: boolean;
     blockMulticast: boolean;
     allowIPv4Mapped: boolean;
-    strictValidation: boolean;
 }
 
 interface SecurityConfig {
@@ -144,7 +143,6 @@ class SecurityService {
                 blockDocumentation: config?.security?.ipv6?.blockDocumentation === true,
                 blockMulticast: config?.security?.ipv6?.blockMulticast === true,
                 allowIPv4Mapped: config?.security?.ipv6?.allowIPv4Mapped !== false,
-                strictValidation: config?.security?.ipv6?.strictValidation === true,
             },
         };
 
@@ -696,11 +694,6 @@ class SecurityService {
      * literals pass through untouched. Hostnames arriving from a parsed URL
      * carry brackets (e.g. "[::1]") — both bracketed and plain forms are
      * handled via IPv6Utils.detectAddressType.
-     *
-     * Note on strictValidation: WHATWG URL parsing already rejects malformed
-     * bracketed IPv6 hosts before this method is reached from validateUrl, so
-     * the strict check is defense-in-depth for host strings that arrive from
-     * other sources (e.g. SFTP host config).
      * @param hostname - Hostname to check (lowercased)
      * @returns Validation errors (empty when the host passes policy)
      */
@@ -710,15 +703,6 @@ class SecurityService {
 
         const addressInfo = IPv6Utils.detectAddressType(hostname);
 
-        // Bracketed host whose contents are not a valid IPv6 address
-        if (policy.strictValidation && addressInfo.type === 'invalid') {
-            errors.push({
-                field: 'url',
-                code: 'IPV6_STRICT_VALIDATION_FAILED',
-                message: `Host '${hostname}' is not a valid IPv6 address`,
-            });
-            return errors;
-        }
 
         if (addressInfo.type !== 'ipv6-bracketed' && addressInfo.type !== 'ipv6-plain') {
             return errors; // Not an IPv6 literal — no IPv6 policy applies

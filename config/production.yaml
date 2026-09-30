@@ -26,7 +26,6 @@ security:
     blockPrivateRanges: true
     blockDocumentation: true
     blockMulticast: true
-    strictValidation: true
 
 downloads:
   maxConcurrent: 5

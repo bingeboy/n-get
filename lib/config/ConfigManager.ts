@@ -327,7 +327,6 @@ class ConfigManager {
             'blockdocumentation': 'blockDocumentation',
             'blockmulticast': 'blockMulticast',
             'allowipv4mapped': 'allowIPv4Mapped',
-            'strictvalidation': 'strictValidation',
             'enablecolors': 'enableColors',
             'includeperformance': 'includePerformance',
             'includestacktrace': 'includeStackTrace',
@@ -481,7 +480,6 @@ class ConfigManager {
                     blockDocumentation: Joi.boolean().default(false),
                     blockMulticast: Joi.boolean().default(false),
                     allowIPv4Mapped: Joi.boolean().default(true),
-                    strictValidation: Joi.boolean().default(false),
                 }).default(),
             }).default(),
 
