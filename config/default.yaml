@@ -26,7 +26,12 @@ security:
     - https
     - http
     - sftp
-  blockPrivateNetworks: false # Block access to private network addresses
+  # Blocks private addresses written as IP LITERALS in the URL (127.0.0.1,
+  # 10.0.0.0/8, [::1], and so on), plus the hostname "localhost".
+  #
+  # It does NOT resolve hostnames, so a public name pointing at a private
+  # address still passes. n-get is not a network sandbox; run it inside one.
+  blockPrivateIpLiterals: false
   blockLocalhost: false       # Block access to localhost
   # Host allow/deny lists. Each entry matches a hostname exactly or as a
   # subdomain: 'example.com' also covers 'cdn.example.com'.
@@ -103,7 +108,7 @@ profiles:
     description: "Optimized for security and reliability"
     security:
       allowedProtocols: [https, sftp]
-      blockPrivateNetworks: true
+      blockPrivateIpLiterals: true
       blockLocalhost: true
       ipv6:
         blockPrivateRanges: true

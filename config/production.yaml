@@ -15,7 +15,7 @@ logging:
 
 # Enhanced security for production
 security:
-  blockPrivateNetworks: true
+  blockPrivateIpLiterals: true
   blockLocalhost: true
   rateLimiting:
     enabled: true

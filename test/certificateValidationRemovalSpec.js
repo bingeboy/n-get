@@ -81,13 +81,13 @@ describe('security.certificateValidation removal (#164)', () => {
             // The whole point: a 2.x config file must still load on 3.x.
             const config = loadWith({
                 blockLocalhost: true,
-                blockPrivateNetworks: true,
+                blockPrivateIpLiterals: true,
                 certificateValidation: false,
             });
 
             // Config loaded, other keys intact...
             expect(config.get('security.blockLocalhost')).to.be.true;
-            expect(config.get('security.blockPrivateNetworks')).to.be.true;
+            expect(config.get('security.blockPrivateIpLiterals')).to.be.true;
             // ...and the removed key simply is not there.
             expect(config.get('security.certificateValidation')).to.equal(undefined);
         });
@@ -97,7 +97,7 @@ describe('security.certificateValidation removal (#164)', () => {
             // certificates were validated regardless, so 'low' was the wrong label.
             const config = loadWith({
                 blockLocalhost: true,
-                blockPrivateNetworks: true,
+                blockPrivateIpLiterals: true,
                 certificateValidation: false,
                 rateLimiting: {enabled: true},
             });
@@ -115,7 +115,7 @@ describe('security.certificateValidation removal (#164)', () => {
 
         it('reports high when private networks, localhost and rate limiting are all locked down', () => {
             expect(levelFor({
-                blockPrivateNetworks: true,
+                blockPrivateIpLiterals: true,
                 blockLocalhost: true,
                 rateLimiting: {enabled: true},
             })).to.equal('high');
@@ -123,7 +123,7 @@ describe('security.certificateValidation removal (#164)', () => {
 
         it('reports medium when only rate limiting is on', () => {
             expect(levelFor({
-                blockPrivateNetworks: false,
+                blockPrivateIpLiterals: false,
                 blockLocalhost: false,
                 rateLimiting: {enabled: true},
             })).to.equal('medium');
@@ -131,7 +131,7 @@ describe('security.certificateValidation removal (#164)', () => {
 
         it('reports low when rate limiting is off', () => {
             expect(levelFor({
-                blockPrivateNetworks: true,
+                blockPrivateIpLiterals: true,
                 blockLocalhost: true,
                 rateLimiting: {enabled: false},
             })).to.equal('low');

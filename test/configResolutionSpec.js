@@ -43,7 +43,7 @@ describe('config resolution', () => {
         writeYaml(packagedDir, 'default.yaml', {
             version: '1.0.0',
             http: {timeout: 30000, maxRetries: 3},
-            security: {blockLocalhost: false, blockPrivateNetworks: false},
+            security: {blockLocalhost: false, blockPrivateIpLiterals: false},
         });
     });
 
@@ -77,10 +77,10 @@ describe('config resolution', () => {
     });
 
     it('a user override can enable a security policy the package ships disabled', () => {
-        writeYaml(userDir, 'local.yaml', {security: {blockLocalhost: true, blockPrivateNetworks: true}});
+        writeYaml(userDir, 'local.yaml', {security: {blockLocalhost: true, blockPrivateIpLiterals: true}});
         const cm = build();
         expect(cm.get('security.blockLocalhost'), 'blockLocalhost').to.equal(true);
-        expect(cm.get('security.blockPrivateNetworks'), 'blockPrivateNetworks').to.equal(true);
+        expect(cm.get('security.blockPrivateIpLiterals'), 'blockPrivateIpLiterals').to.equal(true);
     });
 
     it('leaves untouched keys at their packaged values (merge, not replace)', () => {

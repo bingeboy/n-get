@@ -616,7 +616,7 @@ describe('ConfigManager', () => {
                     progressReporting: true,
                 },
                 security: {
-                    blockPrivateNetworks: false,
+                    blockPrivateIpLiterals: false,
                     sanitizeFilenames: true,
                 },
                 ai: {
@@ -668,7 +668,7 @@ describe('ConfigManager', () => {
             });
 
             it('should return "high" for maximum security settings', () => {
-                config.set('security.blockPrivateNetworks', true);
+                config.set('security.blockPrivateIpLiterals', true);
                 config.set('security.blockLocalhost', true);
                 
                 const summary = config.getAIConfigSummary();

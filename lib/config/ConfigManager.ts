@@ -314,7 +314,7 @@ class ConfigManager {
             'chunksize': 'chunkSize',
             'maxfilesize': 'maxFileSize',
             'allowedprotocols': 'allowedProtocols',
-            'blockprivatenetworks': 'blockPrivateNetworks',
+            'blockprivateipliterals': 'blockPrivateIpLiterals',
             'blocklocalhost': 'blockLocalhost',
             'pathtraversalprotection': 'pathTraversalProtection',
             'sanitizefilenames': 'sanitizeFilenames',
@@ -466,7 +466,12 @@ class ConfigManager {
                 // first, so it wins over an allowlist entry.
                 blockedDomains: Joi.array().items(Joi.string()).default([]),
                 allowedDomains: Joi.array().items(Joi.string()).default([]),
-                blockPrivateNetworks: Joi.boolean().default(false),
+                // Named for what it does. It matches private addresses written
+                // as IP literals in the URL and the hostname "localhost"; it
+                // performs no DNS resolution, so a public hostname resolving to
+                // a private address is not caught. Renamed from
+                // blockPrivateNetworks, which claimed more than it delivered.
+                blockPrivateIpLiterals: Joi.boolean().default(false),
                 blockLocalhost: Joi.boolean().default(false),
                 pathTraversalProtection: Joi.boolean().default(true),
                 rateLimiting: Joi.object({
@@ -580,11 +585,75 @@ class ConfigManager {
     }
 
     /**
+     * Carry renamed keys forward, warning once per key.
+     *
+     * Validation runs with stripUnknown, which is the right behaviour for keys
+     * that were removed because they did nothing. It is the wrong behaviour for
+     * a key that was renamed while still enforcing something: dropping it
+     * silently would turn off a security control on upgrade and say nothing.
+     *
+     * Each entry maps an old dotted path to its replacement. The old value wins
+     * only when the new key was not set explicitly, so a config carrying both
+     * behaves the way its author most recently intended.
+     */
+    private migrateRenamedKeys(): void {
+        const RENAMED: Array<{from: string; to: string; since: string}> = [
+            {from: 'security.blockPrivateNetworks', to: 'security.blockPrivateIpLiterals', since: '3.0.0'},
+        ];
+
+        for (const {from, to, since} of RENAMED) {
+            const legacyValue = this.readRaw(from);
+            if (legacyValue === undefined) { continue; }
+
+            const alreadySet = this.readRaw(to) !== undefined;
+            if (!alreadySet) { this.writeRaw(to, legacyValue); }
+
+            this.options.logger.warn(
+                `Config key "${from}" was renamed to "${to}" in ${since}.`
+                + (alreadySet
+                    ? ` Both are set; "${to}" wins. Remove "${from}".`
+                    : ` Using its value for "${to}". Rename it to silence this warning.`),
+            );
+        }
+    }
+
+    /**
+     * Read a dotted path straight off the merged config, before validation.
+     * @param dottedPath - e.g. `security.blockPrivateNetworks`
+     */
+    private readRaw(dottedPath: string): unknown {
+        return dottedPath.split('.').reduce<unknown>(
+            (node, key) => (node && typeof node === 'object')
+                ? (node as Record<string, unknown>)[key]
+                : undefined,
+            this.config,
+        );
+    }
+
+    /**
+     * Write a dotted path into the merged config, creating intermediate objects.
+     * @param dottedPath - target path
+     * @param value - value to set
+     */
+    private writeRaw(dottedPath: string, value: unknown): void {
+        const parts = dottedPath.split('.');
+        const leaf = parts.pop()!;
+        let node = this.config as Record<string, unknown>;
+        for (const key of parts) {
+            if (!node[key] || typeof node[key] !== 'object') { node[key] = {}; }
+            node = node[key] as Record<string, unknown>;
+        }
+        node[leaf] = value;
+    }
+
+    /**
      * Validate configuration against schema
      * @throws {Error} If validation fails
      */
     private validateConfiguration(): void {
         try {
+            this.migrateRenamedKeys();
+
             const {error, value} = this.schema!.validate(this.config, {
                 allowUnknown: false,
                 stripUnknown: true,
@@ -893,7 +962,7 @@ class ConfigManager {
      * @returns Security level description
      */
     private getSecurityLevel(): string {
-        const blocksPrivate = this.get('security.blockPrivateNetworks');
+        const blocksPrivate = this.get('security.blockPrivateIpLiterals');
         const blocksLocalhost = this.get('security.blockLocalhost');
         const rateLimited = this.get('security.rateLimiting.enabled');
 
