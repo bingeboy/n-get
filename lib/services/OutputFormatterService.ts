@@ -100,6 +100,29 @@ class OutputFormatterService {
     }
 
     /**
+     * Format history statistics output.
+     *
+     * Separate from formatHistoryOutput because statistics are an aggregate,
+     * not a list of entries — the summary IS the payload rather than a header
+     * over one.
+     *
+     * @param stats - aggregate from HistoryManager.getStatistics
+     * @param options - format and compact flags
+     */
+    formatHistoryStatsOutput(stats: AnyObj, options: AnyObj = {}): string {
+        const { format = this.defaultFormat, compact = false } = options;
+
+        const output = {
+            operation: 'history_stats',
+            timestamp: new Date().toISOString(),
+            version: this.version,
+            stats,
+        };
+
+        return this.formatOutput(output, format, compact);
+    }
+
+    /**
      * Format error output
      */
     formatErrorOutput(error: AnyObj, options: AnyObj = {}): string {

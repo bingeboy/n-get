@@ -438,6 +438,12 @@
      <span class="flag">--header</span> <span class="flag">'Content-Type: application/json'</span> \
      <span class="flag">--data</span> <span class="flag">'{"key":"val"}'</span> https://api.example.com/endpoint
 
+<span class="dim"># verified download — discards the file and exits non-zero on mismatch</span>
+<span class="hi">nget</span> https://example.com/tool.tar.gz <span class="flag">--expect</span> sha256:9f86d081884c7d65...
+
+<span class="dim"># stream to stdout — events go to stderr, so this pipes cleanly</span>
+<span class="hi">nget</span> <span class="flag">-o -</span> https://example.com/data.json | jq .
+
 <span class="dim"># SFTP</span>
 <span class="hi">nget</span> sftp://user@host/path/file.tar.gz <span class="flag">--ssh-key</span> ~/.ssh/id_ed25519
 
@@ -451,6 +457,19 @@
 <span class="hi">nget</span> <span class="flag">--capabilities</span>
 <span class="hi">nget</span> <span class="flag">--openapi-spec</span>
 <span class="hi">nget</span> instructions</code></pre>
+
+    <h3>Where downloads may come from</h3>
+    <p>Host policy is configuration, not a flag — so an operator sets it once and every agent invocation inherits it.</p>
+
+    <pre><code><span class="dim"># config/local.yaml</span>
+<span class="hi">security</span>:
+  <span class="flag">allowedDomains</span>: [example.com, cdn.example.org]   <span class="dim"># empty = allow all</span>
+  <span class="flag">blockedDomains</span>: [internal.corp]
+  <span class="flag">blockPrivateIpLiterals</span>: true</code></pre>
+
+    <p><code>blockPrivateIpLiterals</code> blocks private addresses written as IP literals in the URL — <code>127.0.0.1</code>, <code>10.0.0.0/8</code>, <code>[::1]</code> — plus the hostname <code>localhost</code>. It does <strong>not</strong> resolve hostnames, so a public name pointing at a private address is not caught.</p>
+
+    <p>n-get is not a network sandbox. Run it inside one.</p>
   </section>
 
 </main>
