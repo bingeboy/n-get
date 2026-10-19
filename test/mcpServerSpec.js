@@ -714,10 +714,17 @@ describe('MCP server', () => {
             try {
                 const { raw, parsed } = await callTool(client, 'get_agent_card', {});
                 expect(raw.isError).to.not.equal(true);
-                expect(parsed).to.have.property('id');
                 expect(parsed).to.have.property('name');
-                expect(parsed).to.have.property('protocolVersion', '1.0');
+                expect(parsed).to.have.property('description');
+                expect(parsed).to.have.property('version');
+                expect(parsed).to.have.property('capabilities');
                 expect(parsed).to.have.property('skills').that.is.an('array');
+                // A2A 1.0 §4.4.1/§4.4.6 — the protocol version lives on each
+                // interface, not at the top level.
+                expect(parsed).to.not.have.property('protocolVersion');
+                expect(parsed).to.not.have.property('url');
+                expect(parsed).to.have.property('supportedInterfaces').that.is.an('array');
+                expect(parsed.supportedInterfaces[0]).to.have.property('protocolVersion', '1.0');
             } finally {
                 await cleanup();
             }
@@ -742,7 +749,8 @@ describe('MCP server', () => {
                 const { parsed } = await callTool(client, 'get_agent_card', {
                     endpoint_url: 'https://my-endpoint.example.com/a2a',
                 });
-                expect(parsed).to.have.property('url', 'https://my-endpoint.example.com/a2a');
+                expect(parsed.supportedInterfaces[0])
+                    .to.have.property('url', 'https://my-endpoint.example.com/a2a');
             } finally {
                 await cleanup();
             }

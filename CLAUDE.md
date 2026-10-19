@@ -43,13 +43,15 @@ n-get targets the latest stable versions of every agent-facing protocol. When a 
 - Tools contract is versioned — breaking changes require a SemVer major bump
 
 ### A2A (Agent-to-Agent — Google / Linux Foundation)
-- Spec version: **0.3.0** (stable, production-adopted as of 2026)
+- Spec version: **1.0** (stable). Versions are `Major.Minor` — patch numbers MUST NOT appear in a card or on the wire (spec §3.6).
 - n-get exposes an Agent Card at `nget --agent-card` (outputs JSON, mirrors the `--capabilities` / `--openapi-spec` pattern)
-- Card served at `/.well-known/agent.json` by whatever HTTP layer the user runs (Cloudflare Workers, their own infra)
+- Card served at `/.well-known/agent-card.json` by whatever HTTP layer the user runs (Cloudflare Workers, their own infra). Renamed from `agent.json` in 0.3 — do not serve the old path.
+- Card shape (spec §4.4.1): required members are `name`, `description`, `supportedInterfaces`, `version`, `capabilities`, `defaultInputModes`, `defaultOutputModes`, `skills`. There is **no** top-level `protocolVersion` and **no** top-level `url` — both moved into `supportedInterfaces[]`, where each `AgentInterface` (§4.4.6) requires `url`, `protocolBinding` and `protocolVersion`. The `kind` discriminator was removed in 1.0 (Appendix A.2.1).
+- Version negotiation is via the `A2A-Version` request header (§3.6); an absent or empty value means 0.3.
 - Invocation shape: JSON-RPC 2.0 POST — `message/send` for one-shot, `message/stream` for SSE streaming
 - n-get skills in the card: `download`, `batch_download`, `fetch` — map 1:1 to MCP tools
 - No A2A SDK dependency — raw HTTP + JSON-RPC, use `node:http` / `node-fetch`
-- Auth: none required by default; card advertises `security_requirements: []`; users add their own auth layer
+- Auth: none required by default. `securitySchemes` / `securityRequirements` (both optional, both camelCase in 1.0) are omitted from the card; users add their own auth layer
 
 **When implementing A2A features:** generate the card from `CapabilitiesService` (same source as `--capabilities`). Never hard-code skill descriptions — derive from the existing capabilities data so the card stays in sync automatically.
 
