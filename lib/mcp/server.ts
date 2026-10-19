@@ -472,7 +472,7 @@ export function createServer() {
 
     server.tool(
         'get_agent_card',
-        'Return the A2A 1.0 agent card for n-get. Describes agent skills, transport, and protocol version for A2A-compatible orchestrators.',
+        'Return the A2A 1.0 agent card for n-get. Describes agent skills and supported interfaces (protocol binding, URL, protocol version) for A2A-compatible orchestrators.',
         {
             endpoint_url: (z as any).string().optional().describe('Override the default endpoint URL in the card (e.g. the public URL of your n-get MCP endpoint)'),
         },

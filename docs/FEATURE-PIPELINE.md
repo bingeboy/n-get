@@ -30,6 +30,6 @@ PR webhook → Cloudflare Worker → n-get A2A → diff review via `fetch_http` 
 
 ## Notes
 
-- A2A auth (`security_requirements`) is the operator's layer — handled by Cloudflare Worker or proxy in front of n-get, not by n-get itself. n-get surfaces `--agent-id` and correlation ID flags for attribution in the event stream.
+- A2A auth (`securityRequirements`) is the operator's layer — handled by Cloudflare Worker or proxy in front of n-get, not by n-get itself. n-get surfaces `--agent-id` and correlation ID flags for attribution in the event stream.
 - GitHub Issues go public once repo goes public
 - Review agent is internal/non-public until the git-host portability story is solid

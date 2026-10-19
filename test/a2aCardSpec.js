@@ -1,19 +1,64 @@
 'use strict';
 /**
- * @fileoverview Tests for A2A 1.0 Agent Card.
+ * @fileoverview Tests for the A2A 1.0 Agent Card.
  *
- * Covers:
- *   1. toA2ACard() returns valid JSON with protocolVersion: '1.0'
- *   2. Required top-level fields: id, name, description, url, interfaces, skills
- *   3. All 3 skills present (download, batch_download, fetch) with id, name, description, tags
- *   4. get_agent_card MCP tool returns same structure
- *   5. --capabilities discovery section includes the a2a key
+ * Asserts the published contract from the A2A specification, not a snapshot of
+ * whatever the builder currently emits:
+ *
+ *   §4.4.1 AgentCard    — required: name, description, supportedInterfaces,
+ *                         version, capabilities, defaultInputModes,
+ *                         defaultOutputModes, skills.
+ *                         There is NO top-level protocolVersion and NO
+ *                         top-level url in 1.0.
+ *   §4.4.6 AgentInterface — required: url, protocolBinding, protocolVersion.
+ *   §3.6   Versioning    — Major.Minor only; no patch component on the wire.
+ *   Appendix A.2.1       — the `kind` discriminator was removed in 1.0.
+ *
+ * Regression guard: 3.0.0 shipped a card claiming protocolVersion "1.0" while
+ * emitting the 0.3 field shape (id / protocolVersion / url / interfaces at the
+ * top level). A conformant 1.0 client fails required-field validation on that.
+ *
+ * Also covers the get_agent_card MCP tool, which must return the same shape,
+ * and the --capabilities discovery section.
  */
 
 const { createServer }      = require('../lib/mcp/server.js');
 const { InMemoryTransport } = require('@modelcontextprotocol/sdk/inMemory.js');
 const { Client }            = require('@modelcontextprotocol/sdk/client/index.js');
 const CapabilitiesService   = require('../lib/services/CapabilitiesService');
+
+// ─── Contract constants (from the A2A 1.0 specification) ─────────────────────
+
+/** AgentCard members the spec marks Required (§4.4.1). */
+const REQUIRED_CARD_FIELDS = [
+    'name',
+    'description',
+    'supportedInterfaces',
+    'version',
+    'capabilities',
+    'defaultInputModes',
+    'defaultOutputModes',
+    'skills',
+];
+
+/**
+ * Members that must NOT appear on a 1.0 AgentCard. `protocolVersion` and
+ * `url` moved into AgentInterface; `id` and `interfaces` are not 1.0 members
+ * at all; `kind` was removed protocol-wide in Appendix A.2.1.
+ */
+const FORBIDDEN_CARD_FIELDS = [
+    'id',
+    'protocolVersion',
+    'url',
+    'interfaces',
+    'additionalInterfaces',
+    'kind',
+];
+
+/** AgentInterface members the spec marks Required (§4.4.6). */
+const REQUIRED_INTERFACE_FIELDS = ['url', 'protocolBinding', 'protocolVersion'];
+
+const EXPECTED_SKILL_IDS = ['download', 'batch_download', 'fetch'];
 
 // ─── MCP helpers ──────────────────────────────────────────────────────────────
 
@@ -37,179 +82,247 @@ async function callTool(client, name, args = {}) {
     return JSON.parse(text);
 }
 
+function card(endpointUrl) {
+    return new CapabilitiesService().toA2ACard(endpointUrl);
+}
+
+/**
+ * Shared contract assertions, run against both the library builder and the
+ * MCP tool so the two surfaces cannot drift.
+ */
+function assertCardConforms(c) {
+    for (const field of REQUIRED_CARD_FIELDS) {
+        expect(c, `A2A 1.0 requires top-level "${field}"`).to.have.property(field);
+    }
+    for (const field of FORBIDDEN_CARD_FIELDS) {
+        expect(c, `"${field}" is not an A2A 1.0 top-level AgentCard member`)
+            .to.not.have.property(field);
+    }
+
+    expect(c.supportedInterfaces).to.be.an('array').with.length.greaterThan(0);
+    for (const iface of c.supportedInterfaces) {
+        expect(iface).to.be.an('object');
+        for (const field of REQUIRED_INTERFACE_FIELDS) {
+            expect(iface, `AgentInterface requires "${field}"`).to.have.property(field);
+        }
+        expect(iface.url).to.be.a('string').with.length.greaterThan(0);
+        expect(iface.protocolBinding).to.be.a('string').with.length.greaterThan(0);
+        // §3.6 — Major.Minor only, no patch component.
+        expect(iface.protocolVersion).to.match(/^\d+\.\d+$/);
+        expect(iface).to.not.have.property('kind');
+        expect(iface).to.not.have.property('transport');
+    }
+
+    expect(c.skills).to.be.an('array').with.length.greaterThan(0);
+    for (const skill of c.skills) {
+        expect(skill).to.have.property('id').that.is.a('string');
+        expect(skill).to.have.property('name').that.is.a('string');
+        expect(skill).to.have.property('description').that.is.a('string');
+        expect(skill).to.have.property('tags').that.is.an('array').with.length.greaterThan(0);
+        expect(skill).to.not.have.property('kind');
+    }
+}
+
 // ─── Suite ────────────────────────────────────────────────────────────────────
 
-describe('A2A Agent Card', () => {
+describe('A2A 1.0 Agent Card', () => {
 
-    // ── 1. protocolVersion ────────────────────────────────────────────────────
+    // ── 1. Required / forbidden top-level members (§4.4.1) ────────────────────
 
-    it('toA2ACard() returns an object with protocolVersion "1.0"', () => {
-        const svc  = new CapabilitiesService();
-        const card = svc.toA2ACard();
-        expect(card).to.have.property('protocolVersion', '1.0');
-    });
-
-    // ── 2. Required top-level fields ──────────────────────────────────────────
-
-    it('toA2ACard() includes all required top-level fields', () => {
-        const svc  = new CapabilitiesService();
-        const card = svc.toA2ACard();
-        const required = ['id', 'name', 'description', 'url', 'interfaces', 'skills'];
-        for (const field of required) {
-            expect(card, `missing field: ${field}`).to.have.property(field);
+    it('includes every required top-level AgentCard member', () => {
+        const c = card();
+        for (const field of REQUIRED_CARD_FIELDS) {
+            expect(c, `missing required field: ${field}`).to.have.property(field);
         }
     });
 
-    it('toA2ACard() id is "n-get"', () => {
-        const svc  = new CapabilitiesService();
-        const card = svc.toA2ACard();
-        expect(card.id).to.equal('n-get');
-    });
-
-    it('toA2ACard() name is "n-get"', () => {
-        const svc  = new CapabilitiesService();
-        const card = svc.toA2ACard();
-        expect(card.name).to.equal('n-get');
-    });
-
-    it('toA2ACard() interfaces is an array containing "JSONRPC"', () => {
-        const svc  = new CapabilitiesService();
-        const card = svc.toA2ACard();
-        expect(card.interfaces).to.be.an('array');
-        expect(card.interfaces).to.include('JSONRPC');
-    });
-
-    it('toA2ACard() version comes from package.json', () => {
-        const svc  = new CapabilitiesService();
-        const card = svc.toA2ACard();
-        const pkg  = require('../package.json');
-        expect(card.version).to.equal(pkg.version);
-    });
-
-    it('toA2ACard() accepts an endpointUrl override', () => {
-        const svc  = new CapabilitiesService();
-        const card = svc.toA2ACard('https://api.example.com/a2a');
-        expect(card.url).to.equal('https://api.example.com/a2a');
-    });
-
-    it('toA2ACard() uses placeholder URL when no endpointUrl supplied', () => {
-        const svc  = new CapabilitiesService();
-        const card = svc.toA2ACard();
-        expect(card.url).to.be.a('string');
-        expect(card.url.length).to.be.greaterThan(0);
-    });
-
-    it('toA2ACard() capabilities object includes streaming: true', () => {
-        const svc  = new CapabilitiesService();
-        const card = svc.toA2ACard();
-        expect(card.capabilities).to.deep.include({ streaming: true });
-    });
-
-    // ── 3. Skills ─────────────────────────────────────────────────────────────
-
-    it('toA2ACard() skills array has exactly 3 entries', () => {
-        const svc  = new CapabilitiesService();
-        const card = svc.toA2ACard();
-        expect(card.skills).to.be.an('array').with.length(3);
-    });
-
-    it('toA2ACard() includes "download" skill with required fields', () => {
-        const svc    = new CapabilitiesService();
-        const card   = svc.toA2ACard();
-        const skill  = card.skills.find(s => s.id === 'download');
-        expect(skill, 'download skill not found').to.exist;
-        expect(skill).to.have.property('id', 'download');
-        expect(skill).to.have.property('name').that.is.a('string');
-        expect(skill).to.have.property('description').that.is.a('string');
-        expect(skill).to.have.property('tags').that.is.an('array').with.length.greaterThan(0);
-    });
-
-    it('toA2ACard() includes "batch_download" skill with required fields', () => {
-        const svc   = new CapabilitiesService();
-        const card  = svc.toA2ACard();
-        const skill = card.skills.find(s => s.id === 'batch_download');
-        expect(skill, 'batch_download skill not found').to.exist;
-        expect(skill).to.have.property('id', 'batch_download');
-        expect(skill).to.have.property('name').that.is.a('string');
-        expect(skill).to.have.property('description').that.is.a('string');
-        expect(skill).to.have.property('tags').that.is.an('array').with.length.greaterThan(0);
-    });
-
-    it('toA2ACard() includes "fetch" skill with required fields', () => {
-        const svc   = new CapabilitiesService();
-        const card  = svc.toA2ACard();
-        const skill = card.skills.find(s => s.id === 'fetch');
-        expect(skill, 'fetch skill not found').to.exist;
-        expect(skill).to.have.property('id', 'fetch');
-        expect(skill).to.have.property('name').that.is.a('string');
-        expect(skill).to.have.property('description').that.is.a('string');
-        expect(skill).to.have.property('tags').that.is.an('array').with.length.greaterThan(0);
-    });
-
-    // ── 4. MCP get_agent_card tool ─────────────────────────────────────────────
-
-    it('get_agent_card MCP tool returns object with protocolVersion "1.0"', async () => {
-        const { client, cleanup } = await connect();
-        try {
-            const card = await callTool(client, 'get_agent_card');
-            expect(card).to.have.property('protocolVersion', '1.0');
-        } finally {
-            await cleanup();
+    it('omits every member A2A 1.0 removed from the top level', () => {
+        const c = card();
+        for (const field of FORBIDDEN_CARD_FIELDS) {
+            expect(c, `card still emits 0.3-era field: ${field}`).to.not.have.property(field);
         }
     });
 
-    it('get_agent_card MCP tool returns same structure as toA2ACard()', async () => {
-        const { client, cleanup } = await connect();
-        try {
-            const card = await callTool(client, 'get_agent_card');
-            const required = ['id', 'name', 'description', 'url', 'interfaces', 'skills'];
-            for (const field of required) {
-                expect(card, `missing field from MCP tool: ${field}`).to.have.property(field);
+    it('declares no top-level protocolVersion — 1.0 moved it into AgentInterface', () => {
+        expect(card()).to.not.have.property('protocolVersion');
+    });
+
+    it('declares no top-level url — 1.0 moved it into AgentInterface', () => {
+        expect(card()).to.not.have.property('url');
+    });
+
+    it('name is "n-get"', () => {
+        expect(card().name).to.equal('n-get');
+    });
+
+    it('description is a non-empty string', () => {
+        expect(card().description).to.be.a('string').with.length.greaterThan(0);
+    });
+
+    it('version comes from package.json', () => {
+        expect(card().version).to.equal(require('../package.json').version);
+    });
+
+    it('is JSON-serialisable with no undefined members', () => {
+        const c = card();
+        const round = JSON.parse(JSON.stringify(c));
+        expect(round).to.deep.equal(c);
+    });
+
+    // ── 2. supportedInterfaces (§4.4.6) ───────────────────────────────────────
+
+    it('supportedInterfaces is a non-empty array of objects', () => {
+        const c = card();
+        expect(c.supportedInterfaces).to.be.an('array').with.length.greaterThan(0);
+        for (const iface of c.supportedInterfaces) {
+            expect(iface).to.be.an('object');
+        }
+    });
+
+    it('every supportedInterfaces entry carries url, protocolBinding and protocolVersion', () => {
+        for (const iface of card().supportedInterfaces) {
+            for (const field of REQUIRED_INTERFACE_FIELDS) {
+                expect(iface, `interface missing required field: ${field}`)
+                    .to.have.property(field).that.is.a('string');
             }
-            expect(card.skills).to.be.an('array').with.length(3);
-            const ids = card.skills.map(s => s.id);
-            expect(ids).to.include('download');
-            expect(ids).to.include('batch_download');
-            expect(ids).to.include('fetch');
-        } finally {
-            await cleanup();
         }
     });
 
-    it('get_agent_card MCP tool accepts endpoint_url override', async () => {
+    it('interface protocolVersion is "1.0" with no patch component (§3.6)', () => {
+        for (const iface of card().supportedInterfaces) {
+            expect(iface.protocolVersion).to.equal('1.0');
+            expect(iface.protocolVersion).to.match(/^\d+\.\d+$/);
+        }
+    });
+
+    it('interface protocolBinding is "JSONRPC" — not the 0.3 "transport" key', () => {
+        const [iface] = card().supportedInterfaces;
+        expect(iface.protocolBinding).to.equal('JSONRPC');
+        expect(iface).to.not.have.property('transport');
+    });
+
+    it('endpointUrl override lands on the interface url, not the top level', () => {
+        const c = card('https://api.example.com/a2a');
+        expect(c.supportedInterfaces[0].url).to.equal('https://api.example.com/a2a');
+        expect(c).to.not.have.property('url');
+    });
+
+    it('falls back to a placeholder interface url when no endpointUrl is supplied', () => {
+        const [iface] = card().supportedInterfaces;
+        expect(iface.url).to.be.a('string').with.length.greaterThan(0);
+    });
+
+    it('capabilities object includes streaming: true', () => {
+        expect(card().capabilities).to.deep.include({ streaming: true });
+    });
+
+    it('defaultInputModes and defaultOutputModes are non-empty string arrays', () => {
+        const c = card();
+        for (const key of ['defaultInputModes', 'defaultOutputModes']) {
+            expect(c[key], key).to.be.an('array').with.length.greaterThan(0);
+            for (const mode of c[key]) {
+                expect(mode).to.be.a('string').with.length.greaterThan(0);
+            }
+        }
+    });
+
+    // ── 3. Appendix A.2.1 — `kind` discriminator removed ──────────────────────
+
+    it('emits no "kind" discriminator anywhere in the card', () => {
+        const serialised = JSON.stringify(card());
+        expect(serialised).to.not.include('"kind"');
+    });
+
+    // ── 4. Skills ─────────────────────────────────────────────────────────────
+
+    it('skills array has exactly 3 entries', () => {
+        expect(card().skills).to.be.an('array').with.length(3);
+    });
+
+    for (const id of EXPECTED_SKILL_IDS) {
+        it(`includes "${id}" skill with id, name, description and tags`, () => {
+            const skill = card().skills.find(s => s.id === id);
+            expect(skill, `${id} skill not found`).to.exist;
+            expect(skill).to.have.property('id', id);
+            expect(skill).to.have.property('name').that.is.a('string').with.length.greaterThan(0);
+            expect(skill).to.have.property('description').that.is.a('string').with.length.greaterThan(0);
+            expect(skill).to.have.property('tags').that.is.an('array').with.length.greaterThan(0);
+        });
+    }
+
+    // ── 5. Full contract, in one assertion ────────────────────────────────────
+
+    it('toA2ACard() conforms to the A2A 1.0 AgentCard contract', () => {
+        assertCardConforms(card());
+    });
+
+    it('toA2ACard(endpointUrl) conforms to the A2A 1.0 AgentCard contract', () => {
+        assertCardConforms(card('https://my.host/a2a'));
+    });
+
+    // ── 6. MCP get_agent_card tool must match ─────────────────────────────────
+
+    it('get_agent_card MCP tool conforms to the A2A 1.0 AgentCard contract', async () => {
         const { client, cleanup } = await connect();
         try {
-            const card = await callTool(client, 'get_agent_card', { endpoint_url: 'https://my.host/a2a' });
-            expect(card.url).to.equal('https://my.host/a2a');
+            assertCardConforms(await callTool(client, 'get_agent_card'));
         } finally {
             await cleanup();
         }
     });
 
-    // ── 5. --capabilities discovery section includes a2a ──────────────────────
+    it('get_agent_card MCP tool returns the same shape as toA2ACard()', async () => {
+        const { client, cleanup } = await connect();
+        try {
+            const fromTool = await callTool(client, 'get_agent_card');
+            expect(Object.keys(fromTool).sort()).to.deep.equal(Object.keys(card()).sort());
+            const ids = fromTool.skills.map(s => s.id);
+            for (const id of EXPECTED_SKILL_IDS) {
+                expect(ids).to.include(id);
+            }
+        } finally {
+            await cleanup();
+        }
+    });
+
+    it('get_agent_card MCP tool puts endpoint_url on the interface, not the top level', async () => {
+        const { client, cleanup } = await connect();
+        try {
+            const c = await callTool(client, 'get_agent_card', { endpoint_url: 'https://my.host/a2a' });
+            expect(c.supportedInterfaces[0].url).to.equal('https://my.host/a2a');
+            expect(c).to.not.have.property('url');
+        } finally {
+            await cleanup();
+        }
+    });
+
+    // ── 7. --capabilities discovery section ───────────────────────────────────
 
     it('getDiscoveryInfo() includes an "a2a" key', () => {
-        const svc  = new CapabilitiesService();
-        const disc = svc.getDiscoveryInfo();
-        expect(disc).to.have.property('a2a');
+        expect(new CapabilitiesService().getDiscoveryInfo()).to.have.property('a2a');
     });
 
     it('discovery.a2a.protocolVersion is "1.0"', () => {
-        const svc  = new CapabilitiesService();
-        const disc = svc.getDiscoveryInfo();
+        const disc = new CapabilitiesService().getDiscoveryInfo();
         expect(disc.a2a).to.have.property('protocolVersion', '1.0');
     });
 
-    it('discovery.a2a.command references --agent-card flag', () => {
-        const svc  = new CapabilitiesService();
-        const disc = svc.getDiscoveryInfo();
+    it('discovery.a2a.command references the --agent-card flag', () => {
+        const disc = new CapabilitiesService().getDiscoveryInfo();
         expect(disc.a2a.command).to.include('--agent-card');
     });
 
-    it('getCapabilities() discovery section includes a2a key', () => {
-        const svc  = new CapabilitiesService();
-        const caps = svc.getCapabilities();
-        expect(caps.discovery).to.have.property('a2a');
+    it('getCapabilities() discovery section includes the a2a key', () => {
+        expect(new CapabilitiesService().getCapabilities().discovery).to.have.property('a2a');
     });
 
+    // ── 8. No stale "0.3" version claims on agent-facing strings ──────────────
+
+    it('--agent-card flag description does not advertise A2A 0.3', () => {
+        const flags = new CapabilitiesService().getCLIFlags();
+        const flag = flags.find(f => f.long === 'agent-card');
+        expect(flag, '--agent-card flag not found').to.exist;
+        expect(flag.description).to.not.match(/0\.3/);
+        expect(flag.description).to.include('1.0');
+    });
 });
