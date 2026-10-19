@@ -41,6 +41,11 @@ It is not a download manager for humans. It is not a server. It is not an orches
 
 Before the current work, n-get was at v1.5.1 with 189 passing tests and solid core functionality: HTTP/HTTPS, SFTP, resume, recursive crawl, concurrency. The download engine worked. The problems were structural.
 
+> **Names in this section are the ones in use at the time.** Two have since
+> changed, in PR #111, as renames only — no behaviour moved:
+> `lib/downloadPipeline.js` → `lib/downloader.ts`, and `NgetEmitter` →
+> `EventSink`. Later sections use the current names.
+
 **Global mutable state in `downloadPipeline.js`**
 
 ```js
@@ -100,7 +105,9 @@ The MCP SDK was a declared dependency but nothing was implemented. The AI integr
 
 What we removed is not the CLI but the assumption that a human is watching. The default output should be parseable, not pretty.
 
-**What changed:** Added `--human` flag. Eventually (next step) the default flips: NDJSON on non-TTY stdout, human rendering on TTY stdout.
+**What changed:** Added the `--human` flag, and then flipped the default, which
+is where it stands now: human rendering when stdout is a TTY, NDJSON otherwise.
+`--human` forces the human path even when stdout is not a TTY. See 4.8.
 
 ---
 
@@ -157,6 +164,32 @@ That flag formatted the final batch summary as a JSON object. It did not stream 
 
 Every event shares a base structure: `{ event, ts, session, ...payload }`. The `session` field ties all events from one invocation together. An agent monitoring multiple concurrent nget processes can filter by session ID.
 
+**One sink, three destinations:**
+
+`EventSink` (`lib/core/EventSink.ts`) is a write-through sink, not a pub/sub bus.
+There are no subscribers and no listener registration: `emit()` writes
+synchronously to a fixed set of destinations and returns the event.
+
+1. **NDJSON to stdout** — the default (agent) mode. One `JSON.stringify(event)`
+   per line.
+2. **Human text to stderr via `UIManager`** — when `humanMode` is set (`--human`
+   or a TTY stdout). `_renderHuman()` switches on the event type and calls the
+   matching `ui.display*()` method, with a plain-text fallback when no
+   `UIManager` was supplied. Only `session_start`, `download_start`,
+   `download_complete`, `download_error`, `warning`, `info` and `session_end`
+   render. Every other type falls through the default case and renders nothing —
+   `progress` deliberately, because the progress bar renders itself.
+3. **Webhook POSTs** — when webhooks are configured, every event is also POSTed
+   as JSON to each configured URL, filtered by that webhook's `events` list.
+   Delivery is out-of-band: retries with backoff (default 3 attempts,
+   `[0, 500, 1000]` ms), a 2s per-attempt timeout, no retry on 4xx, retry on 5xx
+   and network errors, and optional `X-NGet-Signature: sha256=<hex>` HMAC
+   signing. In-flight POSTs are tracked and drained by `flush()`.
+
+In pipe mode (`-o -`) destinations 1 and 2 both move to stderr so stdout carries
+only file content. Direct `process.stdout.write` for event output is banned
+outside this one file.
+
 ---
 
 ### 4.5 File-based active session state
@@ -178,10 +211,15 @@ Every event shares a base structure: `{ event, ts, session, ...payload }`. The `
   "startTime": "2025-05-04T18:00:00.000Z",
   "agent": "agent-pipeline-3",
   "pid": 12345,
+  "version": "3.0.0",
   "downloads": {
     "https://example.com/file.zip": {
-      "status": "active",
-      "bytes_received": 524288,
+      "status": "queued",
+      "updatedAt": "2025-05-04T18:00:00.004Z"
+    },
+    "https://example.com/other.zip": {
+      "status": "complete",
+      "file": "/downloads/other.zip",
       "bytes_total": 1048576,
       "speed_bps": 2097152,
       "updatedAt": "2025-05-04T18:00:03.412Z"
@@ -190,7 +228,21 @@ Every event shares a base structure: `{ event, ts, session, ...payload }`. The `
 }
 ```
 
-Status files are written with `fs.writeFile` (fire-and-forget). They never block a download.
+**Status file granularity — read this before building on it.** Per-download
+entries move `queued → complete` or `queued → error`, and nothing else. The
+`DownloadStatus` type also carries `active` as a status value and a
+`bytes_received` field, but no code path writes either: byte-level progress goes
+to the event stream (`progress` events), not to the status file. `nget jobs` and
+the `get_jobs` MCP tool both count entries with `status === 'active'`, so that
+count is always zero today. Treat the status file as a roster of what a session
+was asked to do and what finished, and the event stream as the live feed.
+
+Status files are written with `fs.writeFile` and never awaited from the download
+path, so they never block a download. The writes are chained rather than fired
+blind: each `_flushStatus()` appends to an internal promise chain, which keeps
+them ordered and lets `session.end()` drain them before unlinking the file.
+`flushStatus()` exposes that drain publicly — tests need it, because from the
+caller's side a `_flushStatus()` is still fire-and-forget.
 
 ---
 
@@ -210,7 +262,7 @@ A worker thread runs the hash computation in a separate V8 isolate, off the even
 
 **The pool design:**
 
-`ChecksumPool` limits concurrent workers to `min(cpus, 4)`. Each job creates a fresh worker, runs to completion, and terminates. There is no worker reuse — checksum jobs are infrequent relative to their duration, so startup cost is negligible and avoiding stale state across jobs is worth it. Pending jobs queue until a slot opens.
+`ChecksumPool` limits concurrent workers to `min(cpus, 4)`. Each job creates a fresh `Worker`, which runs to completion and exits on its own — the pool never calls `terminate()` on a running job. There is no worker reuse — checksum jobs are infrequent relative to their duration, so startup cost is negligible and avoiding stale state across jobs is worth it. Pending jobs queue until a slot opens; the pool is a module-level singleton (`checksumPool`), so the limit is per process.
 
 ```
 main thread          worker thread
@@ -225,7 +277,7 @@ main thread          worker thread
 
 ### 4.7 DownloadSession replaces module globals
 
-**Decision:** `DownloadSession` owns `Logger`, `SecurityService`, and `MetadataService` for one invocation. Module-level globals are removed from `downloadPipeline.js`.
+**Decision:** `DownloadSession` owns `Logger`, `SecurityService`, and `MetadataService` for one invocation. Module-level globals are removed from `lib/downloader.ts` (the file formerly named `downloadPipeline.js`).
 
 **Why:** Module globals are a concurrency bug waiting to happen and a testing liability. When `initializeServices()` runs, it mutates `let logger = null` at module scope. In any environment where the module is required once and reused across calls (test runners, `npm link`, certain import caching scenarios), calls interfere with each other.
 
@@ -269,36 +321,44 @@ n-get/
 ├── types/
 │   └── index.ts                    ← Single source of truth for all shared TypeScript types
 ├── lib/
+│   ├── index.ts                    ← Library entry (`require('n-get')`): fetch, capabilities, openapi, instructions, version
 │   ├── core/
-│   │   ├── NgetEmitter.ts          ← NDJSON event stream; human rendering in --human mode
+│   │   ├── EventSink.ts            ← Write-through event sink: NDJSON → stdout, human text → stderr, webhook POSTs
 │   │   └── DownloadSession.ts      ← Per-invocation context; owns services; writes status file
 │   ├── workers/
 │   │   ├── ChecksumWorker.ts       ← Worker thread script (runs in separate V8 isolate)
 │   │   └── ChecksumPool.ts         ← Thread pool manager; singleton per process
+│   ├── mcp/
+│   │   └── server.ts               ← MCP stdio server (`nget-mcp` bin); 11 tools
 │   ├── cli/
-│   │   ├── configCommands.js       ← nget config ...
-│   │   ├── historyCommands.js      ← nget history ...
-│   │   ├── logsCommands.js         ← nget logs ...
+│   │   ├── configCommands.ts       ← nget config ...
+│   │   ├── historyCommands.ts      ← nget history ...
+│   │   ├── logsCommands.ts         ← nget logs ...
 │   │   └── jobsCommands.ts         ← nget jobs (cross-agent visibility)
 │   ├── config/
 │   │   └── ConfigManager.ts        ← YAML config, profiles, env var merging
 │   ├── services/
 │   │   ├── Logger.ts               ← Structured logging (JSON/CSV/text)
 │   │   ├── SecurityService.ts      ← URL/path validation, rate limiting
-│   │   ├── MetadataService.js      ← File metadata, checksums, HTTP headers (pending migration)
-│   │   ├── OutputFormatterService.js ← Batch result formatting (pending migration)
-│   │   ├── CapabilitiesService.js  ← --capabilities flag output (pending migration)
-│   │   ├── OpenAPIService.js       ← --openapi-spec flag output (pending migration)
-│   │   └── HistoryManager.ts       ← ~/.nget/nget.history JSONL
+│   │   ├── MetadataService.ts      ← File metadata, checksums (via ChecksumPool), HTTP headers
+│   │   ├── OutputFormatterService.ts ← Batch result formatting
+│   │   ├── CapabilitiesService.ts  ← --capabilities / --help / --agent-card source of truth
+│   │   ├── OpenAPIService.ts       ← --openapi-spec flag output
+│   │   └── HistoryManager.ts       ← <destination>/.nget/nget.history JSONL
 │   ├── errors/
 │   │   └── DownloadError.ts        ← Structured error with codes, severity, recovery actions
-│   ├── downloadPipeline.ts         ← Core download orchestration (HTTP + SFTP)
-│   ├── resumeManager.js            ← Partial download state, range request logic (pending)
-│   ├── sftpManager.js              ← SSH/SFTP downloads (pending migration)
-│   ├── recursiveDownloader.js      ← Recursive site download (pending migration)
-│   ├── recursiveCrawler.js         ← HTML/CSS link extraction (pending migration)
-│   ├── concurrencyLimiter.js       ← Semaphore for max concurrent downloads (pending)
-│   ├── ui.js                       ← Terminal rendering (progress bars, banners) (pending)
+│   ├── downloader.ts               ← Core download orchestration (HTTP + SFTP); module export is download()
+│   ├── fetch.ts                    ← Programmatic HTTP client behind `nget fetch` and `nget.fetch()`
+│   ├── resumeManager.ts            ← Partial download state, range request logic
+│   ├── checksumVerifier.ts         ← Compares a downloaded file to a caller-supplied checksum (--expect)
+│   ├── sftpManager.ts              ← SSH/SFTP downloads
+│   ├── recursiveDownloader.ts      ← Recursive site download
+│   ├── recursiveCrawler.ts         ← HTML/CSS link extraction
+│   ├── concurrencyLimiter.ts       ← Semaphore for max concurrent downloads
+│   ├── uriManager.ts               ← URL validation, normalization, protocol detection (IPv6-aware)
+│   ├── getDestination.ts           ← Destination path resolution
+│   ├── chdir.ts                    ← Working-directory change helper
+│   ├── ui.ts                       ← Terminal rendering (progress bars, banners)
 │   └── utils/
 │       └── ipv6Utils.ts            ← IPv6 address parsing and validation
 ├── config/
@@ -309,9 +369,15 @@ n-get/
 ├── tsconfig.json                   ← In-place compilation: .ts → .js alongside source
 ├── docs/
 │   ├── ARCHITECTURE.md             ← this file
-│   └── AI-INTEGRATION.md
+│   ├── AI-INTEGRATION.md
+│   ├── CONFIG-CONTRACT.md
+│   └── FEATURE-PIPELINE.md
 └── test/
 ```
+
+Every module under `lib/` and `types/` is TypeScript. The `.js` file beside each
+`.ts` file is compiled output, not source — `tsconfig.json` sets
+`outDir: "."` so `require()` paths never had to change. Do not edit the `.js`.
 
 **State on disk:**
 
@@ -321,9 +387,18 @@ n-get/
     └── sess_<id>.json              ← written while session runs, deleted on end
 
 <destination>/.nget/                ← per destination, alongside the files
-├── nget.history                    ← JSONL append log of completed downloads
-└── <md5>.nget-meta                 ← resume metadata per URL (written by resumeManager)
+└── nget.history                    ← JSONL append log of completed downloads
+
+<dir containing the file>/.nget/    ← same as <destination> for a flat download
+└── <md5 of url>.nget-meta          ← resume metadata per URL (written by resumeManager)
 ```
+
+`HistoryManager` writes to `<historyRoot>/.nget/nget.history`, where
+`historyRoot` defaults to the downloaded file's own parent directory. Recursive
+downloads pass the `-d` destination explicitly, so a whole crawl's history
+collects in one place and `nget history show -d <dest>` — which reads exactly
+one directory — finds all of it. `resumeManager` has no such override: its
+metadata always lands in `.nget/` beside the file being written.
 
 ---
 
@@ -337,12 +412,12 @@ index.js
   └─ init ConfigManager
   └─ call download(urls, destination, options)
 
-downloadPipeline.download()
-  └─ create DownloadSession
-       ├─ build Logger, SecurityService, MetadataService
-       └─ write ~/.nget/active/sess_<id>.json
-  └─ emitter.sessionStart()          → stdout: {"event":"session_start",...}
-  └─ queue all URLs in status file
+download()                           ← lib/downloader; the module export IS the function
+  └─ new DownloadSession(...).start()
+       ├─ build Logger, SecurityService, MetadataService, EventSink
+       ├─ write ~/.nget/active/sess_<id>.json
+       └─ emitter.sessionStart()     → stdout: {"event":"session_start",...}
+  └─ session.queueDownload(url) × N  → {"event":"download_queued",...} + status file
   └─ ConcurrencyLimiter × N
 
   per URL:
@@ -356,10 +431,17 @@ downloadPipeline.download()
          └─ emitter.downloadComplete() → stdout: {"event":"download_complete",...}
          └─ session.completeDownload() → update status file
 
-  └─ session.end()
+  └─ await session.end()
+       ├─ drain in-flight status-file writes
+       ├─ delete ~/.nget/active/sess_<id>.json
        ├─ emitter.sessionEnd()        → stdout: {"event":"session_end",...}
-       └─ delete ~/.nget/active/sess_<id>.json
+       ├─ emitter.flush()             → drain in-flight webhook POSTs
+       └─ logger.shutdown()
 ```
+
+`emitter` above is `session.emitter`, an `EventSink` (see 4.4). `sessionStart`
+and `sessionEnd` are emitted by `DownloadSession.start()` / `end()` rather than
+by the downloader, so a session cannot exist without bracketing events.
 
 ---
 
@@ -367,9 +449,13 @@ downloadPipeline.download()
 
 All events: `{ event: string, ts: number, session: string, ...payload }`
 
+Fourteen event types. The list is the `NgetEventType` union in `types/index.ts`
+and the `EVENT` map in `lib/core/EventSink.ts`; those two are the contract, and
+event names are part of the public surface (renaming one is a major bump).
+
 | Event | Key payload fields |
 |---|---|
-| `session_start` | `sessionId`, `startTime`, `agent`, `pid` |
+| `session_start` | `sessionId`, `startTime`, `agent`, `pid`, `version` |
 | `download_queued` | `url` |
 | `download_start` | `url`, `filename`, `bytes_total`, `index`, `total`, `resumed`, `resume_from` |
 | `progress` | `url`, `bytes_received`, `bytes_total`, `speed_bps`, `pct` |
@@ -377,83 +463,100 @@ All events: `{ event: string, ts: number, session: string, ...payload }`
 | `checksum_complete` | `file`, `checksums` |
 | `download_complete` | `url`, `filename`, `file`, `size`, `duration_ms`, `speed_bps`, `resumed` |
 | `download_error` | `url`, `error`, `code`, `retryable` |
+| `fetch_start` | `url`, `method`, `hasBody` |
+| `fetch_complete` | `url`, `method`, `status`, `statusText`, `latencyMs`, `contentType` |
+| `fetch_error` | `url`, `method`, `error`, `latencyMs` |
 | `warning` | `message`, `url`, `code` |
 | `info` | `message` |
-| `session_end` | `stats.total`, `stats.success`, `stats.errors`, `stats.bytes`, `stats.duration`, `stats.avg_speed`, `stats.file_paths` |
+| `session_end` | `stats.total`, `stats.success`, `stats.errors`, `stats.resumed`, `stats.bytes`, `stats.duration`, `stats.avg_speed`, `stats.file_paths` |
+
+The three `fetch_*` events belong to `nget fetch` / `nget.fetch()` and the
+`fetch_http` MCP tool, not to the download pipeline.
 
 ---
 
 ### 5.4 Active session state
 
-**Writing:** `DownloadSession._flushStatus()` is called on `start()`, `queueDownload()`, `updateDownload()`, `completeDownload()`, and `failDownload()`. Writes are `fs.writeFile` (async, fire-and-forget) — they never block the download stream.
+**Writing:** `DownloadSession._flushStatus()` is called on `start()`, `queueDownload()`, `updateDownload()` and `cancel()`. `completeDownload()` and `failDownload()` flush too, by delegating to `updateDownload()`. Writes are `fs.writeFile` (async) — they never block the download stream.
 
-**Reading:** `nget jobs` calls `readActiveSessions()` which reads all `~/.nget/active/*.json` files. It calls `pruneDeadSessions()` first to remove files left by crashed processes. Dead process detection uses `process.kill(pid, 0)` which returns without sending a signal — it only checks whether the PID exists.
+**Reading:** `readActiveSessions()` reads all `~/.nget/active/*.json` files.
+Pruning is a separate function, and the caller sequences it: `nget jobs` and the
+`get_jobs` MCP tool both call `pruneDeadSessions()` and then
+`readActiveSessions()`. Dead process detection uses `process.kill(pid, 0)`,
+which returns without sending a signal — it only checks whether the PID exists.
 
-**Crash recovery:** If n-get crashes without calling `session.end()`, the status file persists. The next `nget jobs` call will prune it if the PID is gone. There is no stale data window where a dead session appears active longer than the next `nget jobs` call.
+**Crash recovery:** If n-get crashes without calling `session.end()`, the status
+file persists. The next `nget jobs` or `get_jobs` call prunes it if the PID is
+gone, so a dead session does not appear active past that point. The
+`get_session` and `cancel_session` MCP tools read without pruning first, so they
+can still see a dead session's file until something else prunes it.
 
 ---
 
 ## 6. What Is Not Done Yet
 
-### 6.1 Wire ChecksumPool into MetadataService
+Four items used to sit here: wiring `ChecksumPool` into `MetadataService`,
+building out `lib/mcp/`, adding tests for the then-new core modules, and
+finishing the JS → TS migration. All four have shipped. What follows is what is
+genuinely still open at the architectural level. The feature queue itself lives
+in `docs/FEATURE-PIPELINE.md` — this section is only for gaps in the structures
+described above.
 
-`MetadataService.generateChecksums()` currently computes hashes synchronously on the main thread. The pool and worker are built — this is a one-method change:
+### 6.1 MCP server is stdio-only
 
-```js
-// MetadataService.js — target
-const { checksumPool } = require('../workers/ChecksumPool');
+`lib/mcp/server.ts` constructs a `StdioServerTransport` and nothing else. That
+covers Claude Desktop, Cursor, and anything else that spawns a server process,
+but not a server reached over the network. An HTTP transport is a future
+milestone; until then an HTTP-facing deployment needs its own layer in front
+(the same place the A2A agent card is served from).
 
-async generateChecksums(filePath, algorithms = ['md5', 'sha256']) {
-    return checksumPool.compute(filePath, algorithms);
-}
-```
+### 6.2 Checksum pool size is not configurable
 
-### 6.2 Wire up `lib/mcp/`
+`MAX_WORKERS` in `lib/workers/ChecksumPool.ts` is a module constant,
+`Math.min(os.cpus().length, 4)`, fixed at load. The constructor takes no
+arguments and there is no config key for it. See section 8 for why this matters
+at high load, and for the shape a config key would take.
 
-`@modelcontextprotocol/sdk` is installed. `lib/mcp/` is empty. The MCP server should expose `download_file`, `batch_download`, `get_jobs`, and `get_capabilities` tools so n-get works with Claude Desktop, Cursor, and any MCP-compatible agent without subprocess calls.
+### 6.3 `any` annotations remain
 
-The session and event architecture maps directly to MCP tool responses.
+`strict: true` is on, so the type-checking half of the migration is finished.
+What remains is explicit `any` annotations, which type-check fine and simply opt
+out of the guarantees. They are held down by `test/anyCountSpec.js` — a total
+ceiling (currently 124) plus a per-file ceiling, both of which may only be
+lowered. When the count reaches zero,
+`@typescript-eslint/no-explicit-any` is raised to `error` and that spec is
+deleted. The bulk of the remainder is in `lib/recursiveDownloader.ts`,
+`lib/mcp/server.ts` and `lib/cli/configCommands.ts`.
 
-### 6.3 Add tests for new modules
+### 6.4 Status file never reports a download as `active`
 
-These modules have no tests yet:
-
-| Module | Priority test cases |
-|--------|-------------------|
-| `lib/core/NgetEmitter.ts` | Emits valid NDJSON; human mode writes to stderr not stdout |
-| `lib/core/DownloadSession.ts` | Creates/deletes status file; prunes dead sessions |
-| `lib/workers/ChecksumPool.ts` | Correct checksums for known inputs; respects max concurrency |
-| `lib/cli/jobsCommands.ts` | Correct NDJSON output for active sessions |
-
-### 6.4 Migrate remaining JS files to TypeScript
-
-The following files are still `.js` — pending migration in order of dependency:
-
-1. `lib/services/MetadataService.js`
-2. `lib/services/OutputFormatterService.js`
-4. `lib/services/CapabilitiesService.js`
-5. `lib/services/OpenAPIService.js`
-6. `lib/resumeManager.js`
-7. `lib/concurrencyLimiter.js`
-8. `lib/sftpManager.js`
-9. `lib/ui.js`
-10. `lib/recursiveCrawler.js` + `lib/recursiveDownloader.js`
-11. `lib/cli/configCommands.js`, `historyCommands.js`, `logsCommands.js`
+Described in 4.5. The `active` status value and the `bytes_received` field are
+part of the `DownloadStatus` type, and `nget jobs` and `get_jobs` both count
+entries whose `status` is `'active'`, but nothing ever sets it: entries go
+`queued → complete | error`. So the "active" count those two surfaces report is
+structurally always zero. Closing this means calling
+`session.updateDownload(url, { status: 'active', ... })` somewhere on the
+download path — which reopens the write-volume question in section 8, since the
+obvious place is the progress tick. Either write `active` once at download start
+without byte counts, or accept the extra writes; the current state is neither.
 
 ---
 
 ## 7. TypeScript Migration
 
-**Status: core migration complete.**
+**Status: complete as of v3.0.0.** Every module under `index.ts`, `lib/` and
+`types/` has a `.ts` source. The `.js` files beside them are build output.
 
-The `tsconfig.json` uses in-place compilation (`outDir: "."`) so `.ts` files compile to `.js` alongside the source. Existing `require()` calls in un-migrated JS files continue to work without changes.
+The `tsconfig.json` uses in-place compilation (`outDir: "."`) so `.ts` files
+compile to `.js` alongside the source. `require()` paths never changed, which is
+why the migration could run file by file without a big-bang cutover.
 
-**Migrated (as of v1.6.0):**
+The core modules, and what typing them bought:
 
 | File | Notes |
 |------|-------|
 | `types/index.ts` | Shared type definitions — single source of truth |
-| `lib/core/NgetEmitter.ts` | Full event type system, discriminated union |
+| `lib/core/EventSink.ts` | Full event type system, discriminated union |
 | `lib/core/DownloadSession.ts` | Session lifecycle, active status files |
 | `lib/workers/ChecksumWorker.ts` | Worker thread entry point |
 | `lib/workers/ChecksumPool.ts` | Thread pool, queuing, singleton export |
@@ -464,15 +567,27 @@ The `tsconfig.json` uses in-place compilation (`outDir: "."`) so `.ts` files com
 | `lib/services/HistoryManager.ts` | `HistoryEntry` and related interfaces |
 | `lib/services/SecurityService.ts` | Validation result types, dependency injection typed |
 | `lib/config/ConfigManager.ts` | `NgetConfig` as return type of `getConfig()` |
-| `lib/downloadPipeline.ts` | DownloadSession wired; globals removed |
+| `lib/downloader.ts` | DownloadSession wired; globals removed |
+| `lib/mcp/server.ts` | MCP tool handlers, zod input schemas |
 | `index.ts` | `--human`, `--agent-id`, `nget jobs` routing added |
+
+`EventSink` was named `NgetEmitter`, and `lib/downloader.ts` was
+`lib/downloadPipeline.ts`, until PR #111 renamed both.
 
 **Compiler settings** (`tsconfig.json`):
 
-- `strict: false` — loosened during migration; tighten per-file by enabling `// @ts-check`
-- `allowJs: true`, `checkJs: false` — un-migrated JS files coexist without errors
+- `target: ES2022`, `module: commonjs`, `moduleResolution: node10` — baseline is Node 22+
+- `strict: true` — on project-wide (#151). Enabling it surfaced six errors across
+  four files, not the large fallout the loose setting had been guarding against.
+  New code must type-check under it; `// @ts-nocheck` and widening to `any` to
+  get past an error are both out.
+- `allowJs: true`, `checkJs: false` — `.js` build output and test files coexist without errors
 - `noImplicitReturns: true`, `noFallthroughCasesInSwitch: true` — enforced across all files
-- `esModuleInterop: true` — CJS/ESM interop enabled
+- `esModuleInterop: true`, `resolveJsonModule: true`, `skipLibCheck: true`
+- `newLine: "lf"` — emit LF regardless of the source file's line endings, so a
+  stray CRLF source cannot produce output that conflicts with `.gitattributes`
+  and shows as build drift in CI (#150)
+- `declaration: false`, `sourceMap: false` — no declarations or source maps yet
 
 ---
 
@@ -482,11 +597,22 @@ The current architecture handles dozens of concurrent agent calls cleanly. For h
 
 **Bottleneck 1 — File system writes for status files**
 
-`_flushStatus()` writes a JSON file on every progress update. At high concurrency this creates many small writes. Mitigation: debounce writes (only flush if last flush was >500ms ago), or switch `DownloadSession` to only write on state transitions (queued → active → complete/error), not on every progress tick.
+`_flushStatus()` rewrites the whole status file on each call, and the file grows
+with the number of URLs in the batch, so a large batch means repeated writes of
+a large-ish JSON blob. The writes are already limited to state transitions
+rather than progress ticks (see 4.5), which removes the worst version of this.
+What is left: a batch of thousands of URLs writes the full roster once per
+transition. Mitigation if it bites — debounce (flush at most every ~500ms), or
+write per-download deltas instead of the whole document.
 
 **Bottleneck 2 — ChecksumPool thread count**
 
-Default pool size is `min(cpus, 4)`. At high load with many large files this saturates. The pool size is configurable via `new ChecksumPool(n)`. A config key `workers.checksumPoolSize` can expose this.
+Pool size is `min(cpus, 4)`. At high load with many large files this saturates,
+and jobs past that point queue. It is not currently adjustable: `MAX_WORKERS` is
+a module constant in `lib/workers/ChecksumPool.ts` and the constructor takes no
+arguments. Making it tunable means parameterising the constructor and adding a
+config key — `workers.checksumPoolSize` would be the natural name; no such key
+exists today.
 
 **Bottleneck 3 — Single process per agent call**
 
