@@ -4,7 +4,6 @@ lcov.info
 temp/*
 temp_history/*
 temp_history_cli/*
-CLAUDE.md
 .nget/*
 
 *.seed
