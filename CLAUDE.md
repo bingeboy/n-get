@@ -131,34 +131,44 @@ No exceptions unless JP explicitly says otherwise. A branch cut from a stale mas
 
 **Token use requires explicit per-action approval.** Having `GH_TOKEN_NGET` in `.env` is not blanket authorization. Every use of the token — push, release, any GitHub API call — requires JP to explicitly say "do it" for that specific action in the current conversation. A previous approval does not carry forward to the next action.
 
-### Claude Code cloud sessions — unresolved, do not connect for this repo yet
+### Claude Code cloud sessions
 
-A cloud session clones the repo and sees **only committed files**. It therefore
-gets this file (now that it is tracked) but NOT `.env`, so `GH_TOKEN_NGET` is
-absent and the token-only push rule above cannot be followed as written.
+A cloud session clones the repo and sees **only committed files**. It gets this
+file, but NOT `.env` — so `GH_TOKEN_NGET` is absent and the token-only push rule
+above cannot be followed there.
 
-GitHub is explicitly excluded from the "network secrets" mechanism — requests to
-GitHub go through an Anthropic-side proxy that attaches the credential
-server-side, and the VM never holds it. There is no documented way to supply a
-custom PAT for pushes.
+GitHub is excluded from the "network secrets" mechanism: requests go through an
+Anthropic-side proxy that attaches the credential server-side, and the VM never
+holds it. There is no documented way to supply a custom PAT for pushes. The two
+supported paths are the Claude GitHub App (pushes as the app) and `/web-setup`
+(sends the token from JP's own `gh auth token` to Anthropic).
 
-That leaves two supported paths, and **both conflict with the rule above**:
+**What a cloud session may do:**
 
-- **Claude GitHub App** — pushes as the app rather than a token JP scoped.
-- **`/web-setup`** — sends the token from JP's own `gh auth token` to Anthropic.
-  This is JP's personal credential, which is exactly what the rule exists to
-  prevent.
+- Push branches
+- Open PRs
+- Read issues, and file them
 
-Two things are undocumented and must be checked on a throwaway branch before any
-real work goes through a cloud session:
+**What a cloud session must NOT do:**
 
-1. **Which identity appears on pushes** — the whole point of the token rule.
-2. **Whether cloud sessions add commit attribution trailers** — the
-   no-`Co-Authored-By` rule is absolute, and a tool adding one automatically
-   would violate it silently.
+- **Merge.** JP merges every cloud-session PR. This differs deliberately from a
+  local session, which may merge once all required checks pass — the local
+  session pushes with a token JP scoped, so the actor is explicit in a way the
+  cloud paths are not. Do not read the local merge permission as transferable.
+- Push to `master`, or tag a release.
 
-Until JP decides, cloud sessions may read and reason about this repo but must
-not push, open PRs, or merge.
+**Two behaviours are still undocumented.** Neither blocks work, but both should
+be confirmed from the first cloud-session PR rather than assumed:
+
+1. **Which identity appears on pushes** — the app, or JP's account.
+2. **Whether attribution trailers are added automatically** — the
+   no-`Co-Authored-By` rule is absolute, and a tool adding one would violate it
+   silently. Check `git log -1 --format='%an <%ae>%n%B'` on the first branch and
+   remove any trailer before the PR is reviewed.
+
+Everything else in this file applies unchanged: the test-coverage rule, TSDoc,
+SemVer, the ratchets, and no reference to the LLM or Anthropic in any commit
+message, PR body, or issue.
 
 ### Secret hygiene — `.env` values never enter a context window
 
